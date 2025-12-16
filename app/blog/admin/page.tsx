@@ -3,8 +3,8 @@ import BlogAdminClient from "./BlogAdminClient";
 import AdminPasswordGate from "@/components/auth/AdminPasswordGate";
 
 export const metadata: Metadata = {
-  title: "Blog Admin - ScheduleGenius",
-  description: "Manage and create blog posts for ScheduleGenius",
+  title: "Dashboard - RoboBlogger",
+  description: "AI-powered blog content management dashboard",
 };
 
 export default function BlogAdminPage() {

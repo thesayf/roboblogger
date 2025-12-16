@@ -52,7 +52,7 @@ export default function BlogPageClient({
       <header className="border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
           <Link href="/" className="text-xl font-mono text-gray-900 tracking-tight">
-            Daybook
+            RoboBlogger
           </Link>
           <nav className="flex items-center gap-6 text-sm font-mono">
             <Link href="/" className="text-gray-600 hover:text-gray-900">
@@ -160,7 +160,7 @@ export default function BlogPageClient({
             Ready to try time-blocking?
           </h2>
           <p className="text-gray-600 mb-6 max-w-xl mx-auto font-mono">
-            Daybook combines the best of GTD and time-blocking into a keyboard-first tool
+            RoboBlogger combines the best of GTD and time-blocking into a keyboard-first tool
             that stays out of your way.
           </p>
           <Link
@@ -176,7 +176,7 @@ export default function BlogPageClient({
       <footer className="border-t border-gray-200">
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between text-sm text-gray-500 font-mono">
-            <p>© 2025 Daybook</p>
+            <p>© 2025 RoboBlogger</p>
             <Link href="/" className="hover:text-gray-900">
               Back to Home
             </Link>

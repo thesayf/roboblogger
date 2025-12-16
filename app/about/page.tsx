@@ -9,7 +9,7 @@ export default function About() {
       <nav className="border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="text-2xl text-gray-900" style={{ fontFamily: "Lora, Georgia, serif" }}>
-            Daybook
+            RoboBlogger
           </Link>
           <div className="flex gap-6">
             <Link href="/about" className="text-sm font-mono text-gray-900 hover:text-gray-900">
@@ -29,7 +29,7 @@ export default function About() {
       <section className="flex-1 flex items-center justify-center px-6 py-20">
         <div className="max-w-3xl">
           <h1 className="text-5xl text-gray-900 mb-12" style={{ fontFamily: "Lora, Georgia, serif" }}>
-            About Daybook
+            About RoboBlogger
           </h1>
 
           <div className="space-y-6 text-2xl text-gray-700 leading-relaxed mb-12" style={{ fontFamily: "Lora, Georgia, serif" }}>
@@ -68,7 +68,7 @@ export default function About() {
       {/* Footer */}
       <footer className="border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-gray-500 font-mono">
-          © 2025 Daybook. Fast, keyboard-first productivity.
+          © 2025 RoboBlogger. Fast, keyboard-first productivity.
         </div>
       </footer>
     </div>

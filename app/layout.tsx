@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Inter, Lora } from "next/font/google";
 import "./globals.css";
-import { AppProvider } from "./context/AppContext";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "sonner";
 
@@ -14,32 +12,22 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://schedulegenius.ai"),
+  metadataBase: new URL("https://roboblogger.com"),
   title: {
-    template: "%s | ScheduleGenius",
-    default: "ScheduleGenius - AI-Powered Productivity Scheduling",
+    template: "%s | RoboBlogger",
+    default: "RoboBlogger - AI-Powered Blog CMS",
   },
   description:
-    "Create the perfect routine based on proven techniques from top performers",
+    "Generate beautiful blog posts with AI. Rich components, SEO optimization, and scheduled publishing.",
   icons: {
-    icon: "/favicon40x40.png",
-    apple: "/favicon.png",
+    icon: "/favicon.ico",
   },
   openGraph: {
     type: "website",
-    siteName: "ScheduleGenius",
-    images: [
-      {
-        url: "/homepage-og.jpg",
-        width: 1200,
-        height: 630,
-        alt: "ScheduleGenius AI Productivity Tool",
-      },
-    ],
+    siteName: "RoboBlogger",
   },
   twitter: {
     card: "summary_large_image",
-    creator: "@ScheduleGenius",
   },
 };
 
@@ -51,10 +39,6 @@ export default function RootLayout({
   return (
     <ClerkProvider
       appearance={{
-        layout: {
-          logoImageUrl: "/D (1024 x 1024 px).png",
-          logoPlacement: "inside",
-        },
         variables: {
           colorPrimary: "#111827",
           colorText: "#111827",
@@ -67,28 +51,10 @@ export default function RootLayout({
           borderRadius: "6px",
         },
         elements: {
-          // Logo
-          logoContainer: {
-            width: "200px",
-            height: "80px",
-            margin: "0 auto 24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          },
-          logoImage: {
-            width: "180px",
-            height: "auto",
-            objectFit: "contain",
-          },
-
-          // Card container
           card: {
             boxShadow: "none",
             border: "1px solid #E5E7EB",
           },
-
-          // Header
           headerTitle: {
             fontFamily: '"Lora", Georgia, serif',
             fontSize: "24px",
@@ -101,8 +67,6 @@ export default function RootLayout({
             color: "#6B7280",
             fontWeight: "400",
           },
-
-          // Social buttons
           socialButtonsBlockButton: {
             border: "1px solid #E5E7EB",
             backgroundColor: "#FFFFFF",
@@ -112,14 +76,6 @@ export default function RootLayout({
             fontWeight: "400",
             boxShadow: "none",
           },
-          socialButtonsBlockButton__google: {
-            border: "1px solid #E5E7EB",
-          },
-          socialButtonsBlockButton__apple: {
-            border: "1px solid #E5E7EB",
-          },
-
-          // Divider
           dividerLine: {
             backgroundColor: "#E5E7EB",
           },
@@ -129,8 +85,6 @@ export default function RootLayout({
             color: "#9CA3AF",
             fontWeight: "400",
           },
-
-          // Form fields
           formFieldLabel: {
             fontFamily: '"Inter", system-ui, sans-serif',
             fontSize: "14px",
@@ -146,12 +100,6 @@ export default function RootLayout({
             fontSize: "14px",
             boxShadow: "none",
           },
-          formFieldInput__focused: {
-            borderColor: "#111827",
-            boxShadow: "0 0 0 1px #111827",
-          },
-
-          // Submit button
           formButtonPrimary: {
             backgroundColor: "#111827",
             color: "#FFFFFF",
@@ -161,11 +109,6 @@ export default function RootLayout({
             border: "none",
             boxShadow: "none",
           },
-          formButtonPrimary__hover: {
-            backgroundColor: "#1F2937",
-          },
-
-          // Footer links
           footerActionLink: {
             color: "#111827",
             fontFamily: '"Inter", system-ui, sans-serif',
@@ -177,8 +120,6 @@ export default function RootLayout({
             fontFamily: '"Inter", system-ui, sans-serif',
             fontSize: "14px",
           },
-
-          // Remove Clerk branding styles
           footer: {
             display: "none",
           },
@@ -187,10 +128,8 @@ export default function RootLayout({
     >
       <html lang="en">
         <body className={`${inter.className} ${lora.variable}`}>
-          <AppProvider>
-            {children}
-            <Toaster richColors position="top-center" />
-          </AppProvider>
+          {children}
+          <Toaster richColors position="top-center" />
         </body>
       </html>
     </ClerkProvider>

@@ -26,7 +26,7 @@ export function generateBlogListSchema(
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    headline: "The ScheduleGenius Blog",
+    headline: "The RoboBlogger Blog",
     description:
       "Productivity tips, scheduling science, and insights to help you make the most of your time.",
     url: `${baseUrl}/blog`,
@@ -57,11 +57,11 @@ export function generateBlogPostSchema(
     dateModified: post.data.last_modified || post.data.date,
     author: {
       "@type": "Person",
-      name: post.data.author || "ScheduleGenius Team",
+      name: post.data.author || "RoboBlogger Team",
     },
     publisher: {
       "@type": "Organization",
-      name: "ScheduleGenius",
+      name: "RoboBlogger",
       logo: {
         "@type": "ImageObject",
         url: `${baseUrl}/logo.jpg`,
@@ -105,7 +105,7 @@ export function generateHomePageSchema(baseUrl = "https://schedulegenius.ai") {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "ScheduleGenius",
+    name: "RoboBlogger",
     url: baseUrl,
     description:
       "Optimize your schedule with AI and behavioral science principles to maximize productivity",
@@ -116,20 +116,20 @@ export function generateHomePageSchema(baseUrl = "https://schedulegenius.ai") {
     },
     publisher: {
       "@type": "Organization",
-      name: "ScheduleGenius",
+      name: "RoboBlogger",
       logo: {
         "@type": "ImageObject",
         url: `${baseUrl}/logo.jpg`,
       },
       sameAs: [
         // Add your social media profiles here if applicable
-        // "https://twitter.com/ScheduleGenius",
-        // "https://www.linkedin.com/company/ScheduleGenius",
+        // "https://twitter.com/RoboBlogger",
+        // "https://www.linkedin.com/company/RoboBlogger",
       ],
     },
     mainEntity: {
       "@type": "SoftwareApplication",
-      name: "ScheduleGenius",
+      name: "RoboBlogger",
       applicationCategory: "ProductivityApplication",
       applicationSubCategory: "Scheduling Software",
       operatingSystem: "Web",

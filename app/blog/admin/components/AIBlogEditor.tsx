@@ -1588,7 +1588,7 @@ export default function AIBlogEditor({ onBack }: AIBlogEditorProps) {
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                       <h4 className="text-sm font-medium text-gray-700 mb-2">Example Context:</h4>
                       <div className="text-xs text-gray-600 space-y-2">
-                        <div><strong>Corporate Tech:</strong> &quot;ScheduleGenius brand: Professional blue and white color scheme, clean minimal design inspired by IBM and Apple. Abstract geometric elements, data visualization style, corporate presentation quality.&quot;</div>
+                        <div><strong>Corporate Tech:</strong> &quot;RoboBlogger brand: Professional blue and white color scheme, clean minimal design inspired by IBM and Apple. Abstract geometric elements, data visualization style, corporate presentation quality.&quot;</div>
                         <div><strong>Creative Agency:</strong> &quot;Modern creative brand with bold colors and dynamic compositions. Flat illustration style with vibrant gradients, contemporary design elements, artistic but professional.&quot;</div>
                       </div>
                     </div>

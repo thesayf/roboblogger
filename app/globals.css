@@ -106,3 +106,257 @@ html {
 html::-webkit-scrollbar {
   display: none; /* Chrome/Safari/Opera */
 }
+
+/* ================================
+   RoboBlogger Admin Dark Theme
+   ================================ */
+
+.admin-content {
+  /* Dark background */
+  --background: 222 47% 6%;
+  --foreground: 210 40% 98%;
+
+  /* Cards - dark with subtle border */
+  --card: 222 47% 8%;
+  --card-foreground: 210 40% 98%;
+
+  /* Popover/Dialog */
+  --popover: 222 47% 8%;
+  --popover-foreground: 210 40% 98%;
+
+  /* Primary - Violet gradient style */
+  --primary: 262 83% 58%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Secondary */
+  --secondary: 222 47% 14%;
+  --secondary-foreground: 210 40% 90%;
+
+  /* Muted */
+  --muted: 222 47% 12%;
+  --muted-foreground: 215 20% 55%;
+
+  /* Accent - Fuchsia tint */
+  --accent: 292 84% 60%;
+  --accent-foreground: 0 0% 100%;
+
+  /* Borders and inputs */
+  --border: 222 30% 18%;
+  --input: 222 30% 15%;
+  --ring: 262 83% 58%;
+
+  background: hsl(222, 47%, 5%);
+  min-height: calc(100vh - 64px);
+}
+
+/* Card styling in admin */
+.admin-content [class*="rounded-lg"],
+.admin-content [class*="rounded-xl"] {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Override white backgrounds */
+.admin-content .bg-white {
+  background: hsl(222, 47%, 8%) !important;
+}
+
+.admin-content .bg-gray-50,
+.admin-content .bg-gray-100 {
+  background: hsl(222, 47%, 10%) !important;
+}
+
+/* Text colors */
+.admin-content .text-gray-900,
+.admin-content .text-slate-900 {
+  color: hsl(210, 40%, 98%) !important;
+}
+
+.admin-content .text-gray-700,
+.admin-content .text-slate-700 {
+  color: hsl(215, 20%, 75%) !important;
+}
+
+.admin-content .text-gray-600,
+.admin-content .text-slate-600 {
+  color: hsl(215, 20%, 65%) !important;
+}
+
+.admin-content .text-gray-500,
+.admin-content .text-slate-500 {
+  color: hsl(215, 20%, 55%) !important;
+}
+
+/* Border colors */
+.admin-content .border-gray-200,
+.admin-content .border-gray-300,
+.admin-content .border-slate-200 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Input styling */
+.admin-content input,
+.admin-content textarea,
+.admin-content select {
+  background: hsl(222, 47%, 10%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: hsl(210, 40%, 98%) !important;
+}
+
+.admin-content input::placeholder,
+.admin-content textarea::placeholder {
+  color: hsl(215, 20%, 45%) !important;
+}
+
+.admin-content input:focus,
+.admin-content textarea:focus,
+.admin-content select:focus {
+  border-color: hsl(262, 83%, 58%) !important;
+  box-shadow: 0 0 0 2px hsla(262, 83%, 58%, 0.2) !important;
+}
+
+/* Button primary - violet gradient */
+.admin-content .bg-blue-500,
+.admin-content .bg-blue-600,
+.admin-content .bg-indigo-500,
+.admin-content .bg-indigo-600 {
+  background: linear-gradient(135deg, hsl(262, 83%, 58%), hsl(292, 84%, 55%)) !important;
+}
+
+.admin-content .hover\:bg-blue-600:hover,
+.admin-content .hover\:bg-blue-700:hover,
+.admin-content .hover\:bg-indigo-600:hover,
+.admin-content .hover\:bg-indigo-700:hover {
+  background: linear-gradient(135deg, hsl(262, 83%, 52%), hsl(292, 84%, 50%)) !important;
+}
+
+/* Badge styling */
+.admin-content .bg-blue-100 {
+  background: hsla(262, 83%, 58%, 0.15) !important;
+}
+
+.admin-content .text-blue-800,
+.admin-content .text-blue-700 {
+  color: hsl(262, 83%, 70%) !important;
+}
+
+.admin-content .bg-green-100 {
+  background: hsla(142, 76%, 45%, 0.15) !important;
+}
+
+.admin-content .text-green-800,
+.admin-content .text-green-700 {
+  color: hsl(142, 76%, 55%) !important;
+}
+
+.admin-content .bg-yellow-100,
+.admin-content .bg-amber-100 {
+  background: hsla(45, 93%, 55%, 0.15) !important;
+}
+
+.admin-content .text-yellow-800,
+.admin-content .text-amber-800 {
+  color: hsl(45, 93%, 60%) !important;
+}
+
+.admin-content .bg-red-100 {
+  background: hsla(0, 84%, 60%, 0.15) !important;
+}
+
+.admin-content .text-red-800,
+.admin-content .text-red-700 {
+  color: hsl(0, 84%, 65%) !important;
+}
+
+/* Tabs styling */
+.admin-content [role="tablist"] {
+  background: hsl(222, 47%, 8%);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-content [role="tab"] {
+  color: hsl(215, 20%, 55%);
+}
+
+.admin-content [role="tab"][data-state="active"] {
+  background: hsl(222, 47%, 12%);
+  color: hsl(210, 40%, 98%);
+}
+
+/* Dialog/Modal styling */
+.admin-content [role="dialog"],
+[data-state="open"][role="dialog"] {
+  background: hsl(222, 47%, 8%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Dropdown menu */
+.admin-content [role="menu"],
+[data-radix-popper-content-wrapper] [role="menu"] {
+  background: hsl(222, 47%, 10%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.admin-content [role="menuitem"] {
+  color: hsl(210, 40%, 90%) !important;
+}
+
+.admin-content [role="menuitem"]:hover,
+.admin-content [role="menuitem"]:focus {
+  background: hsl(222, 47%, 14%) !important;
+}
+
+/* Select dropdown */
+[data-radix-popper-content-wrapper] [role="listbox"] {
+  background: hsl(222, 47%, 10%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-radix-popper-content-wrapper] [role="option"] {
+  color: hsl(210, 40%, 90%) !important;
+}
+
+[data-radix-popper-content-wrapper] [role="option"]:hover,
+[data-radix-popper-content-wrapper] [role="option"][data-highlighted] {
+  background: hsl(222, 47%, 14%) !important;
+}
+
+/* Checkbox */
+.admin-content [role="checkbox"] {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  background: hsl(222, 47%, 10%) !important;
+}
+
+.admin-content [role="checkbox"][data-state="checked"] {
+  background: hsl(262, 83%, 58%) !important;
+  border-color: hsl(262, 83%, 58%) !important;
+}
+
+/* Hover states for cards/rows */
+.admin-content .hover\:bg-gray-50:hover,
+.admin-content .hover\:bg-gray-100:hover {
+  background: hsl(222, 47%, 12%) !important;
+}
+
+/* Ring focus */
+.admin-content .ring-blue-500,
+.admin-content .focus\:ring-blue-500:focus {
+  --tw-ring-color: hsl(262, 83%, 58%) !important;
+}
+
+/* Scrollbar for admin content (if needed) */
+.admin-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-content::-webkit-scrollbar-track {
+  background: hsl(222, 47%, 8%);
+}
+
+.admin-content::-webkit-scrollbar-thumb {
+  background: hsl(222, 47%, 20%);
+  border-radius: 4px;
+}
+
+.admin-content::-webkit-scrollbar-thumb:hover {
+  background: hsl(222, 47%, 25%);
+}

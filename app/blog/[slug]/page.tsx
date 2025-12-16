@@ -74,7 +74,7 @@ function mapDatabasePost(post: any): BlogPostData {
       content: post.components, // Pass components as content
       slices: post.components || [], // Pass components as slices too
       read_in_minutes: post.readTime || 5, // Default to 5 min if not set
-      author: post.author?.name || "ScheduleGenius Team",
+      author: post.author?.name || "RoboBlogger Team",
     },
   };
 }
@@ -93,7 +93,7 @@ export async function generateMetadata({
   }
 
   return {
-    metadataBase: new URL("https://schedulegenius.ai"),
+    metadataBase: new URL("https://roboblogger.com"),
     title: post.data.title,
     description: post.data.description,
     openGraph: {
@@ -106,7 +106,7 @@ export async function generateMetadata({
     },
     // Add the alternates field for canonical URL
     alternates: {
-      canonical: `https://schedulegenius.ai/blog/${params.slug}`,
+      canonical: `https://roboblogger.com/blog/${params.slug}`,
     },
     // Optionally, add article metadata for more detailed OG tags
     other: {

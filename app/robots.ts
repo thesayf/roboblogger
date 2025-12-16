@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/admin/", "/api/", "/blog/admin/"],
     },
-    sitemap: "https://schedulegenius.ai/sitemap.xml",
+    sitemap: "https://roboblogger.com/sitemap.xml",
   };
 }

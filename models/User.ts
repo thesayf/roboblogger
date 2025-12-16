@@ -12,8 +12,6 @@ export interface IUser extends Document {
   commuteTime?: string;
   sleepSchedule?: string;
   idealSchedule?: string;
-  days: mongoose.Types.ObjectId[];
-  goals?: mongoose.Types.ObjectId[]; // Reference to user's goals
 }
 
 const UserSchema: Schema = new Schema(
@@ -29,8 +27,6 @@ const UserSchema: Schema = new Schema(
     commuteTime: { type: String },
     sleepSchedule: { type: String },
     idealSchedule: { type: String },
-    days: [{ type: Schema.Types.ObjectId, ref: "Day" }],
-    goals: [{ type: Schema.Types.ObjectId, ref: "Goal" }], // Reference to user's goals
   },
   { timestamps: true }
 );

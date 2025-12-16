@@ -22,7 +22,7 @@
 // // //         <DialogHeader>
 // // //           <DialogTitle className="text-2xl font-bold flex items-center gap-2 justify-center">
 // // //             <Brain className="h-8 w-8 text-purple-600" />
-// // //             Unlock ScheduleGenius
+// // //             Unlock RoboBlogger
 // // //           </DialogTitle>
 // // //           <DialogDescription className="text-center text-base">
 // // //             {actionType === "accept"
@@ -116,7 +116,7 @@
 // //         <DialogHeader>
 // //           <DialogTitle className="text-2xl font-bold flex items-center gap-2 justify-center">
 // //             <Brain className="h-8 w-8 text-purple-600" />
-// //             Unlock ScheduleGenius
+// //             Unlock RoboBlogger
 // //           </DialogTitle>
 // //           <DialogDescription className="text-center text-base">
 // //             {actionType === "accept"
@@ -209,7 +209,7 @@
 //         <DialogHeader>
 //           <DialogTitle className="text-2xl font-bold flex items-center gap-2 justify-center">
 //             <Brain className="h-8 w-8 text-purple-600" />
-//             Unlock ScheduleGenius
+//             Unlock RoboBlogger
 //           </DialogTitle>
 //           <DialogDescription className="text-center text-base">
 //             {actionType === "accept"
@@ -303,7 +303,7 @@ const AuthModal = ({ isOpen, onClose, actionType }: AuthModalProps) => {
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold flex items-center gap-2 justify-center">
             <Brain className="h-8 w-8 text-purple-600" />
-            Unlock ScheduleGenius
+            Unlock RoboBlogger
           </DialogTitle>
           <DialogDescription className="text-center text-base">
             {actionType === "accept"

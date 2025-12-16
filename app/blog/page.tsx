@@ -67,7 +67,7 @@ async function getBlogPosts(): Promise<CleanBlogPost[]> {
 // Sets the metadata for SEO
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    metadataBase: new URL("https://schedulegenius.ai"),
+    metadataBase: new URL("https://roboblogger.com"),
     title: "Blog - Productivity Tips & Scheduling Science",
     description:
       "Productivity tips, scheduling science, and insights to help you make the most of your time.",
@@ -76,26 +76,26 @@ export async function generateMetadata(): Promise<Metadata> {
       description:
         "Productivity tips, scheduling science, and insights to help you make the most of your time.",
       type: "website",
-      url: "https://schedulegenius.ai/blog",
+      url: "https://roboblogger.com/blog",
       images: [
         {
           url: "/homepage-og.jpg",
           width: 1200,
           height: 630,
-          alt: "ScheduleGenius AI Productivity Tool",
+          alt: "RoboBlogger AI Productivity Tool",
         },
       ],
-      siteName: "ScheduleGenius",
+      siteName: "RoboBlogger",
     },
     twitter: {
       card: "summary_large_image",
       title: "Blog - Productivity Tips & Scheduling Science",
       description:
         "Productivity tips, scheduling science, and insights to help you make the most of your time.",
-      images: ["https://schedulegenius.ai/images/og-blog.jpg"],
+      images: ["https://roboblogger.com/images/og-blog.jpg"],
     },
     alternates: {
-      canonical: "https://schedulegenius.ai/blog",
+      canonical: "https://roboblogger.com/blog",
     },
   };
 }

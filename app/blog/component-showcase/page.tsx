@@ -191,8 +191,8 @@ const morningEntry = trackEnergy("9:00 AM", 8, ["deep work", "writing"]);`,
       type: "cta" as const,
       order: 13,
       title: "Ready to optimize your energy?",
-      content: "Start tracking your energy patterns today with Daybook's built-in time-blocking features.",
-      text: "Try Daybook Free",
+      content: "Start tracking your energy patterns today with RoboBlogger's built-in time-blocking features.",
+      text: "Try RoboBlogger Free",
       link: "/homepage-minimal",
     } as any,
     barChart: {
@@ -261,7 +261,7 @@ const morningEntry = trackEnergy("9:00 AM", 8, ["deep work", "writing"]);`,
       <nav className="border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="text-2xl text-gray-900" style={{ fontFamily: "Lora, Georgia, serif" }}>
-            Daybook
+            RoboBlogger
           </Link>
           <div className="flex gap-6">
             <Link href="/about" className="text-sm font-mono text-gray-600 hover:text-gray-900">
@@ -352,7 +352,7 @@ const morningEntry = trackEnergy("9:00 AM", 8, ["deep work", "writing"]);`,
       {/* Footer */}
       <footer className="border-t border-gray-200 mt-20">
         <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-gray-500 font-mono">
-          © 2025 Daybook. Fast, keyboard-first productivity.
+          © 2025 RoboBlogger. Fast, keyboard-first productivity.
         </div>
       </footer>
     </div>

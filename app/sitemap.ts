@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 import { blogApi } from "@/lib/blogApi";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://schedulegenius.ai";
+  const baseUrl = "https://roboblogger.com";
 
   // Static pages
   const staticPages = [
