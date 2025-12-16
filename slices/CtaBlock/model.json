@@ -1,0 +1,104 @@
+{
+  "id": "cta_block",
+  "type": "SharedSlice",
+  "name": "CtaBlock",
+  "description": "CtaBlock",
+  "variations": [
+    {
+      "id": "default",
+      "name": "Default",
+      "docURL": "...",
+      "version": "initial",
+      "description": "Default",
+      "imageUrl": "",
+      "primary": {
+        "headline": {
+          "type": "Text",
+          "config": {
+            "label": "headline",
+            "placeholder": ""
+          }
+        },
+        "description": {
+          "type": "StructuredText",
+          "config": {
+            "label": "description",
+            "placeholder": "",
+            "allowTargetBlank": true,
+            "multi": "paragraph,preformatted,heading1,heading2,heading3,heading4,heading5,heading6,strong,em,hyperlink,image,embed,list-item,o-list-item,rtl"
+          }
+        },
+        "button_text": {
+          "type": "Text",
+          "config": {
+            "label": "button_text",
+            "placeholder": ""
+          }
+        },
+        "button_link": {
+          "type": "Link",
+          "config": {
+            "label": "button_link",
+            "placeholder": "",
+            "select": null,
+            "allowTargetBlank": true,
+            "allowText": true,
+            "repeat": false
+          }
+        },
+        "variant": {
+          "type": "Select",
+          "config": {
+            "label": "variant",
+            "placeholder": "",
+            "options": [
+              "primary",
+              "secondary",
+              "subtle",
+              "urgent",
+              "outline"
+            ],
+            "default_value": "primary"
+          }
+        },
+        "background_style": {
+          "type": "Select",
+          "config": {
+            "label": "background_style",
+            "placeholder": "",
+            "options": [
+              "colored",
+              "bordered",
+              "minimal",
+              "gradient"
+            ],
+            "default_value": "colored"
+          }
+        },
+        "show_icon": {
+          "type": "Boolean",
+          "config": {
+            "label": "show_icon",
+            "placeholder_false": "false",
+            "placeholder_true": "true",
+            "default_value": false
+          }
+        },
+        "icon_type": {
+          "type": "Select",
+          "config": {
+            "label": "icon_type",
+            "placeholder": "",
+            "options": [
+              "arrow",
+              "download",
+              "external"
+            ],
+            "default_value": "arrow"
+          }
+        }
+      },
+      "items": {}
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+[
+	{
+		"__TYPE__": "SharedSliceContent",
+		"variation": "default",
+		"primary": {
+			"headline": {
+				"__TYPE__": "FieldContent",
+				"value": "depth",
+				"type": "Text"
+			},
+			"description": {
+				"__TYPE__": "StructuredTextContent",
+				"value": [
+					{
+						"type": "paragraph",
+						"content": {
+							"text": "Et exercitation in aute labore sint sint irure aute culpa id officia deserunt velit laborum officia."
+						}
+					}
+				]
+			},
+			"button_text": {
+				"__TYPE__": "FieldContent",
+				"value": "means",
+				"type": "Text"
+			},
+			"button_link": {
+				"key": "193a650d-9b52-4352-91ca-38d3791d1796",
+				"__TYPE__": "LinkContent",
+				"value": {
+					"__TYPE__": "ExternalLink",
+					"url": "http://twitter.com",
+					"text": "bring"
+				}
+			},
+			"variant": {
+				"__TYPE__": "FieldContent",
+				"value": "primary",
+				"type": "Select"
+			},
+			"background_style": {
+				"__TYPE__": "FieldContent",
+				"value": "bordered",
+				"type": "Select"
+			},
+			"show_icon": {
+				"__TYPE__": "BooleanContent",
+				"value": false
+			},
+			"icon_type": {
+				"__TYPE__": "FieldContent",
+				"value": "download",
+				"type": "Select"
+			}
+		},
+		"items": []
+	}
+]

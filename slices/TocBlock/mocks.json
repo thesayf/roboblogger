@@ -1,0 +1,49 @@
+[
+	{
+		"__TYPE__": "SharedSliceContent",
+		"variation": "default",
+		"primary": {
+			"title": {
+				"__TYPE__": "FieldContent",
+				"value": "circle",
+				"type": "Text"
+			},
+			"estimated_read_time": {
+				"__TYPE__": "FieldContent",
+				"value": "69",
+				"type": "Number"
+			},
+			"show_progress": {
+				"__TYPE__": "BooleanContent",
+				"value": true
+			},
+			"sections": {
+				"__TYPE__": "GroupContentType",
+				"value": [
+					{
+						"__TYPE__": "GroupItemContent",
+						"value": [
+							[
+								"section_title",
+								{
+									"__TYPE__": "FieldContent",
+									"value": "follow",
+									"type": "Text"
+								}
+							],
+							[
+								"anchor_link",
+								{
+									"__TYPE__": "FieldContent",
+									"value": "ride",
+									"type": "Text"
+								}
+							]
+						]
+					}
+				]
+			}
+		},
+		"items": []
+	}
+]

@@ -1,0 +1,1006 @@
+// Proof of Concept: Claude Agent SDK with One Tool
+// Testing if agent responds after using tools
+
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { query, tool, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
+import { z } from 'zod';
+import dbConnect from '@/lib/mongo';
+import Day from '@/models/Day';
+import User from '@/models/User';
+import Session from '@/models/Session';
+import {
+  manageTodos as manageTodosLogic,
+  planCUDMultiAgent,
+  planScheduleMultiAgent,
+  planGoalMultiAgent,
+  executeMultiAgent
+} from '@/app/lib/ai/multi-agent-tools';
+import Goal from '@/models/Goal';
+import Project from '@/models/Project';
+import Task from '@/models/Task';
+import Routine from '@/models/Routine';
+import Event from '@/models/Event';
+
+// Simple read schedule tool
+const readScheduleTool = tool(
+  'readSchedule',
+  'Read the user\'s schedule for a specific date. Returns blocks with tasks.',
+  {
+    date: z.string().optional().describe('Date in YYYY-MM-DD format. Defaults to today if not provided.')
+  },
+  async ({ date }, _extra) => {
+    console.log('📅 readSchedule tool called with date:', date);
+
+    try {
+      await dbConnect();
+
+      // Get user from auth
+      const { userId } = auth();
+      if (!userId) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: 'Error: User not authenticated'
+          }]
+        };
+      }
+
+      // Find user in database
+      const user = await User.findOne({ clerkId: userId }).lean();
+      if (!user) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: 'Error: User not found in database'
+          }]
+        };
+      }
+
+      // Determine target date
+      let targetDate = date;
+      if (!targetDate) {
+        const today = new Date();
+        targetDate = today.toISOString().split('T')[0];
+      }
+
+      console.log('📅 Fetching schedule for date:', targetDate);
+
+      // Fetch the day with blocks
+      const day = await Day.findOne({
+        user: user._id,
+        date: targetDate
+      })
+      .populate({
+        path: 'blocks',
+        populate: { path: 'tasks' }
+      })
+      .lean();
+
+      if (!day || !day.blocks || day.blocks.length === 0) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `No schedule found for ${targetDate}. The user has no blocks scheduled for this day.`
+          }]
+        };
+      }
+
+      // Format blocks for display
+      const blocks = (day.blocks as any[]).map((b: any) => ({
+        time: b.time,
+        duration: b.duration,
+        title: b.title,
+        type: b.type,
+        tasks: (b.tasks || []).map((t: any) => ({
+          title: t.title,
+          duration: t.duration,
+          completed: t.completed
+        }))
+      }));
+
+      const scheduleText = `Schedule for ${targetDate}:\n\n` +
+        blocks.map(b =>
+          `${b.time} - ${b.title} (${b.duration}min)\n` +
+          (b.tasks.length > 0
+            ? b.tasks.map(t => `  • ${t.title} (${t.duration}min)${t.completed ? ' ✓' : ''}`).join('\n') + '\n'
+            : '')
+        ).join('\n');
+
+      console.log('📅 Schedule found:', blocks.length, 'blocks');
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: scheduleText
+        }]
+      };
+
+    } catch (error) {
+      console.error('📅 Error in readSchedule tool:', error);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `Error reading schedule: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }]
+      };
+    }
+  }
+);
+
+// Shared state for todos (will be passed via context)
+let currentTodosState: any[] = [];
+
+// Todo management tool
+const manageTodosTool = tool(
+  'manageTodos',
+  'Create or update a todo list for tracking multi-step operations. Use this when the user asks for multiple things.',
+  {
+    action: z.enum(['create', 'update', 'clear']).describe('Action to perform: create new todos, update existing, or clear all'),
+    todos: z.array(z.object({
+      action: z.string().describe('Type of action: read, planCUD, planSchedule, planGoal, execute'),
+      description: z.string().describe('What this todo does in user terms'),
+      params: z.any().optional().describe('Parameters for the action')
+    })).optional().describe('Array of todos to create'),
+    todoId: z.string().optional().describe('ID of todo to update (for update action)'),
+    status: z.enum(['pending', 'in_progress', 'completed']).optional().describe('New status for the todo')
+  },
+  async ({ action, todos, todoId, status }, _extra) => {
+    console.log('📝 manageTodos called:', { action, todosCount: todos?.length, todoId, status });
+
+    try {
+      const result = await manageTodosLogic({
+        action,
+        todos,
+        currentTodos: currentTodosState,
+        todoId,
+        status
+      } as any);
+
+      // Update shared state
+      if (result.todos) {
+        currentTodosState = result.todos;
+        console.log('📝 Updated todos state:', currentTodosState.length, 'items');
+      }
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: true,
+            todos: result.todos,
+            message: `${action === 'create' ? 'Created' : action === 'update' ? 'Updated' : 'Cleared'} todo list`
+          })
+        }]
+      };
+    } catch (error) {
+      console.error('📝 Error in manageTodos:', error);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
+        }]
+      };
+    }
+  }
+);
+
+// Read inventory tool (goals, projects, tasks, events, routines)
+const readInventoryTool = tool(
+  'readInventory',
+  'Read user\'s goals, projects, tasks, events, and routines. Use this when user asks about their goals, tasks, etc.',
+  {
+    type: z.enum(['goals', 'projects', 'tasks', 'events', 'routines', 'all']).optional().describe('Type of inventory to read, defaults to all')
+  },
+  async ({ type = 'all' }, _extra) => {
+    console.log('📦 readInventory tool called with type:', type);
+
+    try {
+      await dbConnect();
+
+      // Get user from auth
+      const { userId } = auth();
+      if (!userId) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: 'Error: User not authenticated'
+          }]
+        };
+      }
+
+      // Find user in database
+      const user = await User.findOne({ clerkId: userId }).lean();
+      if (!user) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: 'Error: User not found in database'
+          }]
+        };
+      }
+
+      const mongoUserId = user._id.toString();
+      let inventoryText = '';
+
+      // Fetch requested data
+      if (type === 'goals' || type === 'all') {
+        const goals = await Goal.find({ userId }).sort({ order: 'asc' }).lean();
+        inventoryText += `\n**Goals (${goals.length}):**\n`;
+        if (goals.length > 0) {
+          goals.forEach((g: any) => {
+            inventoryText += `- ${g.content}${g.deadline ? ` (Due: ${g.deadline})` : ''}\n`;
+          });
+        } else {
+          inventoryText += 'No goals found.\n';
+        }
+      }
+
+      if (type === 'projects' || type === 'all') {
+        const projects = await Project.find({ userId, completed: false })
+          .populate('tasks')
+          .sort({ order: 'asc' })
+          .lean();
+        inventoryText += `\n**Projects (${projects.length}):**\n`;
+        if (projects.length > 0) {
+          projects.forEach((p: any) => {
+            const taskCount = p.tasks?.length || 0;
+            inventoryText += `- ${p.name} (${taskCount} tasks)\n`;
+          });
+        } else {
+          inventoryText += 'No active projects found.\n';
+        }
+      }
+
+      if (type === 'tasks' || type === 'all') {
+        const tasks = await Task.find({
+          userId,
+          completed: false,
+          projectId: null
+        }).lean();
+        inventoryText += `\n**Standalone Tasks (${tasks.length}):**\n`;
+        if (tasks.length > 0) {
+          tasks.forEach((t: any) => {
+            inventoryText += `- ${t.title} (${t.duration || 30}min)${t.dueDate ? ` - Due: ${t.dueDate}` : ''}\n`;
+          });
+        } else {
+          inventoryText += 'No standalone tasks found.\n';
+        }
+      }
+
+      if (type === 'routines' || type === 'all') {
+        const routines = await Routine.find({ userId }).lean();
+        inventoryText += `\n**Routines (${routines.length}):**\n`;
+        if (routines.length > 0) {
+          routines.forEach((r: any) => {
+            const days = r.days?.join(', ') || 'Not scheduled';
+            inventoryText += `- ${r.name} (${days}, ${r.duration}min at ${r.startTime})\n`;
+          });
+        } else {
+          inventoryText += 'No routines found.\n';
+        }
+      }
+
+      if (type === 'events' || type === 'all') {
+        const events = await Event.find({
+          userId,
+          date: { $gte: new Date() }
+        })
+        .sort({ date: 'asc', time: 'asc' })
+        .limit(10)
+        .lean();
+        inventoryText += `\n**Upcoming Events (${events.length}):**\n`;
+        if (events.length > 0) {
+          events.forEach((e: any) => {
+            inventoryText += `- ${e.name} on ${e.date} at ${e.time} (${e.duration}min)\n`;
+          });
+        } else {
+          inventoryText += 'No upcoming events found.\n';
+        }
+      }
+
+      console.log('📦 Inventory retrieved');
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: inventoryText.trim()
+        }]
+      };
+
+    } catch (error) {
+      console.error('📦 Error in readInventory tool:', error);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `Error reading inventory: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }]
+      };
+    }
+  }
+);
+
+// Plan CUD tool (Create/Update/Delete operations)
+const planCUDTool = tool(
+  'planCUD',
+  'Generate a plan for creating, updating, or deleting goals, projects, tasks, events, routines, or schedule blocks. ALWAYS use this before making changes.',
+  {
+    reason: z.string().describe('What the user wants to create, update, or delete'),
+    date: z.string().optional().describe('Date for schedule operations (YYYY-MM-DD)')
+  },
+  async ({ reason, date }, _extra) => {
+    console.log('🔧 planCUD tool called:', { reason, date });
+
+    try {
+      const { userId } = auth();
+      if (!userId) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success: false, error: 'Not authenticated' })
+          }]
+        };
+      }
+
+      const result = await planCUDMultiAgent(userId, { reason, date });
+
+      console.log('🔧 Plan generated:', {
+        success: result.success,
+        type: result.type,
+        requiresConfirmation: result.requiresConfirmation
+      });
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify(result)
+        }]
+      };
+    } catch (error) {
+      console.error('🔧 Error in planCUD:', error);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
+        }]
+      };
+    }
+  }
+);
+
+// Plan Schedule tool (daily schedule planning)
+const planScheduleTool = tool(
+  'planSchedule',
+  'Generate a daily schedule plan by organizing tasks and events into time blocks. Use this when the user wants to plan their day.',
+  {
+    targetDate: z.string().describe('Date to plan in YYYY-MM-DD format'),
+    planningStartTime: z.string().describe('What time to start planning from (HH:MM format, e.g., "09:00")'),
+    mode: z.enum(['create', 'update']).optional().describe('Create new schedule or update existing. Defaults to create.'),
+    existingPlan: z.any().optional().describe('Current schedule (required if mode is update)'),
+    userChanges: z.string().optional().describe('Description of changes to make (required if mode is update)')
+  },
+  async ({ targetDate, planningStartTime, mode, existingPlan, userChanges }, _extra) => {
+    console.log('📅 planSchedule tool called:', { targetDate, planningStartTime, mode });
+
+    try {
+      const { userId } = auth();
+      if (!userId) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success: false, error: 'Not authenticated' })
+          }]
+        };
+      }
+
+      const result = await planScheduleMultiAgent(userId, {
+        targetDate,
+        planningStartTime,
+        mode,
+        existingPlan,
+        userChanges
+      });
+
+      console.log('📅 Schedule plan generated:', {
+        success: result.success,
+        type: result.type,
+        requiresConfirmation: result.requiresConfirmation
+      });
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify(result)
+        }]
+      };
+    } catch (error) {
+      console.error('📅 Error in planSchedule:', error);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
+        }]
+      };
+    }
+  }
+);
+
+// Plan Goal tool (goal planning with projects, tasks, routines)
+const planGoalTool = tool(
+  'planGoal',
+  'Create a comprehensive goal plan with projects, tasks, and routines to achieve a specific goal. Use this when the user wants to achieve something over time.',
+  {
+    goalDescription: z.string().describe('What the user wants to achieve'),
+    timeline: z.string().optional().describe('How long to achieve the goal (e.g., "3 months", "1 year"). Defaults to appropriate timeframe.')
+  },
+  async ({ goalDescription, timeline }, _extra) => {
+    console.log('🎯 planGoal tool called:', { goalDescription, timeline });
+
+    try {
+      const { userId } = auth();
+      if (!userId) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success: false, error: 'Not authenticated' })
+          }]
+        };
+      }
+
+      const result = await planGoalMultiAgent(userId, {
+        goalDescription,
+        timeline
+      });
+
+      console.log('🎯 Goal plan generated:', {
+        success: result.success,
+        type: result.type,
+        requiresConfirmation: result.requiresConfirmation
+      });
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify(result)
+        }]
+      };
+    } catch (error) {
+      console.error('🎯 Error in planGoal:', error);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
+        }]
+      };
+    }
+  }
+);
+
+// Execute tool (executes confirmed plans)
+const executeTool = tool(
+  'execute',
+  'Execute a previously confirmed plan. ONLY call this after the user has confirmed the plan with "yes", "go ahead", etc.',
+  {
+    plan: z.any().describe('The plan object to execute (from a previous planCUD/planSchedule/planGoal call)')
+  },
+  async ({ plan }, _extra) => {
+    console.log('🚀 execute tool called');
+
+    try {
+      const { userId } = auth();
+      if (!userId) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({ success: false, error: 'Not authenticated' })
+          }]
+        };
+      }
+
+      // Parse plan if it's a string (Claude Agent SDK serializes objects to JSON strings)
+      let parsedPlan = plan;
+      if (typeof plan === 'string') {
+        console.log('🚀 Plan is a string, parsing to object...');
+        parsedPlan = JSON.parse(plan);
+      }
+
+      console.log('🚀 Executing plan with type:', parsedPlan.type);
+
+      const result = await executeMultiAgent(userId, { plan: parsedPlan });
+
+      console.log('🚀 Execution result:', {
+        success: result.success,
+        type: parsedPlan.type
+      });
+
+      // Check if there are pending todos to continue with
+      const pendingTodos = currentTodosState.filter((t: any) => t.status === 'pending');
+      const hasPendingTodos = pendingTodos.length > 0;
+
+      console.log('🚀 Checking for pending todos:', {
+        total: currentTodosState.length,
+        pending: pendingTodos.length,
+        hasPending: hasPendingTodos
+      });
+
+      // Add reminder to result if there are pending todos
+      if (hasPendingTodos) {
+        const reminderMessage = `✅ Operation completed successfully!
+
+⚠️ PENDING TODOS DETECTED: ${pendingTodos.length} remaining operation(s)
+
+Next todo: ${pendingTodos[0].description}
+
+CRITICAL: You MUST continue with the next operation:
+1. Call manageTodos to update current todo status to 'completed'
+2. Call manageTodos to mark next pending todo as 'in_progress'
+3. Proceed with that next operation (call the appropriate planning tool)
+
+DO NOT stop and say "All done!" - there are still pending operations!`;
+
+        const enhancedResult = {
+          ...result,
+          hasPendingTodos: true,
+          pendingTodosCount: pendingTodos.length,
+          nextTodo: pendingTodos[0],
+          message: reminderMessage,
+          originalMessage: result.result?.message || result.message
+        };
+
+        console.log('🚀 Added pending todos reminder to result');
+        console.log('🚀 Reminder:', reminderMessage);
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify(enhancedResult)
+          }]
+        };
+      }
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify(result)
+        }]
+      };
+    } catch (error) {
+      console.error('🚀 Error in execute:', error);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
+        }]
+      };
+    }
+  }
+);
+
+// Create MCP server with the tools
+const agentServer = createSdkMcpServer({
+  name: 'agent-tools',
+  version: '1.0.0',
+  tools: [
+    readScheduleTool,
+    readInventoryTool,
+    manageTodosTool,
+    planCUDTool,
+    planScheduleTool,
+    planGoalTool,
+    executeTool
+  ]
+});
+
+export async function POST(req: NextRequest) {
+  console.log("\n🧪 AGENT POC - Request received");
+
+  try {
+    // Auth check
+    const { userId } = auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get request data
+    const { message, context } = await req.json();
+    console.log("🧪 User message:", message);
+
+    // Connect to database and load session
+    await dbConnect();
+    const conversationId = context?.conversationId;
+    let sessionData = { todos: [], pendingPlan: null };
+
+    if (conversationId) {
+      const sessionId = `${userId}-${conversationId}`;
+      console.log('🔍 Loading session:', sessionId);
+
+      const session = await Session.findOne({ sessionId });
+      if (session) {
+        sessionData = {
+          todos: session.todos || [],
+          pendingPlan: session.pendingPlan || null,
+        };
+        console.log(`📚 Loaded session: ${sessionData.todos.length} todos, has plan: ${!!sessionData.pendingPlan}`);
+      } else {
+        console.log('📭 No existing session found');
+      }
+    } else {
+      console.log('⚠️ No conversationId provided - session will not be persisted');
+    }
+
+    // Initialize shared state from session
+    currentTodosState = sessionData.todos;
+    console.log('🧪 Initialized todos state:', currentTodosState.length, 'items');
+
+    // Build prompt with context
+    let promptToSend = message;
+
+    // If there's a pending plan, inject it into the prompt
+    if (sessionData.pendingPlan) {
+      console.log('📋 Pending plan detected - injecting into prompt');
+      console.log('📋 Plan type:', sessionData.pendingPlan.type);
+
+      promptToSend = `[CONTEXT: You previously generated a plan that requires user confirmation]
+
+PENDING PLAN (you must pass this EXACT object to the execute tool):
+\`\`\`json
+${JSON.stringify(sessionData.pendingPlan, null, 2)}
+\`\`\`
+
+USER'S RESPONSE: ${message}
+
+INSTRUCTIONS:
+1. Interpret the user's response in context of the pending plan
+2. If they confirm (yes, go ahead, do it, looks good, etc.):
+   - Call execute tool with parameter: plan = <the exact JSON object above>
+   - CRITICAL: The plan parameter must include the "type" field (currently: "${sessionData.pendingPlan.type}")
+3. If they deny (no, cancel, nevermind), acknowledge and ask what they'd like instead
+4. If they modify (change X, but not Y), acknowledge the limitation and suggest alternatives
+
+EXAMPLE of how to call execute:
+execute({ plan: ${JSON.stringify(sessionData.pendingPlan)} })`;
+    }
+    // If there are todos but NO pending plan, it means we just executed and need to check remaining todos
+    else if (sessionData.todos && sessionData.todos.length > 0) {
+      const pendingTodos = sessionData.todos.filter((t: any) => t.status === 'pending');
+      const completedTodos = sessionData.todos.filter((t: any) => t.status === 'completed');
+      const inProgressTodos = sessionData.todos.filter((t: any) => t.status === 'in_progress');
+
+      if (pendingTodos.length > 0) {
+        console.log('📋 Todos detected with pending items - injecting reminder');
+        console.log('📋 Pending todos:', pendingTodos.length);
+        console.log('📋 Completed todos:', completedTodos.length);
+
+        promptToSend = `[CONTEXT: You have a todo list with remaining tasks]
+
+USER MESSAGE: ${message}
+
+CURRENT TODO LIST:
+${sessionData.todos.map((t: any, i: number) =>
+  `${i + 1}. [${t.status}] ${t.description}`
+).join('\n')}
+
+CRITICAL INSTRUCTIONS:
+1. You just completed an operation and the user responded: "${message}"
+2. There are ${pendingTodos.length} pending todo(s) remaining
+3. You MUST now:
+   - Mark the current in-progress todo as 'completed' using manageTodos
+   - Mark the next pending todo as 'in_progress' using manageTodos
+   - Proceed to execute that next todo (call the appropriate planning tool)
+
+Next pending todo: ${pendingTodos[0].description}
+
+DO NOT just summarize and stop. You must continue with the next operation.`;
+      }
+    }
+
+    // Create query with Claude Agent SDK
+    console.log("🧪 Starting Claude Agent SDK query...");
+    const result = query({
+      prompt: promptToSend,
+      options: {
+        model: 'claude-sonnet-4-5-20250929',
+        maxTurns: 10, // Increased to allow tool use + response
+        mcpServers: {
+          agentTools: agentServer
+        },
+        systemPrompt: `You are a helpful schedule assistant with access to tools.
+
+PLANNING & CONFIRMATION FLOW (CRITICAL):
+
+When the user wants to CREATE, UPDATE, or DELETE anything:
+1. FIRST call the appropriate planning tool:
+   - planCUD: For creating/updating/deleting goals, projects, tasks, events, routines, or blocks
+   - planSchedule: For planning a daily schedule (organizing items into time blocks)
+   - planGoal: For creating a comprehensive goal with breakdown into projects, tasks, routines
+2. The plan will be presented to the user automatically
+3. YOU MUST STOP - do NOT call execute yet
+4. On the next user message, they will confirm or deny
+5. If they confirm, call the execute tool with the plan
+6. If they deny, acknowledge and help them
+
+MULTI-STEP OPERATIONS (CRITICAL):
+
+When the user requests MULTIPLE planning operations (e.g., "plan my day and delete my tasks"):
+
+STEP 1 - CREATE TODO LIST (MANDATORY):
+- You MUST call manageTodos to create a todo list tracking all operations
+- Mark first todo as 'in_progress', others as 'pending'
+- Example: [{ action: "planCUD", description: "Delete standalone tasks", status: "in_progress" },
+           { action: "planSchedule", description: "Plan schedule for tomorrow", status: "pending" }]
+
+STEP 2 - EXECUTE SEQUENTIALLY:
+- Do DESTRUCTIVE operations FIRST (delete/remove)
+- Then CONSTRUCTIVE operations SECOND (create/plan/update)
+- After EACH planning operation, STOP and wait for user confirmation
+- After calling execute tool, CHECK the result for "hasPendingTodos" field
+- If hasPendingTodos is true, you MUST:
+  1. Update current todo to 'completed' using manageTodos
+  2. Mark next pending todo as 'in_progress' using manageTodos
+  3. Continue with that next operation (call the appropriate planning tool)
+- DO NOT stop and say "All done!" if hasPendingTodos is true in the execute result
+
+Example - Complete flow:
+User: "Delete my tasks and plan my schedule"
+1. Call manageTodos to create list: [Delete tasks (in_progress), Plan schedule (pending)]
+2. Call planCUD to delete tasks → STOP and wait for confirmation
+3. User confirms → Execute deletion → Update todo: Delete tasks (completed)
+4. Check todos → see "Plan schedule" is pending
+5. Update todo: Plan schedule (in_progress)
+6. Call planSchedule → STOP and wait for confirmation
+7. User confirms → Execute schedule → Update todo: Plan schedule (completed)
+
+For READ operations (no confirmation needed):
+- You CAN do multiple reads in parallel (readSchedule + readInventory)
+- Just summarize all results together
+- No need for todos for read-only operations
+
+CRITICAL INSTRUCTIONS:
+1. ALWAYS respond to the user with a summary after using tools
+2. Be conversational and helpful
+3. For planning operations, do them ONE AT A TIME with confirmation between each
+4. Destructive operations (delete) ALWAYS go before constructive ones (create/plan)
+5. Do NOT call execute unless the user has confirmed
+
+EXAMPLES:
+
+Example 1 - Read operation (no confirmation needed):
+User: "Show me my schedule"
+- You call readSchedule tool
+- You respond: "Here's your schedule for today: [summarize blocks]"
+
+Example 2 - Multi-step read:
+User: "Show me my schedule and my goals"
+- You call readSchedule
+- You call readInventory with type='goals'
+- You respond: "Here's your schedule... And here are your goals..."
+
+Example 3 - Delete operation (needs confirmation):
+User: "Delete all my routines"
+- You call planCUD with reason="Delete all routines"
+- planCUD returns a plan requiring confirmation
+- You respond: "I've prepared a plan to delete 3 routines: [list]. Should I proceed?"
+- STOP and wait
+
+Next message - User: "yes"
+- You call execute with the plan
+- You respond: "Done! I've deleted 3 routines: [list]"
+
+AVAILABLE TOOLS:
+- readSchedule: Read user's daily schedule for a specific date
+- readInventory: Read goals, projects, tasks, events, routines
+- manageTodos: Create/update todo lists for multi-step operations
+- planCUD: Plan create/update/delete operations for individual items (ALWAYS use before making changes)
+- planSchedule: Plan a daily schedule by organizing tasks/events into time blocks (requires targetDate and planningStartTime)
+- planGoal: Create a comprehensive goal plan with projects, tasks, and routines (requires goalDescription)
+- execute: Execute a confirmed plan (ONLY call after user confirms)
+
+Do NOT just use tools and stop. Always provide a final response to the user.`,
+        permissionMode: 'bypassPermissions' // For POC, bypass permission checks
+      }
+    });
+
+    // Collect all messages from the async generator
+    console.log("🧪 Collecting messages from agent...");
+    const messages = [];
+    let finalResult = null;
+    let lastAssistantText = '';
+    let detectedPendingPlan: any = null;
+
+    for await (const msg of result) {
+      console.log("🧪 Message type:", msg.type);
+
+      if (msg.type === 'assistant') {
+        // Extract text from assistant message
+        const content = msg.message.content;
+        if (Array.isArray(content)) {
+          const textBlocks = content.filter(block => block.type === 'text');
+          if (textBlocks.length > 0) {
+            lastAssistantText = textBlocks.map(b => b.text).join('\n');
+            console.log("🧪 Assistant text:", lastAssistantText);
+          }
+        }
+      }
+
+      if (msg.type === 'user' && msg.message.role === 'user') {
+        // Check tool results for plans that need confirmation
+        const content = msg.message.content;
+
+        console.log('🔍 Checking user message for plan. Content type:', typeof content, 'Is array:', Array.isArray(content));
+
+        // Content might be an array of blocks or a string
+        let textContent = '';
+        if (Array.isArray(content)) {
+          console.log('🔍 Content is array with', content.length, 'blocks');
+
+          // Log the types of all blocks
+          content.forEach((block: any, i: number) => {
+            console.log(`🔍 Block ${i} type:`, block.type, 'keys:', Object.keys(block));
+          });
+
+          // Check for tool_result type blocks (this is what planCUD returns)
+          const toolResultBlocks = content.filter((block: any) => block.type === 'tool_result');
+          if (toolResultBlocks.length > 0) {
+            console.log('🔍 Found', toolResultBlocks.length, 'tool_result blocks');
+            // Tool results have content inside them
+            const toolContent = toolResultBlocks[0].content;
+            if (typeof toolContent === 'string') {
+              textContent = toolContent;
+            } else if (Array.isArray(toolContent)) {
+              const textBlock = toolContent.find((b: any) => b.type === 'text');
+              if (textBlock) {
+                textContent = textBlock.text;
+              }
+            }
+            console.log('🔍 Tool result content preview:', textContent.substring(0, 100));
+          }
+
+          // Also check for regular text blocks (for backward compatibility)
+          const textBlocks = content.filter((block: any) => block.type === 'text');
+          if (textBlocks.length > 0 && !textContent) {
+            console.log('🔍 Found', textBlocks.length, 'text blocks');
+            textContent = textBlocks[0].text;
+            console.log('🔍 Text content preview:', textContent.substring(0, 100));
+          }
+        } else if (typeof content === 'string') {
+          textContent = content;
+          console.log('🔍 Content is string, preview:', textContent.substring(0, 100));
+        }
+
+        if (textContent) {
+          try {
+            const parsed = JSON.parse(textContent);
+            console.log('🔍 Successfully parsed JSON. Keys:', Object.keys(parsed));
+            console.log('🔍 requiresConfirmation:', parsed.requiresConfirmation);
+            console.log('🔍 has data:', !!parsed.data);
+
+            if (parsed.requiresConfirmation && parsed.data) {
+              console.log('⏸️ PLAN DETECTED - requires confirmation');
+              // Save the full plan structure that execute expects
+              detectedPendingPlan = {
+                type: parsed.type,  // e.g., 'cud', 'schedule', 'goal_plan'
+                data: parsed.data   // The actual plan data with changes, summary, stats, etc.
+              };
+              console.log('⏸️ Plan type:', detectedPendingPlan.type);
+              console.log('⏸️ Plan summary:', parsed.message);
+            }
+          } catch (e) {
+            console.log('🔍 Not JSON or parse error:', e instanceof Error ? e.message : 'unknown');
+          }
+        } else {
+          console.log('🔍 No text content found in user message');
+        }
+      }
+
+      if (msg.type === 'result') {
+        console.log("🧪 Final result subtype:", msg.subtype);
+        finalResult = msg;
+        if (msg.subtype === 'success') {
+          console.log("🧪 Success! Result text:", msg.result);
+          console.log("🧪 Turns used:", msg.num_turns);
+        } else {
+          console.log("🧪 Error or limit:", msg.subtype);
+          console.log("🧪 Turns used:", msg.num_turns);
+        }
+      }
+
+      messages.push(msg);
+    }
+
+    console.log("🧪 Total messages collected:", messages.length);
+    console.log("🧪 Final assistant text:", lastAssistantText);
+    console.log("🧪 Final result exists:", !!finalResult);
+    console.log("🧪 Final result subtype:", finalResult?.subtype);
+
+    // Determine response
+    let responseText = lastAssistantText;
+    if (!responseText && finalResult?.subtype === 'success') {
+      responseText = finalResult.result;
+    }
+    if (!responseText) {
+      responseText = finalResult ?
+        `Agent stopped (${finalResult.subtype}) without generating response` :
+        "Agent completed but no result received";
+    }
+
+    console.log("🧪 Sending response to client:", responseText);
+
+    // Save session to database if we have a conversationId
+    if (conversationId) {
+      const sessionId = `${userId}-${conversationId}`;
+      try {
+        await Session.findOneAndUpdate(
+          { sessionId },
+          {
+            userId,
+            conversationId,
+            sessionId,
+            todos: currentTodosState,
+            pendingPlan: detectedPendingPlan, // Save detected plan
+            updatedAt: new Date(),
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          },
+          { upsert: true, new: true }
+        );
+        console.log(`💾 Session saved: ${sessionId}, todos: ${currentTodosState.length}, has plan: ${!!detectedPendingPlan}`);
+      } catch (error) {
+        console.error('Failed to save session:', error);
+      }
+    } else {
+      console.log('⚠️ Session not saved - no conversationId');
+    }
+
+    // Return response to frontend
+    return NextResponse.json({
+      success: true,
+      response: responseText,
+      todos: currentTodosState, // Include todos in response
+      todoStatus: currentTodosState.length > 0 ? {
+        total: currentTodosState.length,
+        completed: currentTodosState.filter((t: any) => t.status === 'completed').length,
+        pending: currentTodosState.filter((t: any) => t.status === 'pending').length,
+      } : undefined,
+      awaitingConfirmation: !!detectedPendingPlan, // Tell frontend we need confirmation
+      pendingPlan: detectedPendingPlan, // Include plan for frontend to display
+      messages: messages.map(m => ({
+        type: m.type,
+        content: m.type === 'assistant' ? JSON.stringify(m.message.content) :
+                 m.type === 'result' && m.subtype === 'success' ? m.result :
+                 m.type === 'user' ? JSON.stringify(m.message) : null
+      })),
+      debug: {
+        totalMessages: messages.length,
+        finalResult: finalResult ? {
+          subtype: finalResult.subtype,
+          numTurns: finalResult.num_turns,
+          totalCost: finalResult.total_cost_usd
+        } : null
+      }
+    });
+
+  } catch (error) {
+    console.error("🧪 Error in AGENT POC:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to process request",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "id": "toc_block",
+  "type": "SharedSlice",
+  "name": "TocBlock",
+  "description": "TocBlock",
+  "variations": [
+    {
+      "id": "default",
+      "name": "Default",
+      "docURL": "...",
+      "version": "initial",
+      "description": "Default",
+      "imageUrl": "",
+      "primary": {
+        "title": {
+          "type": "Text",
+          "config": {
+            "label": "title",
+            "placeholder": ""
+          }
+        },
+        "estimated_read_time": {
+          "type": "Number",
+          "config": {
+            "label": "estimated_read_time",
+            "placeholder": ""
+          }
+        },
+        "show_progress": {
+          "type": "Boolean",
+          "config": {
+            "label": "show_progress",
+            "placeholder_false": "false",
+            "placeholder_true": "true",
+            "default_value": false
+          }
+        },
+        "sections": {
+          "type": "Group",
+          "config": {
+            "label": "sections",
+            "repeat": true,
+            "fields": {
+              "section_title": {
+                "type": "Text",
+                "config": {
+                  "label": "section_title",
+                  "placeholder": ""
+                }
+              },
+              "anchor_link": {
+                "type": "Text",
+                "config": {
+                  "label": "anchor_link",
+                  "placeholder": ""
+                }
+              }
+            }
+          }
+        }
+      },
+      "items": {}
+    }
+  ]
+}

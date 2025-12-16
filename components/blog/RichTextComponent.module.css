@@ -1,0 +1,178 @@
+/* Rich Text Component Styles */
+.richTextContent {
+  line-height: 1.75;
+  position: relative;
+}
+
+/* Headers with glassmorphism styling */
+.richTextContent h1 {
+  @apply text-4xl font-bold text-gray-900 mb-8 mt-16 tracking-tight;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.richTextContent h2 {
+  @apply text-3xl font-bold text-gray-900 mb-6 mt-12 tracking-tight;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.richTextContent h3 {
+  @apply text-2xl font-bold text-gray-900 mb-5 mt-10 tracking-tight;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.richTextContent h4 {
+  @apply text-xl font-bold text-gray-900 mb-4 mt-8 tracking-tight;
+}
+
+.richTextContent h5 {
+  @apply text-lg font-bold text-gray-900 mb-3 mt-6;
+}
+
+.richTextContent h6 {
+  @apply text-base font-bold text-gray-900 mb-3 mt-6;
+}
+
+/* Paragraphs */
+.richTextContent p {
+  @apply mb-6 text-lg text-gray-800 leading-relaxed font-medium;
+}
+
+/* Lists - Better nested list handling */
+.richTextContent ul {
+  @apply list-disc mb-6 space-y-2 text-lg text-gray-700;
+  margin-left: 1.5rem;
+  padding-left: 0;
+}
+
+.richTextContent ol {
+  @apply list-decimal mb-6 space-y-2 text-lg text-gray-700;
+  margin-left: 1.5rem;
+  padding-left: 0;
+}
+
+.richTextContent li {
+  @apply leading-relaxed;
+  margin-bottom: 0.5rem;
+}
+
+/* Nested lists */
+.richTextContent ul ul,
+.richTextContent ol ol,
+.richTextContent ul ol,
+.richTextContent ol ul {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  margin-left: 1.5rem;
+}
+
+.richTextContent ul ul {
+  list-style-type: circle;
+}
+
+.richTextContent ul ul ul {
+  list-style-type: square;
+}
+
+/* Strong and emphasis */
+.richTextContent strong {
+  @apply font-semibold text-gray-900;
+}
+
+.richTextContent em {
+  @apply italic;
+}
+
+/* Code with glassmorphism */
+.richTextContent code {
+  @apply bg-gray-100/80 backdrop-blur-sm px-3 py-1.5 rounded-lg text-sm font-mono text-blue-600 font-semibold border border-gray-200/50;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.richTextContent pre {
+  @apply bg-gray-900/95 backdrop-blur-sm text-gray-100 p-6 rounded-2xl overflow-x-auto mb-8 text-sm font-mono whitespace-pre border border-gray-700/50;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.richTextContent pre code {
+  @apply bg-transparent p-0 text-gray-100 border-none;
+  box-shadow: none;
+}
+
+/* Links */
+.richTextContent a {
+  @apply text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200;
+  text-decoration: underline;
+  text-decoration-color: rgba(37, 99, 235, 0.3);
+  text-underline-offset: 3px;
+}
+
+.richTextContent a:hover {
+  text-decoration-color: rgba(37, 99, 235, 0.8);
+}
+
+/* Blockquotes with glassmorphism */
+.richTextContent blockquote {
+  @apply pl-8 py-6 mb-8 italic text-lg text-blue-800 font-medium leading-relaxed;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 197, 253, 0.08) 100%);
+  backdrop-filter: blur(8px);
+  border-left: 4px solid rgba(59, 130, 246, 0.6);
+  border-radius: 0 16px 16px 0;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
+  position: relative;
+}
+
+.richTextContent blockquote::before {
+  content: '"';
+  @apply text-4xl text-blue-400 font-bold absolute -top-2 -left-1;
+}
+
+/* Tables with glassmorphism */
+.richTextContent table {
+  @apply min-w-full mb-8 rounded-2xl overflow-hidden;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.richTextContent thead {
+  background: linear-gradient(135deg, rgba(249, 250, 251, 0.8) 0%, rgba(243, 244, 246, 0.9) 100%);
+  backdrop-filter: blur(12px);
+}
+
+.richTextContent tr {
+  @apply border-b;
+  border-color: rgba(229, 231, 235, 0.4);
+}
+
+.richTextContent tr:hover {
+  background: rgba(249, 250, 251, 0.5);
+}
+
+.richTextContent th {
+  @apply px-6 py-4 text-left font-bold text-gray-900 text-sm uppercase tracking-wider;
+}
+
+.richTextContent td {
+  @apply px-6 py-4 text-gray-800 font-medium;
+}
+
+/* Horizontal rule with glassmorphism */
+.richTextContent hr {
+  @apply my-12 border-none h-px;
+  background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.3) 50%, transparent 100%);
+  position: relative;
+}
+
+.richTextContent hr::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}

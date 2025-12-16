@@ -1,0 +1,30 @@
+[
+	{
+		"__TYPE__": "SharedSliceContent",
+		"variation": "default",
+		"primary": {
+			"variant": {
+				"__TYPE__": "FieldContent",
+				"value": "note",
+				"type": "Select"
+			},
+			"title": {
+				"__TYPE__": "FieldContent",
+				"value": "explore",
+				"type": "Text"
+			},
+			"content": {
+				"__TYPE__": "StructuredTextContent",
+				"value": [
+					{
+						"type": "paragraph",
+						"content": {
+							"text": "Cillum velit aliqua officia id dolor. Deserunt irure ullamco commodo dolor."
+						}
+					}
+				]
+			}
+		},
+		"items": []
+	}
+]

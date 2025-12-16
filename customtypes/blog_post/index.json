@@ -1,0 +1,99 @@
+{
+  "id": "blog_post",
+  "label": "blog_post",
+  "repeatable": true,
+  "status": true,
+  "format": "custom",
+  "json": {
+    "Main": {
+      "uid": {
+        "type": "UID",
+        "config": {
+          "label": "UID"
+        }
+      },
+      "title": {
+        "type": "Text",
+        "config": {
+          "label": "Title",
+          "placeholder": "Enter the blog post title here"
+        }
+      },
+      "publication_date": {
+        "type": "Date",
+        "config": {
+          "label": "Publication Date",
+          "placeholder": ""
+        }
+      },
+      "author": {
+        "type": "Text",
+        "config": {
+          "label": "Author",
+          "placeholder": "Enter author name"
+        }
+      },
+      "featured_image": {
+        "type": "Image",
+        "config": {
+          "label": "Featured Image",
+          "constraint": {},
+          "thumbnails": []
+        }
+      },
+      "slices": {
+        "type": "Slices",
+        "fieldset": "Slice Zone",
+        "config": {
+          "choices": {
+            "video_block": {
+              "type": "SharedSlice"
+            },
+            "text_block": {
+              "type": "SharedSlice"
+            },
+            "toc_block": {
+              "type": "SharedSlice"
+            },
+            "quote_block": {
+              "type": "SharedSlice"
+            },
+            "cta_block": {
+              "type": "SharedSlice"
+            },
+            "image_block": {
+              "type": "SharedSlice"
+            },
+            "callout_block": {
+              "type": "SharedSlice"
+            }
+          }
+        }
+      }
+    },
+    "SEO": {
+      "seo_title_field": {
+        "type": "Text",
+        "config": {
+          "label": "SEO Title Field",
+          "placeholder": "Enter SEO-optimized title (70 characters max)"
+        }
+      },
+      "meta_description": {
+        "type": "Text",
+        "config": {
+          "label": "Meta Description",
+          "placeholder": "Enter meta description (150-160 characters recommended)"
+        }
+      },
+      "og_image_field": {
+        "type": "Image",
+        "config": {
+          "label": "OG Image Field",
+          "constraint": {},
+          "thumbnails": []
+        }
+      }
+    }
+  }
+}

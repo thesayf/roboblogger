@@ -1,0 +1,30 @@
+[
+	{
+		"__TYPE__": "SharedSliceContent",
+		"variation": "default",
+		"primary": {
+			"quote_text": {
+				"__TYPE__": "StructuredTextContent",
+				"value": [
+					{
+						"type": "paragraph",
+						"content": {
+							"text": "Magna nulla et occaecat dolore quis elit eiusmod officia."
+						}
+					}
+				]
+			},
+			"author": {
+				"__TYPE__": "FieldContent",
+				"value": "joy",
+				"type": "Text"
+			},
+			"citation": {
+				"__TYPE__": "FieldContent",
+				"value": "zipper",
+				"type": "Text"
+			}
+		},
+		"items": []
+	}
+]

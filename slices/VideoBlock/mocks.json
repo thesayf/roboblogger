@@ -1,0 +1,24 @@
+[
+	{
+		"__TYPE__": "SharedSliceContent",
+		"variation": "default",
+		"primary": {
+			"video_type": {
+				"__TYPE__": "FieldContent",
+				"value": "YouTube",
+				"type": "Select"
+			},
+			"caption": {
+				"__TYPE__": "FieldContent",
+				"value": "water",
+				"type": "Text"
+			},
+			"video_id": {
+				"__TYPE__": "FieldContent",
+				"value": "tried",
+				"type": "Text"
+			}
+		},
+		"items": []
+	}
+]

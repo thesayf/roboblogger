@@ -1,0 +1,46 @@
+{
+  "id": "video_block",
+  "type": "SharedSlice",
+  "name": "VideoBlock",
+  "description": "VideoBlock",
+  "variations": [
+    {
+      "id": "default",
+      "name": "Default",
+      "docURL": "...",
+      "version": "initial",
+      "description": "Default",
+      "imageUrl": "",
+      "primary": {
+        "video_type": {
+          "type": "Select",
+          "config": {
+            "label": "video_type",
+            "placeholder": "",
+            "options": [
+              "YouTube",
+              "Vimeo",
+              "MP4"
+            ],
+            "default_value": "YouTube"
+          }
+        },
+        "video_id": {
+          "type": "Text",
+          "config": {
+            "label": "video_id ",
+            "placeholder": ""
+          }
+        },
+        "caption": {
+          "type": "Text",
+          "config": {
+            "label": "caption",
+            "placeholder": ""
+          }
+        }
+      },
+      "items": {}
+    }
+  ]
+}
