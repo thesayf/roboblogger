@@ -1,7 +1,16 @@
 import Link from 'next/link'
+import { SignInButton, SignUpButton } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 
-// TEMPORARY: Auth disabled for testing
-export default function HomePage() {
+export default async function HomePage() {
+  const { userId } = await auth()
+
+  // Redirect authenticated users to the blog admin
+  if (userId) {
+    redirect('/blog/admin')
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col">
       {/* Subtle grid pattern overlay */}
@@ -22,12 +31,11 @@ export default function HomePage() {
             <Link href="/blog" className="text-sm text-slate-400 hover:text-white transition-colors">
               Blog
             </Link>
-            <Link
-              href="/blog/admin"
-              className="text-sm px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors"
-            >
-              Dashboard
-            </Link>
+            <SignInButton mode="modal">
+              <button className="text-sm px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer">
+                Sign In
+              </button>
+            </SignInButton>
           </div>
         </div>
       </nav>
@@ -55,12 +63,11 @@ export default function HomePage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-            <Link
-              href="/blog/admin"
-              className="px-8 py-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold text-lg hover:from-violet-500 hover:to-fuchsia-500 transition-all shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40"
-            >
-              Open Dashboard
-            </Link>
+            <SignUpButton mode="modal">
+              <button className="px-8 py-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold text-lg hover:from-violet-500 hover:to-fuchsia-500 transition-all shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 cursor-pointer">
+                Get Started Free
+              </button>
+            </SignUpButton>
             <Link
               href="/blog"
               className="px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-lg hover:bg-white/10 transition-all"

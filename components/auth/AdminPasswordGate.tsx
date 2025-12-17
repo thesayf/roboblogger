@@ -5,8 +5,8 @@ import { Shield, Lock, Eye, EyeOff, Clock, LogOut, Sparkles } from 'lucide-react
 import { isAdminAuthenticated, setAdminSession, clearAdminSession, getSessionTimeRemaining, verifyAdminPassword } from '@/lib/auth/adminAuth';
 import Link from 'next/link';
 
-// TEMPORARY: Set to true to bypass auth for testing
-const BYPASS_AUTH = true;
+// Set to true to bypass auth for testing
+const BYPASS_AUTH = false;
 
 interface AdminPasswordGateProps {
   children: React.ReactNode;
