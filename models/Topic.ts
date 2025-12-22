@@ -64,6 +64,7 @@ export interface ITopic extends Document {
   retryCount: number;
   
   // User and organization
+  owner: mongoose.Types.ObjectId; // User who owns this topic (for multi-tenancy)
   createdBy?: string; // user ID who created this topic
   tags?: string[]; // for organization and filtering
   notes?: string; // user notes about this topic
@@ -290,6 +291,11 @@ const TopicSchema = new Schema<ITopic>({
   },
   
   // User and organization
+  owner: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   createdBy: {
     type: String, // user ID
     trim: true
@@ -318,6 +324,8 @@ const TopicSchema = new Schema<ITopic>({
 
 // Indexes for better query performance
 TopicSchema.index({ status: 1, priority: -1, createdAt: 1 });
+TopicSchema.index({ owner: 1, createdAt: -1 });
+TopicSchema.index({ owner: 1, status: 1 });
 TopicSchema.index({ createdBy: 1, createdAt: -1 });
 TopicSchema.index({ tags: 1 });
 TopicSchema.index({ scheduledAt: 1 });

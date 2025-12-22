@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
+import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 
 export const maxDuration = 300;
 
@@ -40,12 +41,21 @@ export async function PUT(
   try {
     await dbConnect();
 
+    // Get the current authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized - you must be logged in to update topics' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    
+
     // Don't allow updating certain fields directly
-    const { _id, createdAt, generatedPostId, ...updateData } = body;
-    
-    // Get the existing topic first to compare scheduled dates
+    const { _id, createdAt, generatedPostId, owner, ...updateData } = body;
+
+    // Get the existing topic first to check ownership
     const existingTopic = await Topic.findById(params.id);
     if (!existingTopic) {
       return NextResponse.json(
@@ -54,10 +64,18 @@ export async function PUT(
       );
     }
 
+    // Verify ownership
+    if (existingTopic.owner.toString() !== currentUser.mongoId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only update your own topics' },
+        { status: 403 }
+      );
+    }
+
     // Update the topic
     const topic = await Topic.findByIdAndUpdate(
       params.id,
-      { 
+      {
         ...updateData,
         updatedAt: new Date()
       },
@@ -67,7 +85,7 @@ export async function PUT(
     // Vercel Cron will handle scheduled generation
     // No need to manage jobs with Agenda anymore
     const newScheduledAt = topic.scheduledAt;
-    
+
     if (newScheduledAt && newScheduledAt > new Date()) {
       console.log(`Topic rescheduled for ${newScheduledAt} - will be processed by Vercel Cron`);
     }
@@ -91,13 +109,30 @@ export async function DELETE(
   try {
     await dbConnect();
 
-    // Find the topic first to check its status
+    // Get the current authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized - you must be logged in to delete topics' },
+        { status: 401 }
+      );
+    }
+
+    // Find the topic first to check its status and ownership
     const topic = await Topic.findById(params.id);
 
     if (!topic) {
       return NextResponse.json(
         { message: 'Topic not found' },
         { status: 404 }
+      );
+    }
+
+    // Verify ownership
+    if (topic.owner.toString() !== currentUser.mongoId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only delete your own topics' },
+        { status: 403 }
       );
     }
 

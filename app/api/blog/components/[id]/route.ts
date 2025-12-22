@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import BlogComponent from "@/models/BlogComponent";
 import BlogPost from "@/models/BlogPost";
-import User from "@/models/User";
-import { Types } from "mongoose";
+import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 
 // GET /api/blog/components/[id] - Get single component
 export async function GET(
@@ -15,7 +14,7 @@ export async function GET(
 
     const component = await BlogComponent.findById(params.id).populate(
       "blogPost",
-      "title author"
+      "title author owner"
     );
 
     if (!component) {
@@ -41,33 +40,21 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const clerkId = request.nextUrl.searchParams.get("clerkId");
-    if (!clerkId) {
+    await dbConnect();
+
+    // Get the current authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json(
-        { error: "Unauthorized - clerkId required" },
+        { error: "Unauthorized - you must be logged in to update components" },
         { status: 401 }
       );
     }
 
-    await dbConnect();
-
-    // Handle anonymous user for testing
-    let user;
-    if (clerkId === "anonymous") {
-      // Create a consistent ObjectId for anonymous users
-      const anonymousId = new Types.ObjectId("000000000000000000000000");
-      user = { _id: anonymousId, name: "Anonymous User" };
-    } else {
-      // Get user from database
-      user = await User.findOne({ clerkId });
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
-    }
-
     // Check if component exists
     const existingComponent = await BlogComponent.findById(params.id).populate(
-      "blogPost"
+      "blogPost",
+      "owner"
     );
 
     if (!existingComponent) {
@@ -77,11 +64,8 @@ export async function PUT(
       );
     }
 
-    // Check if user is the author of the blog post (skip for anonymous)
-    if (
-      clerkId !== "anonymous" &&
-      !existingComponent.blogPost.author.equals(user._id)
-    ) {
+    // Check if user is the owner of the blog post
+    if (existingComponent.blogPost.owner.toString() !== currentUser.mongoId) {
       return NextResponse.json(
         { error: "Forbidden - You can only edit components of your own posts" },
         { status: 403 }
@@ -113,33 +97,21 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const clerkId = request.nextUrl.searchParams.get("clerkId");
-    if (!clerkId) {
+    await dbConnect();
+
+    // Get the current authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json(
-        { error: "Unauthorized - clerkId required" },
+        { error: "Unauthorized - you must be logged in to delete components" },
         { status: 401 }
       );
     }
 
-    await dbConnect();
-
-    // Handle anonymous user for testing
-    let user;
-    if (clerkId === "anonymous") {
-      // Create a consistent ObjectId for anonymous users
-      const anonymousId = new Types.ObjectId("000000000000000000000000");
-      user = { _id: anonymousId, name: "Anonymous User" };
-    } else {
-      // Get user from database
-      user = await User.findOne({ clerkId });
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
-    }
-
     // Check if component exists
     const existingComponent = await BlogComponent.findById(params.id).populate(
-      "blogPost"
+      "blogPost",
+      "owner"
     );
 
     if (!existingComponent) {
@@ -149,11 +121,8 @@ export async function DELETE(
       );
     }
 
-    // Check if user is the author of the blog post (skip for anonymous)
-    if (
-      clerkId !== "anonymous" &&
-      !existingComponent.blogPost.author.equals(user._id)
-    ) {
+    // Check if user is the owner of the blog post
+    if (existingComponent.blogPost.owner.toString() !== currentUser.mongoId) {
       return NextResponse.json(
         {
           error: "Forbidden - You can only delete components of your own posts",

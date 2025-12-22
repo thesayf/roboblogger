@@ -11,6 +11,7 @@ export interface IBlogPost extends Document {
   publishedAt?: Date;
   readTime?: number;
   views: number;
+  owner: mongoose.Types.ObjectId; // User who owns this post (for multi-tenancy)
   author: mongoose.Types.ObjectId;
   components: mongoose.Types.ObjectId[];
   tags: string[];
@@ -36,6 +37,7 @@ const BlogPostSchema: Schema = new Schema(
     publishedAt: { type: Date },
     readTime: { type: Number },
     views: { type: Number, default: 0 },
+    owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
     author: { type: Schema.Types.ObjectId, ref: "User", required: true },
     components: [{ type: Schema.Types.ObjectId, ref: "BlogComponent" }],
     tags: [{ type: String }],
@@ -49,6 +51,8 @@ const BlogPostSchema: Schema = new Schema(
 BlogPostSchema.index({ slug: 1 });
 BlogPostSchema.index({ status: 1 });
 BlogPostSchema.index({ publishedAt: -1 });
+BlogPostSchema.index({ owner: 1 });
+BlogPostSchema.index({ owner: 1, status: 1 });
 BlogPostSchema.index({ author: 1 });
 
 export default mongoose.models.BlogPost ||

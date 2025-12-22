@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import BlogComponent from "@/models/BlogComponent";
 import BlogPost from "@/models/BlogPost";
-import User from "@/models/User";
-import { Types } from "mongoose";
+import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 
 // GET /api/blog/components - Get components for a blog post
 export async function GET(request: NextRequest) {
@@ -35,34 +34,21 @@ export async function GET(request: NextRequest) {
 // POST /api/blog/components - Create new component
 export async function POST(request: NextRequest) {
   try {
-    const clerkId = request.nextUrl.searchParams.get("clerkId");
-    if (!clerkId) {
-      return NextResponse.json(
-        { error: "Unauthorized - clerkId required" },
-        { status: 401 }
-      );
-    }
-
     await dbConnect();
 
-    // Handle anonymous user for testing
-    let user;
-    if (clerkId === "anonymous") {
-      // Create a consistent ObjectId for anonymous users
-      const anonymousId = new Types.ObjectId("000000000000000000000000");
-      user = { _id: anonymousId, name: "Anonymous User" };
-    } else {
-      // Get user from database
-      user = await User.findOne({ clerkId });
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
+    // Get the current authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: "Unauthorized - you must be logged in to create components" },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
     const { blogPost, type, order, ...componentFields } = body;
 
-    // Check if blog post exists and user is the author (skip for anonymous)
+    // Check if blog post exists and user is the owner
     const post = await BlogPost.findById(blogPost);
     if (!post) {
       return NextResponse.json(
@@ -71,22 +57,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (clerkId !== "anonymous") {
-      if (!post.author.equals(user._id)) {
-        return NextResponse.json(
-          { error: "Forbidden - You can only add components to your own posts" },
-          { status: 403 }
-        );
-      }
-    } else {
-      // For anonymous users, check if the post author is the anonymous user
-      const anonymousId = new Types.ObjectId("000000000000000000000000");
-      if (!post.author.equals(anonymousId)) {
-        return NextResponse.json(
-          { error: "Forbidden - You can only add components to your own posts" },
-          { status: 403 }
-        );
-      }
+    if (post.owner.toString() !== currentUser.mongoId) {
+      return NextResponse.json(
+        { error: "Forbidden - You can only add components to your own posts" },
+        { status: 403 }
+      );
     }
 
     // Create the component
@@ -120,7 +95,7 @@ export async function POST(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined
     });
     return NextResponse.json(
-      { 
+      {
         error: "Failed to create blog component",
         details: error instanceof Error ? error.message : String(error)
       },

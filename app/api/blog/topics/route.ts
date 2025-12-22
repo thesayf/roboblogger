@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 
 // Force dynamic rendering to prevent Clerk auth issues during build
 export const dynamic = 'force-dynamic';
@@ -9,10 +9,11 @@ import Topic from '@/models/Topic';
 export const maxDuration = 300;
 
 // GET /api/blog/topics - Get all topics with filtering and pagination
+// For admin: pass ownerOnly=true to filter by current user
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
-    
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -21,10 +22,11 @@ export async function GET(request: NextRequest) {
     const source = searchParams.get('source');
     const tags = searchParams.get('tags');
     const search = searchParams.get('search');
+    const ownerOnly = searchParams.get('ownerOnly') === 'true';
 
     // Build filter object
     const filter: any = {};
-    
+
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
     if (source) filter.source = source;
@@ -40,6 +42,18 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    // Filter by owner if requested (for admin dashboard)
+    if (ownerOnly) {
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+      filter.owner = currentUser.mongoId;
+    }
+
     // Calculate skip value for pagination
     const skip = (page - 1) * limit;
 
@@ -53,8 +67,17 @@ export async function GET(request: NextRequest) {
     // Get total count for pagination
     const total = await Topic.countDocuments(filter);
 
-    // Get queue statistics
-    const stats = await (Topic as any).getQueueStats();
+    // Get queue statistics (for current user if ownerOnly)
+    let stats;
+    if (ownerOnly) {
+      const currentUser = await getCurrentUser();
+      stats = await Topic.aggregate([
+        { $match: { owner: currentUser?.mongoId } },
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]);
+    } else {
+      stats = await (Topic as any).getQueueStats();
+    }
     const queueStats = stats.reduce((acc: any, stat: any) => {
       acc[stat._id] = stat.count;
       return acc;
@@ -83,11 +106,19 @@ export async function GET(request: NextRequest) {
 // POST /api/blog/topics - Create a new topic or bulk import topics
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = auth();
     await dbConnect();
 
+    // Get the current authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized - you must be logged in to create topics' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    
+
     // Check if this is a bulk import (has topics array)
     if (body.topics && Array.isArray(body.topics)) {
       // Bulk import
@@ -111,7 +142,7 @@ export async function POST(request: NextRequest) {
       // Create topic data for bulk insert with validation
       const topicsData = body.topics.map((topic: any) => {
         const sanitizedTopic = { ...topic };
-        
+
         // Sanitize SEO fields to prevent validation errors
         if (sanitizedTopic.seo) {
           if (sanitizedTopic.seo.metaTitle && sanitizedTopic.seo.metaTitle.length > 60) {
@@ -127,10 +158,11 @@ export async function POST(request: NextRequest) {
             sanitizedTopic.seo.openGraph.description = sanitizedTopic.seo.openGraph.description.substring(0, 200);
           }
         }
-        
+
         return {
           ...sanitizedTopic,
-          createdBy: userId || 'anonymous',
+          owner: currentUser.mongoId,
+          createdBy: currentUser.clerkId,
           status: 'pending',
           retryCount: 0,
           source: topic.source || 'bulk',
@@ -168,7 +200,7 @@ export async function POST(request: NextRequest) {
 
       // Create new topic with user ID and validation
       const sanitizedBody = { ...body };
-      
+
       // Sanitize SEO fields to prevent validation errors
       if (sanitizedBody.seo) {
         if (sanitizedBody.seo.metaTitle && sanitizedBody.seo.metaTitle.length > 60) {
@@ -184,10 +216,11 @@ export async function POST(request: NextRequest) {
           sanitizedBody.seo.openGraph.description = sanitizedBody.seo.openGraph.description.substring(0, 200);
         }
       }
-      
+
       const topicData = {
         ...sanitizedBody,
-        createdBy: userId || 'anonymous',
+        owner: currentUser.mongoId,
+        createdBy: currentUser.clerkId,
         status: 'pending',
         retryCount: 0,
         source: body.source || 'individual'
@@ -220,6 +253,15 @@ export async function PUT(request: NextRequest) {
   try {
     await dbConnect();
 
+    // Get the current authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized - you must be logged in to update topics' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { ids, updates } = body;
 
@@ -230,10 +272,10 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update multiple topics
+    // Update multiple topics (only those owned by current user)
     const result = await Topic.updateMany(
-      { _id: { $in: ids } },
-      { 
+      { _id: { $in: ids }, owner: currentUser.mongoId },
+      {
         ...updates,
         updatedAt: new Date()
       }
@@ -258,9 +300,18 @@ export async function DELETE(request: NextRequest) {
   try {
     await dbConnect();
 
+    // Get the current authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized - you must be logged in to delete topics' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const idsParam = searchParams.get('ids');
-    
+
     if (!idsParam) {
       return NextResponse.json(
         { message: 'Topic IDs are required' },
@@ -270,9 +321,10 @@ export async function DELETE(request: NextRequest) {
 
     const ids = idsParam.split(',');
 
-    // Delete topics (only allow deleting pending or failed topics to prevent data loss)
+    // Delete topics (only owned by current user, and only pending or failed)
     const result = await Topic.deleteMany({
       _id: { $in: ids },
+      owner: currentUser.mongoId,
       status: { $in: ['pending', 'failed'] }
     });
 

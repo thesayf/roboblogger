@@ -3,9 +3,11 @@ import dbConnect from "@/lib/mongo";
 import BlogPost from "@/models/BlogPost";
 import BlogComponent from "@/models/BlogComponent";
 import User from "@/models/User";
-import { Types } from "mongoose";
+import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 
 // GET /api/blog/posts - Get all blog posts
+// For admin: pass ownerOnly=true to filter by current user
+// For public: pass status=published to get all published posts
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
@@ -16,6 +18,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(url.searchParams.get("page") || "1");
     const limit = parseInt(url.searchParams.get("limit") || "10");
     const search = url.searchParams.get("search");
+    const ownerOnly = url.searchParams.get("ownerOnly") === "true";
 
     // Build query
     const query: any = {};
@@ -26,6 +29,18 @@ export async function GET(request: NextRequest) {
         { title: { $regex: search, $options: "i" } },
         { description: { $regex: search, $options: "i" } },
       ];
+    }
+
+    // Filter by owner if requested (for admin dashboard)
+    if (ownerOnly) {
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        return NextResponse.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+      query.owner = currentUser.mongoId;
     }
 
     // Calculate pagination
@@ -41,9 +56,6 @@ export async function GET(request: NextRequest) {
 
     // Get total count for pagination
     const total = await BlogPost.countDocuments(query);
-
-    // Remove this log in production to avoid cluttering the console
-    // console.log("these are the posts im getting from the api", JSON.stringify(posts, null, 2));
 
     return NextResponse.json({
       posts,
@@ -66,32 +78,15 @@ export async function GET(request: NextRequest) {
 // POST /api/blog/posts - Create new blog post
 export async function POST(request: NextRequest) {
   try {
-    const clerkId = request.nextUrl.searchParams.get("clerkId");
-    if (!clerkId) {
-      return NextResponse.json(
-        { error: "CLERK_AUTH_FAILED: Missing clerkId parameter in /api/blog/posts endpoint" },
-        { status: 401 }
-      );
-    }
-
     await dbConnect();
 
-    // Handle anonymous user for testing and system-generated posts
-    let user;
-    if (clerkId === "anonymous") {
-      // Create a consistent ObjectId for anonymous users
-      const anonymousId = new Types.ObjectId("000000000000000000000000");
-      user = { _id: anonymousId, name: "Anonymous User" };
-    } else if (clerkId === "system") {
-      // Create a consistent ObjectId for system-generated posts
-      const systemId = new Types.ObjectId("111111111111111111111111");
-      user = { _id: systemId, name: "System" };
-    } else {
-      // Get user from database
-      user = await User.findOne({ clerkId });
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
+    // Get the current authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: "Unauthorized - you must be logged in to create posts" },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
@@ -106,12 +101,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the blog post
+    // Create the blog post with owner set to current user
     const blogPost = new BlogPost({
       title,
       description,
       slug,
-      author: user._id,
+      owner: currentUser.mongoId,
+      author: currentUser.mongoId,
       ...otherFields,
     });
 
@@ -120,7 +116,7 @@ export async function POST(request: NextRequest) {
     // Create components if provided
     if (components && Array.isArray(components)) {
       console.log(`Creating ${components.length} components for blog post:`, blogPost._id);
-      
+
       const componentPromises = components.map((comp: any, index: number) => {
         const componentData = {
           blogPost: blogPost._id,
@@ -128,8 +124,7 @@ export async function POST(request: NextRequest) {
           order: index,
           ...comp,
         };
-        console.log(`Component ${index} data being saved:`, componentData);
-        
+
         const component = new BlogComponent(componentData);
         return component.save();
       });
@@ -141,20 +136,10 @@ export async function POST(request: NextRequest) {
       await blogPost.save();
     }
 
-    // Populate the response (handle anonymous user case)
-    let populatedPost;
-    if (clerkId === "anonymous") {
-      populatedPost = await BlogPost.findById(blogPost._id).populate(
-        "components"
-      );
-      // Manually set author data for anonymous user
-      populatedPost = populatedPost.toObject();
-      populatedPost.author = { _id: user._id, name: "Anonymous User" };
-    } else {
-      populatedPost = await BlogPost.findById(blogPost._id)
-        .populate("author", "name email imageUrl")
-        .populate("components");
-    }
+    // Populate the response
+    const populatedPost = await BlogPost.findById(blogPost._id)
+      .populate("author", "name email imageUrl")
+      .populate("components");
 
     return NextResponse.json(populatedPost, { status: 201 });
   } catch (error) {

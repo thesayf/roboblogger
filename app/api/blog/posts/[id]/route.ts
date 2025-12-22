@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import BlogPost from "@/models/BlogPost";
 import BlogComponent from "@/models/BlogComponent";
-import User from "@/models/User";
-import { Types } from "mongoose";
+import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 
 // GET /api/blog/posts/[id] - Get single blog post
 export async function GET(
@@ -27,13 +26,13 @@ export async function GET(
       );
     }
 
-    // Increment view count if not the author viewing
-    const clerkId = request.nextUrl.searchParams.get("clerkId");
-    if (clerkId) {
-      const user = await User.findOne({ clerkId });
-      if (user && !user._id.equals(post.author._id)) {
-        await BlogPost.findByIdAndUpdate(params.id, { $inc: { views: 1 } });
-      }
+    // Increment view count if not the owner viewing
+    const currentUser = await getCurrentUser();
+    if (currentUser && currentUser.mongoId !== post.owner.toString()) {
+      await BlogPost.findByIdAndUpdate(params.id, { $inc: { views: 1 } });
+    } else if (!currentUser) {
+      // Anonymous visitors increment views
+      await BlogPost.findByIdAndUpdate(params.id, { $inc: { views: 1 } });
     }
 
     return NextResponse.json(post);
@@ -52,31 +51,18 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const clerkId = request.nextUrl.searchParams.get("clerkId");
-    if (!clerkId) {
+    await dbConnect();
+
+    // Get the current authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json(
-        { error: "Unauthorized - clerkId required" },
+        { error: "Unauthorized - you must be logged in to edit posts" },
         { status: 401 }
       );
     }
 
-    await dbConnect();
-
-    // Handle anonymous user for testing
-    let user;
-    if (clerkId === "anonymous") {
-      // Create a consistent ObjectId for anonymous users
-      const anonymousId = new Types.ObjectId("000000000000000000000000");
-      user = { _id: anonymousId, name: "Anonymous User" };
-    } else {
-      // Get user from database
-      user = await User.findOne({ clerkId });
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
-    }
-
-    // Check if post exists and user is the author (skip for anonymous)
+    // Check if post exists and user is the owner
     const existingPost = await BlogPost.findById(params.id);
     if (!existingPost) {
       return NextResponse.json(
@@ -85,7 +71,7 @@ export async function PUT(
       );
     }
 
-    if (clerkId !== "anonymous" && !existingPost.author.equals(user._id)) {
+    if (existingPost.owner.toString() !== currentUser.mongoId) {
       return NextResponse.json(
         { error: "Forbidden - You can only edit your own posts" },
         { status: 403 }
@@ -149,31 +135,18 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const clerkId = request.nextUrl.searchParams.get("clerkId");
-    if (!clerkId) {
+    await dbConnect();
+
+    // Get the current authenticated user
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json(
-        { error: "Unauthorized - clerkId required" },
+        { error: "Unauthorized - you must be logged in to delete posts" },
         { status: 401 }
       );
     }
 
-    await dbConnect();
-
-    // Handle anonymous user for testing
-    let user;
-    if (clerkId === "anonymous") {
-      // Create a consistent ObjectId for anonymous users
-      const anonymousId = new Types.ObjectId("000000000000000000000000");
-      user = { _id: anonymousId, name: "Anonymous User" };
-    } else {
-      // Get user from database
-      user = await User.findOne({ clerkId });
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
-    }
-
-    // Check if post exists and user is the author (skip for anonymous)
+    // Check if post exists and user is the owner
     const existingPost = await BlogPost.findById(params.id);
     if (!existingPost) {
       return NextResponse.json(
@@ -182,7 +155,7 @@ export async function DELETE(
       );
     }
 
-    if (clerkId !== "anonymous" && !existingPost.author.equals(user._id)) {
+    if (existingPost.owner.toString() !== currentUser.mongoId) {
       return NextResponse.json(
         { error: "Forbidden - You can only delete your own posts" },
         { status: 403 }
