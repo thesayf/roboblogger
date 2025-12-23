@@ -118,6 +118,12 @@ export default function AdminPasswordGate({ children }: AdminPasswordGateProps) 
 
               <div className="flex items-center gap-4">
                 <Link
+                  href="/docs"
+                  className="text-sm text-slate-400 hover:text-white transition-colors"
+                >
+                  Docs
+                </Link>
+                <Link
                   href="/blog/admin/api-keys"
                   className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
                 >
