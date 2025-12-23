@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Lock, Eye, EyeOff, Clock, LogOut, Sparkles } from 'lucide-react';
+import { Shield, Lock, Eye, EyeOff, Clock, LogOut, Sparkles, Key } from 'lucide-react';
 import { isAdminAuthenticated, setAdminSession, clearAdminSession, getSessionTimeRemaining, verifyAdminPassword } from '@/lib/auth/adminAuth';
 import Link from 'next/link';
 
@@ -117,6 +117,13 @@ export default function AdminPasswordGate({ children }: AdminPasswordGateProps) 
               </div>
 
               <div className="flex items-center gap-4">
+                <Link
+                  href="/blog/admin/api-keys"
+                  className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+                >
+                  <Key className="w-4 h-4" />
+                  <span className="hidden sm:inline">API Keys</span>
+                </Link>
                 <Link
                   href="/blog"
                   className="text-sm text-slate-400 hover:text-white transition-colors"
