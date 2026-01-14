@@ -116,8 +116,12 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Error fetching posts via API:', error);
+    // Return more details in development/debugging
     return NextResponse.json(
-      { error: 'Failed to fetch posts' },
+      {
+        error: 'Failed to fetch posts',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
