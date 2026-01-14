@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { WysiwygEditor } from "@/components/editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -935,85 +936,16 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         <CardContent className="pt-0">
           {component.type === "rich_text" && (
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Content (Markdown)
-                </label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleMarkdownPreview(component.id)}
-                  className="flex items-center gap-2"
-                >
-                  {markdownPreview[component.id] ? (
-                    <>
-                      <EyeOff className="h-4 w-4" />
-                      Edit
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="h-4 w-4" />
-                      Preview
-                    </>
-                  )}
-                </Button>
-              </div>
-              
-              {markdownPreview[component.id] ? (
-                <div className="min-h-[200px] p-4 border rounded-md bg-white">
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      h1: ({children}) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
-                      h2: ({children}) => <h2 className="text-xl font-semibold mb-3">{children}</h2>,
-                      h3: ({children}) => <h3 className="text-lg font-medium mb-2">{children}</h3>,
-                      p: ({children}) => <p className="mb-4 text-gray-700 leading-relaxed">{children}</p>,
-                      ul: ({children}) => <ul className="list-disc list-inside mb-4 space-y-1">{children}</ul>,
-                      ol: ({children}) => <ol className="list-decimal list-inside mb-4 space-y-1">{children}</ol>,
-                      blockquote: ({children}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-4">{children}</blockquote>,
-                      code: ({children}) => <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">{children}</code>,
-                      pre: ({children}) => <pre className="bg-gray-100 p-4 rounded-md overflow-x-auto mb-4">{children}</pre>,
-                    }}
-                  >
-                    {component.content || "*No content yet. Switch to edit mode to add content.*"}
-                  </ReactMarkdown>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Textarea
-                    value={component.content || ""}
-                    onChange={(e) => {
-                      updateComponent(component.id, { content: e.target.value });
-                    }}
-                    className="min-h-[200px] font-mono text-sm"
-                    placeholder="Enter your content using Markdown formatting...
-
-Examples:
-# Heading 1
-## Heading 2
-### Heading 3
-
-**Bold text**
-*Italic text*
-
-- Bullet point 1
-- Bullet point 2
-
-1. Numbered item 1
-2. Numbered item 2
-
-[Link text](https://example.com)
-
-> This is a blockquote
-
-`Inline code`"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Tip: Use # for headers, ** for bold, * for italic, - for bullets, 1. for numbers
-                  </p>
-                </div>
-              )}
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Content
+              </label>
+              <WysiwygEditor
+                value={component.content || ""}
+                onChange={(markdown) => {
+                  updateComponent(component.id, { content: markdown });
+                }}
+                placeholder="Start writing your content..."
+              />
             </div>
           )}
 
