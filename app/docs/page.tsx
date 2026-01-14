@@ -294,7 +294,7 @@ X-RateLimit-Reset: 1705123456789`}
 
           <div className="grid md:grid-cols-2 gap-4">
             {[
-              { type: 'rich_text', icon: FileText, fields: 'content (HTML string)', desc: 'Rich text content with formatting' },
+              { type: 'rich_text', icon: FileText, fields: 'content (Markdown string)', desc: 'Rich text content - requires markdown parsing' },
               { type: 'image', icon: Image, fields: 'url, alt, caption, width, height', desc: 'Image with optional caption' },
               { type: 'callout', icon: MessageSquare, fields: 'variant, title, content', desc: 'Highlighted box (info/success/warning/error)' },
               { type: 'quote', icon: Quote, fields: 'content, author, citation', desc: 'Blockquote with attribution' },
@@ -336,10 +336,21 @@ X-RateLimit-Reset: 1705123456789`}
             Copy this component renderer into your project to render all blog component types:
           </p>
 
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg mb-6">
+            <p className="text-amber-300 text-sm">
+              <strong>Important:</strong> The <code className="text-amber-200">rich_text</code> component contains Markdown, not HTML.
+              You need to parse it using a library like <code className="text-amber-200">react-markdown</code> or <code className="text-amber-200">markdown-it</code>.
+            </p>
+            <p className="text-amber-300/80 text-sm mt-2">
+              Install: <code className="text-amber-200">npm install react-markdown</code>
+            </p>
+          </div>
+
           <CodeBlock
             id="react-lib"
             code={`// components/BlogRenderer.tsx
 import React from 'react';
+import ReactMarkdown from 'react-markdown'; // npm install react-markdown
 
 interface BlogComponent {
   _id: string;
@@ -370,10 +381,9 @@ export function BlogComponentRenderer({ component }: { component: BlogComponent 
   switch (component.type) {
     case 'rich_text':
       return (
-        <div
-          className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: component.content || '' }}
-        />
+        <div className="prose prose-lg max-w-none">
+          <ReactMarkdown>{component.content || ''}</ReactMarkdown>
+        </div>
       );
 
     case 'image':
@@ -402,14 +412,14 @@ export function BlogComponentRenderer({ component }: { component: BlogComponent 
       return (
         <div className={\`p-4 rounded-lg border \${variantStyles[component.variant || 'info']} my-6\`}>
           {component.title && <strong className="block mb-1">{component.title}</strong>}
-          <div dangerouslySetInnerHTML={{ __html: component.content || '' }} />
+          <ReactMarkdown>{component.content || ''}</ReactMarkdown>
         </div>
       );
 
     case 'quote':
       return (
         <blockquote className="border-l-4 border-gray-300 pl-4 my-6 italic">
-          <div dangerouslySetInnerHTML={{ __html: component.content || '' }} />
+          <ReactMarkdown>{component.content || ''}</ReactMarkdown>
           {component.author && (
             <cite className="block mt-2 text-sm text-gray-600 not-italic">
               — {component.author}
