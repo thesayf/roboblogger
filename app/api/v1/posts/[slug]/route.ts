@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
 import BlogPost from '@/models/BlogPost';
+import '@/models/User'; // Required for populate('author')
+import '@/models/BlogComponent'; // Required for populate('components')
 import { validateApiKey, apiKeyError, checkRateLimit } from '@/lib/auth/validateApiKey';
 import { Types } from 'mongoose';
 
