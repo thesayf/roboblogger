@@ -5,6 +5,7 @@ import {
   Bold,
   Italic,
   Underline,
+  Strikethrough,
   Heading1,
   Heading2,
   Heading3,
@@ -17,6 +18,7 @@ import {
   Undo,
   Redo,
   RemoveFormatting,
+  Minus,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
@@ -126,6 +128,13 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         >
           <Underline className="w-4 h-4" />
         </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleStrike().run()}
+          isActive={editor.isActive('strike')}
+          title="Strikethrough"
+        >
+          <Strikethrough className="w-4 h-4" />
+        </ToolbarButton>
 
         <ToolbarDivider />
 
@@ -186,6 +195,12 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
           title="Inline Code"
         >
           <Code className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
+          title="Horizontal Line"
+        >
+          <Minus className="w-4 h-4" />
         </ToolbarButton>
 
         <ToolbarDivider />

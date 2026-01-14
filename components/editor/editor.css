@@ -12,6 +12,8 @@
   min-height: 200px;
   padding: 1rem;
   outline: none;
+  color: #1f2937;
+  background: white;
 }
 
 .wysiwyg-editor .ProseMirror:focus {
@@ -34,6 +36,7 @@
   line-height: 2.25rem;
   margin-bottom: 0.75rem;
   margin-top: 1.5rem;
+  color: #111827;
 }
 
 .wysiwyg-editor .ProseMirror h2 {
@@ -42,6 +45,7 @@
   line-height: 2rem;
   margin-bottom: 0.5rem;
   margin-top: 1.25rem;
+  color: #111827;
 }
 
 .wysiwyg-editor .ProseMirror h3 {
@@ -50,11 +54,17 @@
   line-height: 1.75rem;
   margin-bottom: 0.5rem;
   margin-top: 1rem;
+  color: #1f2937;
 }
 
 .wysiwyg-editor .ProseMirror p {
   margin-bottom: 0.75rem;
   line-height: 1.625;
+  color: #374151;
+}
+
+.wysiwyg-editor .ProseMirror li {
+  color: #374151;
 }
 
 .wysiwyg-editor .ProseMirror strong {
@@ -67,6 +77,11 @@
 
 .wysiwyg-editor .ProseMirror u {
   text-decoration: underline;
+}
+
+.wysiwyg-editor .ProseMirror s {
+  text-decoration: line-through;
+  color: #6b7280;
 }
 
 /* Lists */
