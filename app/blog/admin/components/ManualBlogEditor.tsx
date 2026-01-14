@@ -899,8 +899,6 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         className={`mb-4 transition-all duration-200 ${
           draggedItem === index ? "opacity-50 scale-95" : ""
         } ${dragOverItem === index ? "ring-2 ring-blue-400 bg-blue-50" : ""}`}
-        draggable
-        onDragStart={(e) => handleDragStart(e, index)}
         onDragOver={(e) => handleDragOver(e, index)}
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e, index)}
@@ -908,7 +906,14 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
+              <div
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                className="cursor-move p-1 -m-1 rounded hover:bg-gray-100 transition-colors"
+                title="Drag to reorder"
+              >
+                <GripVertical className="h-4 w-4 text-gray-400" />
+              </div>
               <IconComponent className="h-4 w-4 text-gray-600" />
               <span className="font-medium text-sm">
                 {componentType?.name || component.type}
