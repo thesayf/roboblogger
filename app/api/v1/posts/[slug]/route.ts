@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
 import BlogPost from '@/models/BlogPost';
 import { validateApiKey, apiKeyError, checkRateLimit } from '@/lib/auth/validateApiKey';
+import { Types } from 'mongoose';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -52,9 +53,10 @@ export async function GET(
     const { slug } = params;
 
     // Find the post - must be published and owned by the API key owner
+    // Convert ownerId string to ObjectId for proper MongoDB matching
     const post = await BlogPost.findOne({
       slug,
-      owner: validation.ownerId,
+      owner: new Types.ObjectId(validation.ownerId),
       status: 'published'
     })
       .populate('author', 'name imageUrl')

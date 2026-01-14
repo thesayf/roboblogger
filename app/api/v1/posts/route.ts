@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
 import BlogPost from '@/models/BlogPost';
 import { validateApiKey, apiKeyError, checkRateLimit } from '@/lib/auth/validateApiKey';
+import { Types } from 'mongoose';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -59,8 +60,9 @@ export async function GET(request: NextRequest) {
     const tag = searchParams.get('tag');
 
     // Build query - only published posts for this owner
+    // Convert ownerId string to ObjectId for proper MongoDB matching
     const query: any = {
-      owner: validation.ownerId,
+      owner: new Types.ObjectId(validation.ownerId),
       status: 'published'
     };
 
