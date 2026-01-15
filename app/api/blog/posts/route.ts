@@ -80,17 +80,31 @@ export async function POST(request: NextRequest) {
   try {
     await dbConnect();
 
-    // Get the current authenticated user
+    const { searchParams } = new URL(request.url);
+    const isSystemCall = searchParams.get('systemCall') === 'true';
+
+    // Get the current authenticated user (or allow system calls)
     const currentUser = await getCurrentUser();
-    if (!currentUser) {
+
+    const body = await request.json();
+    const { title, description, slug, components, owner: bodyOwner, ...otherFields } = body;
+
+    // For system calls (e.g., from topic generation), use the owner from the request body
+    // For regular calls, require authentication
+    let ownerId: string;
+    if (isSystemCall && bodyOwner) {
+      // System call with owner provided (from topic generation)
+      ownerId = bodyOwner;
+      console.log(`[Posts] System call creating post for owner: ${ownerId}`);
+    } else if (currentUser) {
+      // Regular authenticated user
+      ownerId = currentUser.mongoId;
+    } else {
       return NextResponse.json(
         { error: "Unauthorized - you must be logged in to create posts" },
         { status: 401 }
       );
     }
-
-    const body = await request.json();
-    const { title, description, slug, components, ...otherFields } = body;
 
     // Check if slug already exists
     const existingPost = await BlogPost.findOne({ slug });
@@ -101,13 +115,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the blog post with owner set to current user
+    // Create the blog post with owner set to current user or system-provided owner
     const blogPost = new BlogPost({
       title,
       description,
       slug,
-      owner: currentUser.mongoId,
-      author: currentUser.mongoId,
+      owner: ownerId,
+      author: ownerId,
       ...otherFields,
     });
 

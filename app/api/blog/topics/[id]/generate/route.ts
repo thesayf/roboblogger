@@ -188,7 +188,7 @@ export async function POST(
       // Update phase to saving
       await Topic.findByIdAndUpdate(topic._id, { generationPhase: 'saving' });
       
-      const createPostResponse = await fetch(`${baseUrl}/api/blog/posts?clerkId=system`, {
+      const createPostResponse = await fetch(`${baseUrl}/api/blog/posts?systemCall=true`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -208,7 +208,8 @@ export async function POST(
           source: 'queue-generation',
           canonicalUrl: topic.seo?.canonicalUrl || null,
           openGraph: topic.seo?.openGraph || null,
-          schemaType: topic.seo?.schemaType || 'BlogPosting'
+          schemaType: topic.seo?.schemaType || 'BlogPosting',
+          owner: topic.owner // Pass the topic owner for system calls
         })
       });
 
