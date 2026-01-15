@@ -197,9 +197,9 @@ export default function BlogAdminClient() {
     }
   }, [selectedTab]);
 
-  // Fetch topics when Queue tab is selected or pages change
+  // Fetch topics when Topics tab is selected or pages change
   useEffect(() => {
-    if (selectedTab === "queue") {
+    if (selectedTab === "topics") {
       fetchTopics();
     }
   }, [selectedTab, pendingPage, completedPage]);
@@ -1369,7 +1369,7 @@ export default function BlogAdminClient() {
           <div className="flex items-center justify-between">
             <TabsList className="grid w-full max-w-lg grid-cols-4">
               <TabsTrigger value="posts">Posts</TabsTrigger>
-              <TabsTrigger value="queue">Queue</TabsTrigger>
+              <TabsTrigger value="topics">Topics</TabsTrigger>
               <TabsTrigger value="images">Images</TabsTrigger>
               <TabsTrigger value="scheduler">Scheduler</TabsTrigger>
             </TabsList>
@@ -1635,14 +1635,14 @@ export default function BlogAdminClient() {
             </Card>
           </TabsContent>
 
-          {/* Queue Tab */}
-          <TabsContent value="queue" className="space-y-6">
+          {/* Topics Tab */}
+          <TabsContent value="topics" className="space-y-6">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Scheduled Blog Queue
+                    <FileText className="h-5 w-5" />
+                    Blog Topics
                   </CardTitle>
                   <div className="flex items-center gap-2">
                     {selectedTopics.length > 0 && (
@@ -1722,7 +1722,7 @@ export default function BlogAdminClient() {
                         <DialogHeader>
                           <DialogTitle>Create New Topic</DialogTitle>
                           <DialogDescription>
-                            Add a new topic to the queue for AI blog generation
+                            Add a new topic for AI blog generation
                           </DialogDescription>
                         </DialogHeader>
 
@@ -2008,6 +2008,101 @@ export default function BlogAdminClient() {
                                 ))}
                               </div>
                             )}
+                          </div>
+
+                          {/* SEO Section */}
+                          <div className="border-t pt-6">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                              <Search className="h-4 w-4" />
+                              SEO Settings
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                  Primary Keyword
+                                </label>
+                                <Input
+                                  value={topicForm.seo.primaryKeyword}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      seo: {
+                                        ...prev.seo,
+                                        primaryKeyword: e.target.value,
+                                      },
+                                    }))
+                                  }
+                                  placeholder="e.g., better sleep tips"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                  URL Slug
+                                </label>
+                                <Input
+                                  value={topicForm.seo.slug || ""}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      seo: {
+                                        ...prev.seo,
+                                        slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+                                      },
+                                    }))
+                                  }
+                                  placeholder="e.g., better-sleep-tips"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Leave empty to auto-generate</p>
+                              </div>
+
+                              <div className="md:col-span-2">
+                                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                  Meta Title
+                                  <span className={`ml-2 text-xs ${topicForm.seo.metaTitle.length > 60 ? 'text-red-500' : 'text-gray-400'}`}>
+                                    {topicForm.seo.metaTitle.length}/60
+                                  </span>
+                                </label>
+                                <Input
+                                  value={topicForm.seo.metaTitle}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      seo: {
+                                        ...prev.seo,
+                                        metaTitle: e.target.value,
+                                      },
+                                    }))
+                                  }
+                                  placeholder="e.g., 10 Tips for Better Sleep Tonight | Your Blog"
+                                  maxLength={60}
+                                />
+                              </div>
+
+                              <div className="md:col-span-2">
+                                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                  Meta Description
+                                  <span className={`ml-2 text-xs ${topicForm.seo.metaDescription.length > 155 ? 'text-red-500' : 'text-gray-400'}`}>
+                                    {topicForm.seo.metaDescription.length}/155
+                                  </span>
+                                </label>
+                                <Textarea
+                                  value={topicForm.seo.metaDescription}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      seo: {
+                                        ...prev.seo,
+                                        metaDescription: e.target.value,
+                                      },
+                                    }))
+                                  }
+                                  placeholder="e.g., Discover proven strategies to improve your sleep quality and wake up refreshed every morning."
+                                  rows={2}
+                                  maxLength={155}
+                                />
+                              </div>
+                            </div>
                           </div>
 
                           {/* Reference Images Section */}
@@ -3487,10 +3582,10 @@ export default function BlogAdminClient() {
                   </div>
                 ) : topics.length === 0 ? (
                   <div className="text-center py-8">
-                    <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-2">No topics in queue</p>
+                    <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-2">No topics yet</p>
                     <p className="text-sm text-gray-400 mb-4">
-                      Add topics for automatic blog generation
+                      Add topics to generate blog posts
                     </p>
                     <Button onClick={() => router.push("/blog/admin/bulk")}>
                       <Zap className="h-4 w-4 mr-2" />

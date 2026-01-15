@@ -37,15 +37,14 @@ import {
 interface Topic {
   _id: string;
   topic: string;
-  status: string;
-  generationStatus?: string;
+  status: 'pending' | 'generating' | 'completed' | 'failed';
   scheduledAt?: string;
   priority: string;
   tags: string[];
-  generatedPost?: string;
-  error?: string;
-  attempts?: number;
-  lastAttempt?: string;
+  generatedPostId?: string;
+  errorMessage?: string;
+  retryCount?: number;
+  lastProcessedAt?: string;
 }
 
 interface QueueTabProps {
@@ -174,7 +173,7 @@ export function QueueTab({
   };
 
   const getStatusBadge = (topic: Topic) => {
-    if (topic.generationStatus === "failed") {
+    if (topic.status === "failed") {
       return (
         <Badge variant="destructive" className="flex items-center gap-1">
           <AlertTriangle className="h-3 w-3" />
@@ -182,7 +181,7 @@ export function QueueTab({
         </Badge>
       );
     }
-    if (topic.generationStatus === "generating") {
+    if (topic.status === "generating") {
       return (
         <Badge variant="secondary" className="flex items-center gap-1">
           <Loader2 className="h-3 w-3 animate-spin" />
@@ -190,7 +189,7 @@ export function QueueTab({
         </Badge>
       );
     }
-    if (topic.generatedPost) {
+    if (topic.status === "completed" || topic.generatedPostId) {
       return (
         <Badge variant="default" className="bg-green-100 text-green-700">
           <CheckCircle className="h-3 w-3 mr-1" />
@@ -218,7 +217,7 @@ export function QueueTab({
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Scheduled Blog Queue
+              Blog Topics
             </CardTitle>
             <div className="flex items-center gap-2">
               {selectedTopics.length > 0 && (
@@ -287,12 +286,12 @@ export function QueueTab({
             </div>
           ) : topics.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">No topics in queue.</p>
+              <p className="text-gray-500">No topics yet.</p>
               <Button
                 className="mt-4"
                 onClick={() => router.push("/blog/admin/bulk")}
               >
-                Add topics to queue
+                Add Topics
               </Button>
             </div>
           ) : (
@@ -306,7 +305,7 @@ export function QueueTab({
                       : "hover:bg-gray-50"
                   }`}
                 >
-                  {topic.status === "pending" && !topic.generatedPost && (
+                  {topic.status === "pending" && !topic.generatedPostId && (
                     <input
                       type="checkbox"
                       checked={selectedTopics.includes(topic._id)}
@@ -322,13 +321,13 @@ export function QueueTab({
                         <Calendar className="h-3 w-3" />
                         {formatDate(topic.scheduledAt)}
                       </span>
-                      {topic.error && (
+                      {topic.errorMessage && (
                         <span className="text-red-600">
-                          Error: {topic.error}
+                          Error: {topic.errorMessage}
                         </span>
                       )}
-                      {topic.attempts && topic.attempts > 0 && (
-                        <span>Attempts: {topic.attempts}</span>
+                      {topic.retryCount !== undefined && topic.retryCount > 0 && (
+                        <span>Retries: {topic.retryCount}</span>
                       )}
                     </div>
                     {topic.tags.length > 0 && (
@@ -352,9 +351,9 @@ export function QueueTab({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {topic.generatedPost ? (
+                        {topic.generatedPostId ? (
                           <DropdownMenuItem
-                            onClick={() => router.push(`/blog/admin/edit/${topic.generatedPost}`)}
+                            onClick={() => router.push(`/blog/admin/edit/${topic.generatedPostId}`)}
                           >
                             <Edit className="h-4 w-4 mr-2" />
                             Edit Post
@@ -367,8 +366,8 @@ export function QueueTab({
                             Generate Now
                           </DropdownMenuItem>
                         )}
-                        
-                        {(topic.generationStatus === "failed" || !topic.scheduledAt) && (
+
+                        {(topic.status === "failed" || !topic.scheduledAt) && (
                           <DropdownMenuItem
                             onClick={() => openRescheduleDialog(topic._id)}
                           >

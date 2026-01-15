@@ -31,10 +31,10 @@ export async function PUT(
     // Update topic with new schedule and reset status
     topic.scheduledAt = new Date(scheduledAt);
     topic.status = "pending";
-    topic.generationStatus = null;
-    topic.error = null;
-    topic.attempts = 0;
-    topic.lastAttempt = null;
+    topic.errorMessage = undefined;
+    topic.failureReason = undefined;
+    topic.retryCount = 0;
+    topic.retryAfter = undefined;
     
     await topic.save();
 
