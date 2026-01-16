@@ -19,13 +19,14 @@ export interface ITopic extends Document {
 
   // Research data (populated by agentic research phase)
   researchData?: {
-    summary: string;
+    summary: string; // Brief 1-2 sentence overview
+    narrativeSummary?: string; // 2-3 paragraphs providing context and story
     statistics: Array<{
       fact: string;
       source: string;
       sourceUrl?: string;
       year?: string;
-      relevance?: string;
+      context?: string; // Why this stat matters for this specific article
     }>;
     expertQuotes: Array<{
       quote: string;
@@ -33,13 +34,24 @@ export interface ITopic extends Document {
       title?: string;
       organization?: string;
       sourceUrl?: string;
+      context?: string; // What perspective this quote adds
     }>;
     trends: Array<{
       trend: string;
       source: string;
       sourceUrl?: string;
+      implication?: string; // What this means for the reader
+    }>;
+    keyInsights: Array<{
+      insight: string; // The "aha" moment or connection
+      supportingEvidence?: string; // What backs this up
+      articleAngle?: string; // How to use this in the article
     }>;
     keyPoints: string[];
+    counterpoints?: Array<{
+      point: string; // The nuance or "it depends" finding
+      context: string; // When/why this applies
+    }>;
     confidenceLevel: 'high' | 'medium' | 'low';
     _metadata?: {
       provider?: string;

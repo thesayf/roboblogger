@@ -376,29 +376,38 @@ CRITICAL SEO REQUIREMENTS:
 - Include relevant internal links to related content (using search tools)
 
 ` : ''}${researchData ? `PRE-RESEARCHED INFORMATION:
-The following research has been gathered for this topic using real-time web search. INCORPORATE THIS DATA naturally into your blog post:
+The following research has been gathered using real-time web search. This is HIGH-QUALITY, VERIFIED data - USE IT!
 
-${researchData.summary ? `## Research Summary
+${researchData.narrativeSummary ? `## The Big Picture
+${researchData.narrativeSummary}
+
+` : researchData.summary ? `## Research Summary
 ${researchData.summary}
 
-` : ''}${researchData.statistics && researchData.statistics.length > 0 ? `## Key Statistics & Data Points
-${researchData.statistics.map((s: any) => `- ${s.fact}${s.source ? ` (Source: ${s.source}${s.year ? `, ${s.year}` : ''})` : ''}`).join('\n')}
+` : ''}${researchData.keyInsights && researchData.keyInsights.length > 0 ? `## Key Insights (Important - weave these into your narrative!)
+${researchData.keyInsights.map((i: any) => `- INSIGHT: ${i.insight}${i.supportingEvidence ? `\n  Evidence: ${i.supportingEvidence}` : ''}${i.articleAngle ? `\n  Use in article: ${i.articleAngle}` : ''}`).join('\n\n')}
 
-` : ''}${researchData.expertQuotes && researchData.expertQuotes.length > 0 ? `## Expert Quotes & Insights
-${researchData.expertQuotes.map((q: any) => `- "${q.quote}" — ${q.expert}${q.title ? `, ${q.title}` : ''}${q.organization ? ` at ${q.organization}` : ''}`).join('\n')}
+` : ''}${researchData.statistics && researchData.statistics.length > 0 ? `## Statistics (cite these with attribution!)
+${researchData.statistics.map((s: any) => `- ${s.fact} (Source: ${s.source}${s.year ? `, ${s.year}` : ''})${s.context ? `\n  Why it matters: ${s.context}` : ''}`).join('\n')}
+
+` : ''}${researchData.expertQuotes && researchData.expertQuotes.length > 0 ? `## Expert Quotes (use with full attribution!)
+${researchData.expertQuotes.map((q: any) => `- "${q.quote}" — ${q.expert}${q.title ? `, ${q.title}` : ''}${q.organization ? ` at ${q.organization}` : ''}${q.context ? `\n  Context: ${q.context}` : ''}`).join('\n')}
 
 ` : ''}${researchData.trends && researchData.trends.length > 0 ? `## Current Trends
-${researchData.trends.map((t: any) => `- ${t.trend}${t.source ? ` (Source: ${t.source})` : ''}`).join('\n')}
+${researchData.trends.map((t: any) => `- ${t.trend}${t.source ? ` (${t.source})` : ''}${t.implication ? `\n  Implication: ${t.implication}` : ''}`).join('\n')}
+
+` : ''}${researchData.counterpoints && researchData.counterpoints.length > 0 ? `## Nuances & Counterpoints (important for balanced content!)
+${researchData.counterpoints.map((c: any) => `- ${c.point}${c.context ? `\n  Context: ${c.context}` : ''}`).join('\n')}
 
 ` : ''}${researchData.keyPoints && researchData.keyPoints.length > 0 ? `## Key Points to Cover
 ${researchData.keyPoints.map((p: string) => `- ${p}`).join('\n')}
 
 ` : ''}CRITICAL RESEARCH USAGE REQUIREMENTS:
-- Incorporate these researched statistics naturally into your content - they are from authoritative sources
-- Use expert quotes to support your points, including proper attribution (name, title, organization)
-- Reference current trends to make the content timely and relevant
-- Build your narrative around the key points identified in the research
-- ALWAYS attribute sources for statistics and quotes (e.g., "According to a 2024 study by Harvard Business Review...")
+- The narrativeSummary gives you the STORY - use it to frame your article
+- Key Insights are the most valuable findings - weave them throughout your content
+- ALWAYS cite statistics with attribution (e.g., "According to ${researchData.statistics?.[0]?.source || 'research'}...")
+- Use expert quotes with full attribution (name, title, organization)
+- Include counterpoints for nuance - don't oversimplify
 - The research confidence level is "${researchData.confidenceLevel}" - ${researchData.confidenceLevel === 'high' ? 'rely heavily on this data' : researchData.confidenceLevel === 'medium' ? 'use this data while supplementing with general knowledge' : 'use this data sparingly and rely more on established facts'}
 
 ` : ''}USER REQUIREMENTS:

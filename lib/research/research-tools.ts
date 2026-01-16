@@ -69,7 +69,7 @@ export interface ResearchStatistic {
   source: string;
   sourceUrl?: string;
   year?: string;
-  relevance?: string;
+  context?: string; // Why this stat matters for this specific article
 }
 
 export interface ResearchExpertQuote {
@@ -78,21 +78,37 @@ export interface ResearchExpertQuote {
   title?: string;
   organization?: string;
   sourceUrl?: string;
+  context?: string; // What perspective this quote adds
 }
 
 export interface ResearchTrend {
   trend: string;
   source: string;
   sourceUrl?: string;
+  implication?: string; // What this means for the reader
+}
+
+export interface ResearchKeyInsight {
+  insight: string; // The "aha" moment or connection
+  supportingEvidence?: string; // What backs this up
+  articleAngle?: string; // How to use this in the article
+}
+
+export interface ResearchCounterpoint {
+  point: string; // The nuance or "it depends" finding
+  context: string; // When/why this applies
 }
 
 export interface ResearchResult {
   researchComplete: boolean;
   summary: string;
+  narrativeSummary?: string; // 2-3 paragraphs providing context and story
   statistics: ResearchStatistic[];
   expertQuotes: ResearchExpertQuote[];
   trends: ResearchTrend[];
+  keyInsights?: ResearchKeyInsight[]; // "Aha" moments that don't fit neat categories
+  counterpoints?: ResearchCounterpoint[]; // Nuances and "it depends" findings
   keyPoints: string[];
-  searchIterations: number;
+  searchIterations?: number;
   confidenceLevel: 'high' | 'medium' | 'low';
 }

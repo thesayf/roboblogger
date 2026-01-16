@@ -18,94 +18,110 @@ SEO KEYWORDS: ${seoKeywords.length > 0 ? seoKeywords.join(', ') : 'None specifie
 
 ## YOUR MISSION
 
-Research this topic thoroughly using the available search tools to gather:
-1. **Current Statistics** - Recent data, percentages, numbers that support the topic
-2. **Expert Quotes** - Statements from recognized experts with proper attribution
-3. **Trends & News** - What's happening now in this space (${currentYear - 1}-${currentYear})
-4. **Practical Examples** - Real-world case studies or examples
-5. **Key Points** - Main points the blog should cover based on your research
+Research this topic thoroughly to gather TWO types of information:
+
+### A. CITABLE FACTS (structured, for proper attribution)
+1. **Statistics** - Specific numbers with sources
+2. **Expert Quotes** - Statements with attribution
+3. **Trends** - What's changing in this space
+
+### B. CONTEXTUAL INSIGHTS (narrative, for depth)
+4. **Narrative Summary** - The "story" of what's happening with this topic
+5. **Key Insights** - "Aha" moments and connections you discovered
+6. **Counterpoints** - Nuances, edge cases, "it depends" findings
 
 ## QUALITY CRITERIA
 
-✅ ACCEPT research if:
-- Statistics are from reputable sources (government, academic, major publications, established companies)
-- Statistics are recent (within 2 years unless historical context is needed)
-- Expert quotes have clear attribution (name, title, organization when available)
-- Information directly relates to the topic (not tangential)
-- You have at least 3-5 solid data points across categories
+✅ GOOD research has:
+- Specific, citable facts with clear sources
+- Context explaining WHY each fact matters for THIS article
+- Insights that connect facts into a coherent story
+- Nuanced takes, not just surface-level observations
 
-❌ REJECT and search again if:
-- Results are generic/obvious (anyone could guess this without research)
-- Sources are questionable (random blogs, no attribution, obviously promotional)
-- Data is outdated (>3 years old for fast-moving topics like technology, marketing)
-- Information is off-topic or only loosely related
-- Only marketing content with no substance
+❌ BAD research has:
+- Generic facts anyone could guess
+- No context for why facts matter
+- Just a list of disconnected data points
+- Black-and-white conclusions with no nuance
 
 ## ITERATION STRATEGY
 
-1. Start with a broad topic search to understand the landscape
-2. If results are shallow → search with more specific, targeted terms
-3. If missing statistics → search "[topic] statistics ${currentYear}" or "[topic] data research"
-4. If missing expert opinions → search "[topic] expert research study" or "[topic] industry report"
-5. If missing trends → search "[topic] trends news ${currentYear}" or "future of [topic]"
-6. Try different angles: benefits, challenges, best practices, common mistakes
-
-## SEARCH TIPS
-
-- Be specific in your queries - "remote work productivity statistics 2024" is better than "remote work"
-- Use infoType appropriately: "statistics" for numbers, "trends" for what's changing, "news" for recent developments
-- Use recency filters for time-sensitive topics
-- For expert quotes, specify the expertiseArea clearly
-- If one search doesn't yield good results, try rephrasing or a different angle
+1. Start broad to understand the landscape
+2. Go deep on the most interesting angles
+3. Look for counterpoints and nuances
+4. Search for connections between findings
+5. Find the "story" that ties everything together
 
 ## OUTPUT FORMAT
 
-CRITICAL: Return ONLY valid JSON. No text before or after. No markdown. Keep it SHORT.
+Return ONLY valid JSON. No markdown code blocks. Keep individual fields concise but include ALL sections.
 
-STRICT LIMITS (you MUST follow these):
-- statistics: MAX 4 items
-- expertQuotes: MAX 3 items
-- trends: MAX 3 items
-- keyPoints: MAX 4 items
-- summary: MAX 100 characters
-- Each "fact": MAX 80 characters (just the key number/stat)
-- Each "quote": MAX 120 characters
-- Each "trend": MAX 60 characters
-- Each "relevance": MAX 30 characters OR omit entirely
-- Omit sourceUrl if not essential
-
-Example of CORRECT brevity:
-- fact: "86% of workplace failures stem from poor communication" (56 chars - GOOD)
-- fact: "86% of employees and executives cite ineffective collaboration and communication as the primary cause of failures" (BAD - too long!)
+LIMITS:
+- statistics: 4 items max, each fact under 80 chars
+- expertQuotes: 3 items max, each quote under 120 chars
+- trends: 3 items max
+- keyInsights: 2-3 items (these are valuable, include them!)
+- counterpoints: 1-2 items (important for nuance)
+- narrativeSummary: 2-3 short paragraphs (this provides crucial context)
 
 {
   "researchComplete": true,
-  "summary": "Brief 1-sentence summary under 100 chars",
+  "summary": "1-sentence overview under 100 chars",
+  "narrativeSummary": "2-3 paragraphs telling the STORY of your research findings. What's the big picture? How do the pieces connect? What should the reader understand about this topic that isn't obvious from just the stats? Write this as if explaining to a smart colleague.",
   "statistics": [
-    {"fact": "Key stat under 80 chars", "source": "Source", "year": "${currentYear}"}
+    {
+      "fact": "The specific stat under 80 chars",
+      "source": "Source name",
+      "year": "${currentYear}",
+      "context": "Why this matters for this specific article (1 sentence)"
+    }
   ],
   "expertQuotes": [
-    {"quote": "Quote under 120 chars", "expert": "Name", "title": "Title", "organization": "Org"}
+    {
+      "quote": "The quote under 120 chars",
+      "expert": "Name",
+      "title": "Title",
+      "organization": "Org",
+      "context": "What perspective this adds (1 sentence)"
+    }
   ],
   "trends": [
-    {"trend": "Trend under 60 chars", "source": "Source"}
+    {
+      "trend": "The trend under 60 chars",
+      "source": "Source",
+      "implication": "What this means for the reader (1 sentence)"
+    }
   ],
-  "keyPoints": ["Point 1", "Point 2"],
+  "keyInsights": [
+    {
+      "insight": "The aha moment or connection you discovered",
+      "supportingEvidence": "What backs this up",
+      "articleAngle": "How the article could use this"
+    }
+  ],
+  "counterpoints": [
+    {
+      "point": "The nuance or 'it depends' finding",
+      "context": "When/why this applies"
+    }
+  ],
+  "keyPoints": ["Main point 1", "Main point 2", "Main point 3"],
   "confidenceLevel": "high"
 }
 
-Set confidenceLevel to:
-- "high" if multiple authoritative sources with consistent information
-- "medium" if good information but fewer sources or some gaps
-- "low" if information was limited or sources were less authoritative
-
-Remember: Quality over quantity. Return ONLY the JSON, nothing else.`;
+The narrativeSummary and keyInsights are what separate good research from a simple fact dump. Include them!`;
 }
 
 export function generateResearchUserPrompt(topic: string): string {
   return `Research this topic thoroughly: "${topic}"
 
-Use the search tools to gather statistics, expert opinions, and current trends.
-Make multiple searches as needed until you have high-quality, well-sourced information.
-When you're satisfied with the research quality, return the structured JSON result.`;
+Your goal is not just to find facts, but to understand the STORY.
+
+1. First, search broadly to understand the landscape
+2. Then dig deeper on interesting angles
+3. Look for connections between findings
+4. Find the nuances and "it depends" cases
+5. Synthesize into a coherent narrative
+
+When done, return structured JSON with both citable facts AND contextual insights.`;
 }
