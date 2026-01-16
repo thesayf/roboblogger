@@ -60,50 +60,37 @@ Research this topic thoroughly using the available search tools to gather:
 
 ## OUTPUT FORMAT
 
-CRITICAL: When you have gathered sufficient quality research, return ONLY a JSON object (no markdown code blocks, no explanation text before or after). Keep responses concise.
+CRITICAL: Return ONLY valid JSON. No text before or after. No markdown. Keep it SHORT.
 
-Limits:
-- statistics: 5-8 items maximum (pick the most impactful)
-- expertQuotes: 3-5 items maximum (pick the most authoritative)
-- trends: 3-4 items maximum
-- keyPoints: 4-6 items maximum
-- Keep all text fields brief - facts under 150 chars, quotes under 200 chars
+STRICT LIMITS (you MUST follow these):
+- statistics: MAX 4 items
+- expertQuotes: MAX 3 items
+- trends: MAX 3 items
+- keyPoints: MAX 4 items
+- summary: MAX 100 characters
+- Each "fact": MAX 80 characters (just the key number/stat)
+- Each "quote": MAX 120 characters
+- Each "trend": MAX 60 characters
+- Each "relevance": MAX 30 characters OR omit entirely
+- Omit sourceUrl if not essential
 
-JSON structure:
+Example of CORRECT brevity:
+- fact: "86% of workplace failures stem from poor communication" (56 chars - GOOD)
+- fact: "86% of employees and executives cite ineffective collaboration and communication as the primary cause of failures" (BAD - too long!)
 
 {
   "researchComplete": true,
-  "summary": "2-3 sentence overview of key findings",
+  "summary": "Brief 1-sentence summary under 100 chars",
   "statistics": [
-    {
-      "fact": "Specific statistic (keep brief)",
-      "source": "Source name",
-      "sourceUrl": "URL if available",
-      "year": "${currentYear}",
-      "relevance": "Brief relevance note"
-    }
+    {"fact": "Key stat under 80 chars", "source": "Source", "year": "${currentYear}"}
   ],
   "expertQuotes": [
-    {
-      "quote": "The quote (keep under 200 chars)",
-      "expert": "Expert name",
-      "title": "Title",
-      "organization": "Organization",
-      "sourceUrl": "URL if available"
-    }
+    {"quote": "Quote under 120 chars", "expert": "Name", "title": "Title", "organization": "Org"}
   ],
   "trends": [
-    {
-      "trend": "Trend description (brief)",
-      "source": "Source",
-      "sourceUrl": "URL if available"
-    }
+    {"trend": "Trend under 60 chars", "source": "Source"}
   ],
-  "keyPoints": [
-    "Key point 1",
-    "Key point 2"
-  ],
-  "searchIterations": 5,
+  "keyPoints": ["Point 1", "Point 2"],
   "confidenceLevel": "high"
 }
 
