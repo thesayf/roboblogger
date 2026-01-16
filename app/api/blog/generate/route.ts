@@ -555,7 +555,7 @@ ${outputJsonFormat}`;
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-3-7-sonnet-20250219",
+        model: "claude-sonnet-4-5-20250929",
         max_tokens: 8192, // Increased for longer blog posts
         temperature: 0.7, // Slightly higher for creative content
         tools: [
@@ -738,7 +738,7 @@ ${outputJsonFormat}`;
               "anthropic-version": "2023-06-01",
             },
             body: JSON.stringify({
-              model: "claude-3-7-sonnet-20250219",
+              model: "claude-sonnet-4-5-20250929",
               max_tokens: 8192,
               temperature: 0.7,
               tools: [

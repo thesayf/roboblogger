@@ -287,7 +287,7 @@ export async function POST(request: NextRequest) {
 
       // Call Claude
       const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 16000,  // Increased to handle large research JSON output
         system: systemPrompt,
         tools: researchTools,
@@ -541,7 +541,7 @@ export async function POST(request: NextRequest) {
       ...researchData,
       _metadata: {
         provider: 'claude-orchestrated',
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         searchProvider: 'perplexity-sonar-pro',
         timestamp: new Date().toISOString(),
         totalTurns: turn,

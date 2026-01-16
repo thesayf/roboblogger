@@ -209,7 +209,7 @@ async function generateImageWithGPTImage(prompt: string, styleInstructions: stri
         'Authorization': `Bearer ${openaiApiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-image-1',
+        model: 'gpt-image-1.5',
         prompt: enhancedPrompt,
         size: imageSize,
         quality: 'high' // Use high quality for best results
