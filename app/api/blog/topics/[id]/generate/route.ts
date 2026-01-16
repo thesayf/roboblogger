@@ -49,6 +49,76 @@ export async function POST(
         // Update phase to initializing
       await Topic.findByIdAndUpdate(topic._id, { generationPhase: 'initializing' });
       
+      // Determine base URL for internal API calls
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+                     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
+                     'http://localhost:3000');
+      console.log(`[Generate] Using base URL: ${baseUrl}`);
+
+      // ============================================
+      // STEP 1: AGENTIC RESEARCH PHASE
+      // ============================================
+      // Update phase to researching
+      await Topic.findByIdAndUpdate(topic._id, { generationPhase: 'researching' });
+
+      let researchData = null;
+
+      // Check if Perplexity API key is available for research
+      if (process.env.PERPLEXITY_API_KEY) {
+        console.log(`[Generate] Starting agentic research for topic ${topic._id}: ${topic.topic}`);
+
+        try {
+          // Prepare SEO keywords for research
+          const seoKeywords: string[] = [];
+          if (topic.seo?.primaryKeyword) {
+            seoKeywords.push(topic.seo.primaryKeyword);
+          }
+          if (topic.seo?.secondaryKeywords?.length) {
+            seoKeywords.push(...topic.seo.secondaryKeywords);
+          }
+
+          const researchResponse = await fetch(`${baseUrl}/api/blog/research`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              topic: topic.topic,
+              audience: topic.audience || '',
+              seoKeywords
+            })
+          });
+
+          if (researchResponse.ok) {
+            const researchResult = await researchResponse.json();
+            if (researchResult.success && researchResult.research) {
+              researchData = researchResult.research;
+              console.log(`[Generate] ✓ Research complete for topic ${topic._id}`);
+              console.log(`[Generate] Research stats: ${researchData.statistics?.length || 0} statistics, ${researchData.expertQuotes?.length || 0} quotes, ${researchData.trends?.length || 0} trends`);
+              console.log(`[Generate] Research confidence: ${researchData.confidenceLevel}`);
+
+              // Save research data to topic
+              await Topic.findByIdAndUpdate(topic._id, {
+                researchData,
+                researchedAt: new Date()
+              });
+            } else {
+              console.log(`[Generate] ⚠ Research returned but incomplete, continuing without research`);
+            }
+          } else {
+            const errorText = await researchResponse.text();
+            console.log(`[Generate] ⚠ Research API returned ${researchResponse.status}: ${errorText.substring(0, 200)}`);
+            console.log(`[Generate] Continuing generation without research data`);
+          }
+        } catch (researchError) {
+          console.error(`[Generate] ⚠ Research failed:`, researchError);
+          console.log(`[Generate] Continuing generation without research data`);
+        }
+      } else {
+        console.log(`[Generate] ⚠ PERPLEXITY_API_KEY not configured, skipping research phase`);
+      }
+
+      // ============================================
+      // STEP 2: CONTENT GENERATION PHASE
+      // ============================================
       // Prepare generation parameters from topic
       const generationParams = {
         topic: topic.topic,
@@ -64,22 +134,14 @@ export async function POST(
         brandContext: topic.brandContext || '',
         brandExamples: topic.brandExamples || '',
         seo: topic.seo || null,
+        researchData, // Include research data for content generation
         returnOnly: true // New flag to get content without saving
       };
 
-      console.log(`[Generate] Starting generation for topic ${topic._id}: ${topic.topic}`);
+      console.log(`[Generate] Starting content generation for topic ${topic._id}: ${topic.topic}`);
       console.log(`[Generate] Generation params:`, JSON.stringify(generationParams, null, 2));
 
       // Call the existing blog generation API route
-      // In production, we need to use the full URL for internal API calls
-      console.log(`[Generate] Environment check - NEXT_PUBLIC_BASE_URL: ${process.env.NEXT_PUBLIC_BASE_URL}, VERCEL_URL: ${process.env.VERCEL_URL}`);
-      
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                     'http://localhost:3000');
-      
-      console.log(`[Generate] Using base URL: ${baseUrl}`);
-      
       const generateRequest = new Request(`${baseUrl}/api/blog/generate`, {
         method: 'POST',
         headers: {

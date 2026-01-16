@@ -320,13 +320,19 @@ export async function POST(request: NextRequest) {
     brandContext,
     brandExamples,
     seo,
+    researchData, // Pre-researched data from agentic research phase
     returnOnly = false // New parameter to control whether to save or just return
   } = body;
-  
+
   console.log('[blog/generate] Topic:', topic);
   console.log('[blog/generate] Length:', length);
   console.log('[blog/generate] Include Images:', includeImages);
   console.log('[blog/generate] SEO Keywords:', seo?.primaryKeyword || 'none');
+  console.log('[blog/generate] Has research data:', !!researchData);
+  if (researchData) {
+    console.log('[blog/generate] Research confidence:', researchData.confidenceLevel);
+    console.log('[blog/generate] Research stats:', researchData.statistics?.length || 0, 'statistics,', researchData.expertQuotes?.length || 0, 'quotes');
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -368,6 +374,32 @@ CRITICAL SEO REQUIREMENTS:
 - Structure content to match the specified search intent
 - Ensure content provides comprehensive value that satisfies user search queries
 - Include relevant internal links to related content (using search tools)
+
+` : ''}${researchData ? `PRE-RESEARCHED INFORMATION:
+The following research has been gathered for this topic using real-time web search. INCORPORATE THIS DATA naturally into your blog post:
+
+${researchData.summary ? `## Research Summary
+${researchData.summary}
+
+` : ''}${researchData.statistics && researchData.statistics.length > 0 ? `## Key Statistics & Data Points
+${researchData.statistics.map((s: any) => `- ${s.fact}${s.source ? ` (Source: ${s.source}${s.year ? `, ${s.year}` : ''})` : ''}`).join('\n')}
+
+` : ''}${researchData.expertQuotes && researchData.expertQuotes.length > 0 ? `## Expert Quotes & Insights
+${researchData.expertQuotes.map((q: any) => `- "${q.quote}" — ${q.expert}${q.title ? `, ${q.title}` : ''}${q.organization ? ` at ${q.organization}` : ''}`).join('\n')}
+
+` : ''}${researchData.trends && researchData.trends.length > 0 ? `## Current Trends
+${researchData.trends.map((t: any) => `- ${t.trend}${t.source ? ` (Source: ${t.source})` : ''}`).join('\n')}
+
+` : ''}${researchData.keyPoints && researchData.keyPoints.length > 0 ? `## Key Points to Cover
+${researchData.keyPoints.map((p: string) => `- ${p}`).join('\n')}
+
+` : ''}CRITICAL RESEARCH USAGE REQUIREMENTS:
+- Incorporate these researched statistics naturally into your content - they are from authoritative sources
+- Use expert quotes to support your points, including proper attribution (name, title, organization)
+- Reference current trends to make the content timely and relevant
+- Build your narrative around the key points identified in the research
+- ALWAYS attribute sources for statistics and quotes (e.g., "According to a 2024 study by Harvard Business Review...")
+- The research confidence level is "${researchData.confidenceLevel}" - ${researchData.confidenceLevel === 'high' ? 'rely heavily on this data' : researchData.confidenceLevel === 'medium' ? 'use this data while supplementing with general knowledge' : 'use this data sparingly and rely more on established facts'}
 
 ` : ''}USER REQUIREMENTS:
 Topic: "${topic}"

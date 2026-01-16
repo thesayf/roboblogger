@@ -16,7 +16,43 @@ export interface ITopic extends Document {
   // Brand context
   brandContext?: string;
   brandExamples?: string;
-  
+
+  // Research data (populated by agentic research phase)
+  researchData?: {
+    summary: string;
+    statistics: Array<{
+      fact: string;
+      source: string;
+      sourceUrl?: string;
+      year?: string;
+      relevance?: string;
+    }>;
+    expertQuotes: Array<{
+      quote: string;
+      expert: string;
+      title?: string;
+      organization?: string;
+      sourceUrl?: string;
+    }>;
+    trends: Array<{
+      trend: string;
+      source: string;
+      sourceUrl?: string;
+    }>;
+    keyPoints: string[];
+    confidenceLevel: 'high' | 'medium' | 'low';
+    _metadata?: {
+      provider?: string;
+      model?: string;
+      searchProvider?: string;
+      timestamp?: string;
+      totalTurns?: number;
+      toolCalls?: number;
+      durationSeconds?: number;
+    };
+  };
+  researchedAt?: Date;
+
   // SEO Strategy
   seo?: {
     primaryKeyword?: string;
@@ -44,7 +80,7 @@ export interface ITopic extends Document {
   
   // Queue metadata
   status: 'pending' | 'generating' | 'completed' | 'failed';
-  generationPhase?: 'initializing' | 'searching' | 'writing_content' | 'generating_images' | 'saving'; // detailed phase
+  generationPhase?: 'initializing' | 'researching' | 'writing_content' | 'generating_images' | 'saving'; // detailed phase
   priority: 'low' | 'medium' | 'high';
   source: 'individual' | 'bulk';
   
@@ -134,7 +170,16 @@ const TopicSchema = new Schema<ITopic>({
     trim: true,
     maxlength: 50000 // Allow for multiple example posts
   },
-  
+
+  // Research data (populated by agentic research phase)
+  researchData: {
+    type: Schema.Types.Mixed,
+    default: null
+  },
+  researchedAt: {
+    type: Date
+  },
+
   // SEO Strategy
   seo: {
     primaryKeyword: {
@@ -229,7 +274,7 @@ const TopicSchema = new Schema<ITopic>({
   },
   generationPhase: {
     type: String,
-    enum: ['initializing', 'searching', 'writing_content', 'generating_images', 'saving'],
+    enum: ['initializing', 'researching', 'writing_content', 'generating_images', 'saving'],
     required: false
   },
   priority: {
