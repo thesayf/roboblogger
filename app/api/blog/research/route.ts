@@ -102,12 +102,27 @@ async function executeResearchTool(
       });
       const searchDuration = ((Date.now() - searchStart) / 1000).toFixed(1);
 
-      console.log(`   ✓ Search completed in ${searchDuration}s`);
+      console.log(`   ✅ Search completed in ${searchDuration}s`);
       console.log(`      Content: ${response.content.length} chars | Citations: ${response.citations?.length || 0}`);
 
-      // Show a preview of the content
-      const preview = response.content.substring(0, 300).replace(/\n/g, ' ');
-      console.log(`      Preview: "${preview}..."`);
+      // Show more of the search result
+      console.log(`\n   ┌─ SEARCH RESULT PREVIEW ${'─'.repeat(52)}┐`);
+      const previewLines = response.content.substring(0, 800).split('\n').slice(0, 12);
+      previewLines.forEach(line => {
+        if (line.trim()) {
+          const truncated = line.length > 90 ? line.substring(0, 90) + '...' : line;
+          console.log(`   │ ${truncated}`);
+        }
+      });
+      if (response.content.length > 800) {
+        console.log(`   │ ... (${response.content.length - 800} more chars)`);
+      }
+      console.log(`   └${'─'.repeat(75)}┘`);
+
+      // Show citations
+      if (response.citations && response.citations.length > 0) {
+        console.log(`   📚 Citations: ${response.citations.slice(0, 5).join(', ')}${response.citations.length > 5 ? '...' : ''}`);
+      }
 
       addLog('tool_result', `Search returned ${response.content.length} chars, ${response.citations?.length || 0} citations`, {
         resultLength: response.content.length,
@@ -149,12 +164,27 @@ async function executeResearchTool(
       });
       const searchDuration = ((Date.now() - searchStart) / 1000).toFixed(1);
 
-      console.log(`   ✓ Expert search completed in ${searchDuration}s`);
+      console.log(`   ✅ Expert search completed in ${searchDuration}s`);
       console.log(`      Content: ${response.content.length} chars | Citations: ${response.citations?.length || 0}`);
 
-      // Show a preview of the content
-      const preview = response.content.substring(0, 300).replace(/\n/g, ' ');
-      console.log(`      Preview: "${preview}..."`);
+      // Show more of the search result
+      console.log(`\n   ┌─ EXPERT SEARCH RESULT PREVIEW ${'─'.repeat(45)}┐`);
+      const previewLines = response.content.substring(0, 800).split('\n').slice(0, 12);
+      previewLines.forEach(line => {
+        if (line.trim()) {
+          const truncated = line.length > 90 ? line.substring(0, 90) + '...' : line;
+          console.log(`   │ ${truncated}`);
+        }
+      });
+      if (response.content.length > 800) {
+        console.log(`   │ ... (${response.content.length - 800} more chars)`);
+      }
+      console.log(`   └${'─'.repeat(75)}┘`);
+
+      // Show citations
+      if (response.citations && response.citations.length > 0) {
+        console.log(`   📚 Citations: ${response.citations.slice(0, 5).join(', ')}${response.citations.length > 5 ? '...' : ''}`);
+      }
 
       addLog('tool_result', `Expert search returned ${response.content.length} chars, ${response.citations?.length || 0} citations`, {
         resultLength: response.content.length,
@@ -279,21 +309,25 @@ export async function POST(request: NextRequest) {
           (block): block is Anthropic.TextBlock => block.type === 'text'
         );
 
-        // Log Claude's thinking/reasoning
+        // Log Claude's thinking/reasoning - FULL OUTPUT
         if (textBlocks.length > 0) {
           const thinkingText = textBlocks.map(b => b.text).join('\n');
-          if (thinkingText.length > 20) {
-            console.log(`\n   💭 CLAUDE'S REASONING:`);
-            // Split into lines and indent
-            const lines = thinkingText.split('\n').slice(0, 10); // Max 10 lines
+          if (thinkingText.length > 10) {
+            console.log(`\n   ┌─────────────────────────────────────────────────────────────────────────┐`);
+            console.log(`   │ 💭 CLAUDE'S THINKING & EVALUATION                                       │`);
+            console.log(`   └─────────────────────────────────────────────────────────────────────────┘`);
+            // Show full thinking, just wrap lines
+            const lines = thinkingText.split('\n');
             lines.forEach(line => {
               if (line.trim()) {
-                console.log(`      ${line.trim().substring(0, 120)}`);
+                // Wrap long lines
+                const wrapped = line.match(/.{1,100}/g) || [line];
+                wrapped.forEach((segment, idx) => {
+                  console.log(`   │ ${idx === 0 ? '' : '  '}${segment.trim()}`);
+                });
               }
             });
-            if (thinkingText.split('\n').length > 10) {
-              console.log(`      ... (${thinkingText.split('\n').length - 10} more lines)`);
-            }
+            console.log(`   └${'─'.repeat(75)}┘`);
 
             addLog('thinking', thinkingText, undefined, turn);
           }
@@ -427,46 +461,78 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Log research results
-    console.log(`\n   ✅ RESEARCH COMPLETED SUCCESSFULLY`);
-    console.log(`      Duration: ${duration}s | Turns: ${turn} | Tool Calls: ${totalToolCalls}`);
-    console.log(`      Confidence: ${researchData.confidenceLevel?.toUpperCase() || 'UNKNOWN'}`);
+    // Log research results - FULL DETAILS
+    console.log('\n');
+    logHeader('✅ RESEARCH COMPLETED SUCCESSFULLY');
+    console.log(`│ Duration: ${duration}s | Turns: ${turn} | Tool Calls: ${totalToolCalls}`);
+    console.log(`│ Confidence Level: ${researchData.confidenceLevel?.toUpperCase() || 'UNKNOWN'}`);
+    logSeparator('─');
 
-    console.log(`\n   📈 STATISTICS FOUND: ${researchData.statistics?.length || 0}`);
-    researchData.statistics?.slice(0, 3).forEach((stat, i) => {
-      console.log(`      ${i + 1}. ${stat.fact?.substring(0, 100)}...`);
-      console.log(`         Source: ${stat.source || 'Unknown'}`);
-    });
-    if ((researchData.statistics?.length || 0) > 3) {
-      console.log(`      ... and ${(researchData.statistics?.length || 0) - 3} more`);
-    }
-
-    console.log(`\n   💬 EXPERT QUOTES FOUND: ${researchData.expertQuotes?.length || 0}`);
-    researchData.expertQuotes?.slice(0, 2).forEach((quote, i) => {
-      console.log(`      ${i + 1}. "${quote.quote?.substring(0, 80)}..."`);
-      console.log(`         — ${quote.expert || 'Unknown'}${quote.organization ? ` at ${quote.organization}` : ''}`);
-    });
-    if ((researchData.expertQuotes?.length || 0) > 2) {
-      console.log(`      ... and ${(researchData.expertQuotes?.length || 0) - 2} more`);
-    }
-
-    console.log(`\n   📈 TRENDS FOUND: ${researchData.trends?.length || 0}`);
-    researchData.trends?.slice(0, 2).forEach((trend, i) => {
-      console.log(`      ${i + 1}. ${trend.trend?.substring(0, 100)}...`);
-    });
-
-    console.log(`\n   🎯 KEY POINTS: ${researchData.keyPoints?.length || 0}`);
-    researchData.keyPoints?.forEach((point, i) => {
-      console.log(`      ${i + 1}. ${point.substring(0, 100)}${point.length > 100 ? '...' : ''}`);
-    });
-
+    // Summary
     if (researchData.summary) {
-      console.log(`\n   📝 SUMMARY:`);
-      console.log(`      ${researchData.summary.substring(0, 300)}${researchData.summary.length > 300 ? '...' : ''}`);
+      console.log(`\n┌─ 📝 RESEARCH SUMMARY ${'─'.repeat(56)}┐`);
+      const summaryLines = researchData.summary.match(/.{1,76}/g) || [researchData.summary];
+      summaryLines.forEach(line => console.log(`│ ${line.padEnd(76)} │`));
+      console.log(`└${'─'.repeat(78)}┘`);
     }
 
+    // ALL Statistics
+    console.log(`\n┌─ 📊 STATISTICS FOUND (${researchData.statistics?.length || 0}) ${'─'.repeat(50)}┐`);
+    if (researchData.statistics && researchData.statistics.length > 0) {
+      researchData.statistics.forEach((stat, i) => {
+        console.log(`│`);
+        console.log(`│ ${i + 1}. FACT: ${stat.fact || 'N/A'}`);
+        console.log(`│    SOURCE: ${stat.source || 'Unknown'}${stat.year ? ` (${stat.year})` : ''}`);
+        if (stat.sourceUrl) console.log(`│    URL: ${stat.sourceUrl}`);
+        if (stat.relevance) console.log(`│    RELEVANCE: ${stat.relevance}`);
+      });
+    } else {
+      console.log(`│ No statistics found`);
+    }
+    console.log(`└${'─'.repeat(78)}┘`);
+
+    // ALL Expert Quotes
+    console.log(`\n┌─ 💬 EXPERT QUOTES (${researchData.expertQuotes?.length || 0}) ${'─'.repeat(53)}┐`);
+    if (researchData.expertQuotes && researchData.expertQuotes.length > 0) {
+      researchData.expertQuotes.forEach((quote, i) => {
+        console.log(`│`);
+        console.log(`│ ${i + 1}. "${quote.quote || 'N/A'}"`);
+        console.log(`│    — ${quote.expert || 'Unknown'}${quote.title ? `, ${quote.title}` : ''}${quote.organization ? ` at ${quote.organization}` : ''}`);
+        if (quote.sourceUrl) console.log(`│    URL: ${quote.sourceUrl}`);
+      });
+    } else {
+      console.log(`│ No expert quotes found`);
+    }
+    console.log(`└${'─'.repeat(78)}┘`);
+
+    // ALL Trends
+    console.log(`\n┌─ 📈 TRENDS (${researchData.trends?.length || 0}) ${'─'.repeat(60)}┐`);
+    if (researchData.trends && researchData.trends.length > 0) {
+      researchData.trends.forEach((trend, i) => {
+        console.log(`│`);
+        console.log(`│ ${i + 1}. ${trend.trend || 'N/A'}`);
+        console.log(`│    Source: ${trend.source || 'Unknown'}`);
+        if (trend.sourceUrl) console.log(`│    URL: ${trend.sourceUrl}`);
+      });
+    } else {
+      console.log(`│ No trends found`);
+    }
+    console.log(`└${'─'.repeat(78)}┘`);
+
+    // ALL Key Points
+    console.log(`\n┌─ 🎯 KEY POINTS FOR BLOG (${researchData.keyPoints?.length || 0}) ${'─'.repeat(47)}┐`);
+    if (researchData.keyPoints && researchData.keyPoints.length > 0) {
+      researchData.keyPoints.forEach((point, i) => {
+        console.log(`│ ${i + 1}. ${point}`);
+      });
+    } else {
+      console.log(`│ No key points identified`);
+    }
+    console.log(`└${'─'.repeat(78)}┘`);
+
+    console.log('\n');
     logSeparator('═');
-    console.log(`║ 🔬 RESEARCH PHASE COMPLETE`);
+    console.log(`║ 🔬 RESEARCH PHASE COMPLETE - Ready for content generation`);
     logSeparator('═');
     console.log('\n');
 
