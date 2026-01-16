@@ -32,7 +32,12 @@ import {
   Edit,
   RefreshCw,
   Calendar,
+  Search,
+  FileText,
+  Image,
+  Save,
 } from "lucide-react";
+import { useGenerateBlogPost, GenerationPhase } from "../hooks/useGenerateBlogPost";
 
 interface Topic {
   _id: string;
@@ -68,6 +73,29 @@ export function QueueTab({
   const [rescheduleTopicId, setRescheduleTopicId] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [isRescheduling, setIsRescheduling] = useState(false);
+
+  // Client-side orchestration hook
+  const { state: generationState, generatingTopicId, generate, isGenerating } = useGenerateBlogPost();
+
+  // Helper to get phase label and icon
+  const getPhaseInfo = (phase: GenerationPhase) => {
+    switch (phase) {
+      case 'researching':
+        return { label: 'Researching...', icon: Search, color: 'text-blue-600', spin: false };
+      case 'writing_content':
+        return { label: 'Writing content...', icon: FileText, color: 'text-purple-600', spin: false };
+      case 'generating_images':
+        return { label: 'Creating images...', icon: Image, color: 'text-green-600', spin: false };
+      case 'saving':
+        return { label: 'Saving...', icon: Save, color: 'text-orange-600', spin: false };
+      case 'completed':
+        return { label: 'Done!', icon: CheckCircle, color: 'text-green-600', spin: false };
+      case 'failed':
+        return { label: 'Failed', icon: AlertTriangle, color: 'text-red-600', spin: false };
+      default:
+        return { label: '', icon: Loader2, color: 'text-gray-600', spin: true };
+    }
+  };
 
   const toggleTopicSelection = (topicId: string) => {
     setSelectedTopics(
@@ -111,16 +139,36 @@ export function QueueTab({
   };
 
   const handleGenerateTopic = async (topicId: string) => {
-    try {
-      const response = await fetch(`/api/blog/topics/${topicId}/generate`, {
-        method: "POST",
-      });
+    // Don't start another generation if one is already in progress
+    if (isGenerating) {
+      console.warn("Generation already in progress");
+      return;
+    }
 
-      if (response.ok) {
-        refreshTopics();
+    try {
+      // Fetch full topic data for the orchestrator
+      const response = await fetch(`/api/blog/topics/${topicId}`);
+      if (!response.ok) {
+        console.error("Failed to fetch topic data");
+        return;
       }
+
+      const fullTopic = await response.json();
+
+      // Use client-side orchestration
+      const result = await generate(fullTopic);
+
+      if (result.success) {
+        console.log("Generation completed successfully:", result.postId);
+      } else {
+        console.error("Generation failed:", result.error);
+      }
+
+      // Refresh topics to show updated status
+      refreshTopics();
     } catch (error) {
       console.error("Generation error:", error);
+      refreshTopics();
     }
   };
 
@@ -342,8 +390,35 @@ export function QueueTab({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {getStatusBadge(topic)}
-                    
+                    {/* Show progress UI when this topic is being generated */}
+                    {generatingTopicId === topic._id ? (
+                      <div className="flex items-center gap-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                        {(() => {
+                          const phaseInfo = getPhaseInfo(generationState.phase);
+                          const PhaseIcon = phaseInfo.icon;
+                          return (
+                            <>
+                              <PhaseIcon className={`h-4 w-4 ${phaseInfo.spin ? 'animate-spin' : ''} ${phaseInfo.color}`} />
+                              <span className={`text-sm font-medium ${phaseInfo.color}`}>
+                                {phaseInfo.label}
+                              </span>
+                              <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-blue-600 transition-all duration-500 ease-out"
+                                  style={{ width: `${generationState.progress}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {generationState.progress}%
+                              </span>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      getStatusBadge(topic)
+                    )}
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm">
@@ -361,9 +436,10 @@ export function QueueTab({
                         ) : (
                           <DropdownMenuItem
                             onClick={() => handleGenerateTopic(topic._id)}
+                            disabled={isGenerating}
                           >
                             <Play className="h-4 w-4 mr-2" />
-                            Generate Now
+                            {isGenerating && generatingTopicId === topic._id ? 'Generating...' : 'Generate Now'}
                           </DropdownMenuItem>
                         )}
 
