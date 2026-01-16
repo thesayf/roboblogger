@@ -53,25 +53,47 @@ export async function POST(
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
                      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
                      'http://localhost:3000');
-      console.log(`[Generate] Using base URL: ${baseUrl}`);
 
-      // ============================================
+      // ════════════════════════════════════════════════════════════════════════════════
+      // BLOG GENERATION PIPELINE STARTED
+      // ════════════════════════════════════════════════════════════════════════════════
+      console.log('\n');
+      console.log('═'.repeat(80));
+      console.log('║ 🚀 BLOG GENERATION PIPELINE STARTED');
+      console.log('═'.repeat(80));
+      console.log(`│ Topic ID: ${topic._id}`);
+      console.log(`│ Topic: "${topic.topic}"`);
+      console.log(`│ Audience: ${topic.audience || 'General'}`);
+      console.log(`│ Tone: ${topic.tone || 'Professional but approachable'}`);
+      console.log(`│ Length: ${topic.length || 'Medium'}`);
+      console.log(`│ SEO Keyword: ${topic.seo?.primaryKeyword || 'None'}`);
+      console.log(`│ Base URL: ${baseUrl}`);
+      console.log('─'.repeat(80));
+
+      // ════════════════════════════════════════════════════════════════════════════════
       // STEP 1: AGENTIC RESEARCH PHASE
-      // ============================================
+      // ════════════════════════════════════════════════════════════════════════════════
+      console.log('\n┌' + '─'.repeat(78) + '┐');
+      console.log('│ STEP 1: AGENTIC RESEARCH PHASE'.padEnd(78) + ' │');
+      console.log('└' + '─'.repeat(78) + '┘');
+
       // Update phase to researching
       await Topic.findByIdAndUpdate(topic._id, { generationPhase: 'researching' });
 
       let researchData = null;
+      const researchStartTime = Date.now();
 
       // Check if Perplexity API key is available for research
       if (process.env.PERPLEXITY_API_KEY) {
-        console.log(`[Generate] Starting agentic research for topic ${topic._id}: ${topic.topic}`);
+        console.log(`\n   📡 Calling research API...`);
+        console.log(`   Topic: "${topic.topic}"`);
 
         try {
           // Prepare SEO keywords for research
           const seoKeywords: string[] = [];
           if (topic.seo?.primaryKeyword) {
             seoKeywords.push(topic.seo.primaryKeyword);
+            console.log(`   SEO Keywords: ${seoKeywords.join(', ')}`);
           }
           if (topic.seo?.secondaryKeywords?.length) {
             seoKeywords.push(...topic.seo.secondaryKeywords);
@@ -87,33 +109,49 @@ export async function POST(
             })
           });
 
+          const researchDuration = ((Date.now() - researchStartTime) / 1000).toFixed(1);
+
           if (researchResponse.ok) {
             const researchResult = await researchResponse.json();
             if (researchResult.success && researchResult.research) {
               researchData = researchResult.research;
-              console.log(`[Generate] ✓ Research complete for topic ${topic._id}`);
-              console.log(`[Generate] Research stats: ${researchData.statistics?.length || 0} statistics, ${researchData.expertQuotes?.length || 0} quotes, ${researchData.trends?.length || 0} trends`);
-              console.log(`[Generate] Research confidence: ${researchData.confidenceLevel}`);
+
+              console.log(`\n   ✅ RESEARCH PHASE COMPLETED (${researchDuration}s)`);
+              console.log(`   ┌${'─'.repeat(50)}┐`);
+              console.log(`   │ Statistics:    ${String(researchData.statistics?.length || 0).padStart(3)} found`.padEnd(51) + '│');
+              console.log(`   │ Expert Quotes: ${String(researchData.expertQuotes?.length || 0).padStart(3)} found`.padEnd(51) + '│');
+              console.log(`   │ Trends:        ${String(researchData.trends?.length || 0).padStart(3)} found`.padEnd(51) + '│');
+              console.log(`   │ Key Points:    ${String(researchData.keyPoints?.length || 0).padStart(3)} found`.padEnd(51) + '│');
+              console.log(`   │ Confidence:    ${(researchData.confidenceLevel || 'unknown').toUpperCase().padEnd(10)}`.padEnd(51) + '│');
+              console.log(`   │ Turns:         ${String(researchResult.metadata?.turns || '?').padStart(3)}`.padEnd(51) + '│');
+              console.log(`   │ Tool Calls:    ${String(researchResult.metadata?.toolCalls || '?').padStart(3)}`.padEnd(51) + '│');
+              console.log(`   └${'─'.repeat(50)}┘`);
 
               // Save research data to topic
               await Topic.findByIdAndUpdate(topic._id, {
                 researchData,
                 researchedAt: new Date()
               });
+              console.log(`   💾 Research data saved to topic`);
             } else {
-              console.log(`[Generate] ⚠ Research returned but incomplete, continuing without research`);
+              console.log(`\n   ⚠️  Research returned but incomplete (${researchDuration}s)`);
+              console.log(`   Continuing without research data...`);
             }
           } else {
             const errorText = await researchResponse.text();
-            console.log(`[Generate] ⚠ Research API returned ${researchResponse.status}: ${errorText.substring(0, 200)}`);
-            console.log(`[Generate] Continuing generation without research data`);
+            console.log(`\n   ⚠️  Research API returned ${researchResponse.status} (${researchDuration}s)`);
+            console.log(`   Error: ${errorText.substring(0, 200)}`);
+            console.log(`   Continuing generation without research data...`);
           }
         } catch (researchError) {
-          console.error(`[Generate] ⚠ Research failed:`, researchError);
-          console.log(`[Generate] Continuing generation without research data`);
+          const researchDuration = ((Date.now() - researchStartTime) / 1000).toFixed(1);
+          console.log(`\n   ❌ Research failed after ${researchDuration}s`);
+          console.log(`   Error: ${researchError instanceof Error ? researchError.message : 'Unknown error'}`);
+          console.log(`   Continuing generation without research data...`);
         }
       } else {
-        console.log(`[Generate] ⚠ PERPLEXITY_API_KEY not configured, skipping research phase`);
+        console.log(`\n   ⚠️  PERPLEXITY_API_KEY not configured`);
+        console.log(`   Skipping research phase - blog will be generated without real-time data`);
       }
 
       // ============================================

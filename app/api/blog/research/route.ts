@@ -25,7 +25,7 @@ const MAX_TURNS = 15;
 // Debug log entry type
 interface DebugLogEntry {
   timestamp: string;
-  type: 'start' | 'thinking' | 'tool_call' | 'tool_result' | 'complete' | 'error';
+  type: 'start' | 'thinking' | 'tool_call' | 'tool_result' | 'evaluation' | 'complete' | 'error';
   turn?: number;
   content: string;
   details?: Record<string, any>;
@@ -46,6 +46,31 @@ const getPerplexityProvider = () => {
 };
 
 /**
+ * Pretty print a separator line
+ */
+function logSeparator(char: string = '─', length: number = 80) {
+  console.log(char.repeat(length));
+}
+
+/**
+ * Pretty print a section header
+ */
+function logHeader(title: string) {
+  logSeparator('═');
+  console.log(`║ ${title}`);
+  logSeparator('═');
+}
+
+/**
+ * Pretty print a subsection
+ */
+function logSubsection(title: string) {
+  console.log(`\n┌${'─'.repeat(78)}┐`);
+  console.log(`│ ${title.padEnd(76)} │`);
+  console.log(`└${'─'.repeat(78)}┘`);
+}
+
+/**
  * Execute a research tool and return the result
  */
 async function executeResearchTool(
@@ -59,6 +84,9 @@ async function executeResearchTool(
   if (toolName === 'searchTopicInfo') {
     const { query, infoType, recency } = toolInput;
 
+    console.log(`\n   🔍 PERPLEXITY SEARCH: "${query}"`);
+    console.log(`      Type: ${infoType} | Recency: ${recency || 'last-year'}`);
+
     addLog('tool_call', `searchTopicInfo: "${query}"`, {
       tool: 'searchTopicInfo',
       infoType,
@@ -66,15 +94,25 @@ async function executeResearchTool(
     }, turn);
 
     try {
+      const searchStart = Date.now();
       const response = await provider.searchTopicInfo({
         query,
         infoType,
         recency: recency || 'last-year'
       });
+      const searchDuration = ((Date.now() - searchStart) / 1000).toFixed(1);
+
+      console.log(`   ✓ Search completed in ${searchDuration}s`);
+      console.log(`      Content: ${response.content.length} chars | Citations: ${response.citations?.length || 0}`);
+
+      // Show a preview of the content
+      const preview = response.content.substring(0, 300).replace(/\n/g, ' ');
+      console.log(`      Preview: "${preview}..."`);
 
       addLog('tool_result', `Search returned ${response.content.length} chars, ${response.citations?.length || 0} citations`, {
         resultLength: response.content.length,
-        citations: response.citations?.length || 0
+        citations: response.citations?.length || 0,
+        durationSeconds: parseFloat(searchDuration)
       }, turn);
 
       // Return both content and citations
@@ -84,6 +122,7 @@ async function executeResearchTool(
       });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Search failed';
+      console.log(`   ✗ Search failed: ${errorMsg}`);
       addLog('error', `searchTopicInfo failed: ${errorMsg}`, undefined, turn);
       return JSON.stringify({ error: true, message: errorMsg });
     }
@@ -92,6 +131,9 @@ async function executeResearchTool(
   if (toolName === 'searchExpertOpinions') {
     const { query, expertiseArea, sourceType } = toolInput;
 
+    console.log(`\n   🎓 EXPERT SEARCH: "${query}"`);
+    console.log(`      Expertise: ${expertiseArea} | Source: ${sourceType || 'any'}`);
+
     addLog('tool_call', `searchExpertOpinions: "${query}"`, {
       tool: 'searchExpertOpinions',
       expertiseArea,
@@ -99,15 +141,25 @@ async function executeResearchTool(
     }, turn);
 
     try {
+      const searchStart = Date.now();
       const response = await provider.searchExpertOpinions({
         query,
         expertiseArea,
         sourceType: sourceType || 'any'
       });
+      const searchDuration = ((Date.now() - searchStart) / 1000).toFixed(1);
+
+      console.log(`   ✓ Expert search completed in ${searchDuration}s`);
+      console.log(`      Content: ${response.content.length} chars | Citations: ${response.citations?.length || 0}`);
+
+      // Show a preview of the content
+      const preview = response.content.substring(0, 300).replace(/\n/g, ' ');
+      console.log(`      Preview: "${preview}..."`);
 
       addLog('tool_result', `Expert search returned ${response.content.length} chars, ${response.citations?.length || 0} citations`, {
         resultLength: response.content.length,
-        citations: response.citations?.length || 0
+        citations: response.citations?.length || 0,
+        durationSeconds: parseFloat(searchDuration)
       }, turn);
 
       return JSON.stringify({
@@ -116,6 +168,7 @@ async function executeResearchTool(
       });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Search failed';
+      console.log(`   ✗ Expert search failed: ${errorMsg}`);
       addLog('error', `searchExpertOpinions failed: ${errorMsg}`, undefined, turn);
       return JSON.stringify({ error: true, message: errorMsg });
     }
@@ -149,9 +202,15 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    console.log('[Research] Starting research for topic:', topic);
-    console.log('[Research] Audience:', audience);
-    console.log('[Research] SEO Keywords:', seoKeywords);
+    // Pretty print research start
+    console.log('\n');
+    logHeader('🔬 AGENTIC RESEARCH PHASE STARTED');
+    console.log(`│ Topic: "${topic}"`);
+    console.log(`│ Audience: ${audience || 'General'}`);
+    console.log(`│ SEO Keywords: ${seoKeywords.length > 0 ? seoKeywords.join(', ') : 'None'}`);
+    console.log(`│ Max Turns: ${MAX_TURNS}`);
+    console.log(`│ Timeout: ${maxDuration}s`);
+    logSeparator('─');
 
     // Debug logs collection
     const debugLogs: DebugLogEntry[] = [];
@@ -164,7 +223,6 @@ export async function POST(request: NextRequest) {
         ...(turn !== undefined && { turn })
       };
       debugLogs.push(entry);
-      console.log(`[Research ${type.toUpperCase()}]`, content, details ? JSON.stringify(details).slice(0, 200) : '');
     };
 
     addLog('start', `Beginning research for topic: "${topic}"`, {
@@ -191,7 +249,11 @@ export async function POST(request: NextRequest) {
     // Agentic loop - keep going until Claude gives a final answer without tool calls
     while (turn < MAX_TURNS) {
       turn++;
-      console.log(`[Research] Turn ${turn}...`);
+
+      logSubsection(`🔄 TURN ${turn} of ${MAX_TURNS}`);
+      console.log(`\n   Calling Claude (claude-sonnet-4-20250514)...`);
+
+      const turnStart = Date.now();
 
       // Call Claude
       const response = await anthropic.messages.create({
@@ -202,7 +264,8 @@ export async function POST(request: NextRequest) {
         messages
       });
 
-      console.log(`[Research] Turn ${turn} stop_reason: ${response.stop_reason}`);
+      const turnDuration = ((Date.now() - turnStart) / 1000).toFixed(1);
+      console.log(`   Claude responded in ${turnDuration}s | Stop reason: ${response.stop_reason}`);
 
       // Check if Claude wants to use tools
       if (response.stop_reason === 'tool_use') {
@@ -216,18 +279,40 @@ export async function POST(request: NextRequest) {
           (block): block is Anthropic.TextBlock => block.type === 'text'
         );
 
+        // Log Claude's thinking/reasoning
         if (textBlocks.length > 0) {
           const thinkingText = textBlocks.map(b => b.text).join('\n');
           if (thinkingText.length > 20) {
-            addLog('thinking', thinkingText.slice(0, 500) + (thinkingText.length > 500 ? '...' : ''), undefined, turn);
+            console.log(`\n   💭 CLAUDE'S REASONING:`);
+            // Split into lines and indent
+            const lines = thinkingText.split('\n').slice(0, 10); // Max 10 lines
+            lines.forEach(line => {
+              if (line.trim()) {
+                console.log(`      ${line.trim().substring(0, 120)}`);
+              }
+            });
+            if (thinkingText.split('\n').length > 10) {
+              console.log(`      ... (${thinkingText.split('\n').length - 10} more lines)`);
+            }
+
+            addLog('thinking', thinkingText, undefined, turn);
           }
         }
+
+        console.log(`\n   🛠️  TOOL CALLS (${toolUseBlocks.length}):`);
 
         // Execute each tool and collect results
         const toolResults: Anthropic.ToolResultBlockParam[] = [];
 
         for (const toolUse of toolUseBlocks) {
           totalToolCalls++;
+          console.log(`\n   [${totalToolCalls}] ${toolUse.name}`);
+
+          // Log the tool input
+          const inputStr = JSON.stringify(toolUse.input, null, 2);
+          const inputLines = inputStr.split('\n');
+          inputLines.forEach(line => console.log(`       ${line}`));
+
           const result = await executeResearchTool(
             toolUse.name,
             toolUse.input as Record<string, any>,
@@ -254,6 +339,9 @@ export async function POST(request: NextRequest) {
 
         finalResponse = textBlocks.map(b => b.text).join('\n');
 
+        console.log(`\n   ✅ CLAUDE FINISHED RESEARCHING`);
+        console.log(`      Final response length: ${finalResponse.length} chars`);
+
         addLog('complete', 'Research complete', {
           totalTurns: turn,
           toolCalls: totalToolCalls,
@@ -263,38 +351,44 @@ export async function POST(request: NextRequest) {
         break;
       } else {
         // Unexpected stop reason
-        console.error('[Research] Unexpected stop reason:', response.stop_reason);
+        console.log(`\n   ⚠️  Unexpected stop reason: ${response.stop_reason}`);
         addLog('error', `Unexpected stop reason: ${response.stop_reason}`, undefined, turn);
         break;
       }
     }
 
     if (turn >= MAX_TURNS) {
+      console.log(`\n   ⚠️  Reached maximum turns (${MAX_TURNS})`);
       addLog('error', `Reached maximum turns (${MAX_TURNS})`, undefined, turn);
     }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(`[Research] Research complete in ${duration}s, ${turn} turns, ${totalToolCalls} tool calls`);
 
     // Parse the final result
     let researchData: ResearchResult | null = null;
     try {
       researchData = cleanAndParseJSON(finalResponse);
     } catch (parseError) {
-      console.error('[Research] Failed to parse JSON response:', parseError);
+      console.log(`\n   ⚠️  Failed to parse JSON response, attempting extraction...`);
       // Try to extract JSON from the response
       const jsonMatch = finalResponse.match(/\{[\s\S]*"researchComplete"[\s\S]*\}/);
       if (jsonMatch) {
         try {
           researchData = JSON.parse(jsonMatch[0]);
+          console.log(`   ✓ Successfully extracted JSON`);
         } catch (e) {
-          console.error('[Research] Failed to extract JSON from response');
+          console.log(`   ✗ Failed to extract JSON from response`);
         }
       }
     }
 
+    // Print final summary
+    logSubsection('📊 RESEARCH SUMMARY');
+
     if (!researchData || !researchData.researchComplete) {
-      console.error('[Research] Invalid research output');
+      console.log(`\n   ⚠️  Research did not complete successfully`);
+      console.log(`      Duration: ${duration}s | Turns: ${turn} | Tool Calls: ${totalToolCalls}`);
+
       addLog('error', 'Failed to parse final response as valid research JSON', {
         responseLength: finalResponse.length
       });
@@ -323,6 +417,49 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Log research results
+    console.log(`\n   ✅ RESEARCH COMPLETED SUCCESSFULLY`);
+    console.log(`      Duration: ${duration}s | Turns: ${turn} | Tool Calls: ${totalToolCalls}`);
+    console.log(`      Confidence: ${researchData.confidenceLevel?.toUpperCase() || 'UNKNOWN'}`);
+
+    console.log(`\n   📈 STATISTICS FOUND: ${researchData.statistics?.length || 0}`);
+    researchData.statistics?.slice(0, 3).forEach((stat, i) => {
+      console.log(`      ${i + 1}. ${stat.fact?.substring(0, 100)}...`);
+      console.log(`         Source: ${stat.source || 'Unknown'}`);
+    });
+    if ((researchData.statistics?.length || 0) > 3) {
+      console.log(`      ... and ${(researchData.statistics?.length || 0) - 3} more`);
+    }
+
+    console.log(`\n   💬 EXPERT QUOTES FOUND: ${researchData.expertQuotes?.length || 0}`);
+    researchData.expertQuotes?.slice(0, 2).forEach((quote, i) => {
+      console.log(`      ${i + 1}. "${quote.quote?.substring(0, 80)}..."`);
+      console.log(`         — ${quote.expert || 'Unknown'}${quote.organization ? ` at ${quote.organization}` : ''}`);
+    });
+    if ((researchData.expertQuotes?.length || 0) > 2) {
+      console.log(`      ... and ${(researchData.expertQuotes?.length || 0) - 2} more`);
+    }
+
+    console.log(`\n   📈 TRENDS FOUND: ${researchData.trends?.length || 0}`);
+    researchData.trends?.slice(0, 2).forEach((trend, i) => {
+      console.log(`      ${i + 1}. ${trend.trend?.substring(0, 100)}...`);
+    });
+
+    console.log(`\n   🎯 KEY POINTS: ${researchData.keyPoints?.length || 0}`);
+    researchData.keyPoints?.forEach((point, i) => {
+      console.log(`      ${i + 1}. ${point.substring(0, 100)}${point.length > 100 ? '...' : ''}`);
+    });
+
+    if (researchData.summary) {
+      console.log(`\n   📝 SUMMARY:`);
+      console.log(`      ${researchData.summary.substring(0, 300)}${researchData.summary.length > 300 ? '...' : ''}`);
+    }
+
+    logSeparator('═');
+    console.log(`║ 🔬 RESEARCH PHASE COMPLETE`);
+    logSeparator('═');
+    console.log('\n');
+
     // Add metadata to research
     const enrichedResearch = {
       ...researchData,
@@ -337,10 +474,6 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    console.log('[Research] Research complete, statistics:', researchData.statistics?.length || 0);
-    console.log('[Research] Research complete, expertQuotes:', researchData.expertQuotes?.length || 0);
-    console.log('[Research] Research complete, trends:', researchData.trends?.length || 0);
-
     return NextResponse.json({
       success: true,
       research: enrichedResearch,
@@ -354,7 +487,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Research] Error:', error);
+    console.log(`\n   ❌ RESEARCH ERROR: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logSeparator('═');
+
     return NextResponse.json({
       success: false,
       error: 'Failed to conduct research',
