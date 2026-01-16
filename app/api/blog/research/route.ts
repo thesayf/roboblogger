@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
       // Call Claude
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
+        max_tokens: 16000,  // Increased to handle large research JSON output
         system: systemPrompt,
         tools: researchTools,
         messages
@@ -331,21 +331,31 @@ export async function POST(request: NextRequest) {
         messages.push({ role: 'assistant', content: response.content });
         messages.push({ role: 'user', content: toolResults });
 
-      } else if (response.stop_reason === 'end_turn') {
-        // Claude is done - extract final response
+      } else if (response.stop_reason === 'end_turn' || response.stop_reason === 'max_tokens') {
+        // Claude is done or hit token limit - extract final response
         const textBlocks = response.content.filter(
           (block): block is Anthropic.TextBlock => block.type === 'text'
         );
 
         finalResponse = textBlocks.map(b => b.text).join('\n');
 
-        console.log(`\n   ✅ CLAUDE FINISHED RESEARCHING`);
-        console.log(`      Final response length: ${finalResponse.length} chars`);
+        if (response.stop_reason === 'max_tokens') {
+          console.log(`\n   ⚠️  CLAUDE HIT MAX_TOKENS LIMIT`);
+          console.log(`      Response may be truncated. Length: ${finalResponse.length} chars`);
+          addLog('error', 'Hit max_tokens limit - response may be truncated', {
+            responseLength: finalResponse.length,
+            turn
+          });
+        } else {
+          console.log(`\n   ✅ CLAUDE FINISHED RESEARCHING`);
+          console.log(`      Final response length: ${finalResponse.length} chars`);
+        }
 
         addLog('complete', 'Research complete', {
           totalTurns: turn,
           toolCalls: totalToolCalls,
-          durationSeconds: ((Date.now() - startTime) / 1000).toFixed(1)
+          durationSeconds: ((Date.now() - startTime) / 1000).toFixed(1),
+          stopReason: response.stop_reason
         });
 
         break;

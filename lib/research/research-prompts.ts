@@ -60,51 +60,59 @@ Research this topic thoroughly using the available search tools to gather:
 
 ## OUTPUT FORMAT
 
-When you have gathered sufficient quality research, return a JSON object with this structure:
+CRITICAL: When you have gathered sufficient quality research, return ONLY a JSON object (no markdown code blocks, no explanation text before or after). Keep responses concise.
+
+Limits:
+- statistics: 5-8 items maximum (pick the most impactful)
+- expertQuotes: 3-5 items maximum (pick the most authoritative)
+- trends: 3-4 items maximum
+- keyPoints: 4-6 items maximum
+- Keep all text fields brief - facts under 150 chars, quotes under 200 chars
+
+JSON structure:
 
 {
   "researchComplete": true,
-  "summary": "2-3 sentence overview of the most important findings that will inform the blog post",
+  "summary": "2-3 sentence overview of key findings",
   "statistics": [
     {
-      "fact": "The specific statistic or data point",
-      "source": "Source name (e.g., 'Harvard Business Review', 'Bureau of Labor Statistics')",
+      "fact": "Specific statistic (keep brief)",
+      "source": "Source name",
       "sourceUrl": "URL if available",
       "year": "${currentYear}",
-      "relevance": "Brief note on how this relates to the blog topic"
+      "relevance": "Brief relevance note"
     }
   ],
   "expertQuotes": [
     {
-      "quote": "The exact quote or paraphrased insight",
-      "expert": "Expert's full name",
-      "title": "Their title or credentials",
-      "organization": "Their organization or affiliation",
+      "quote": "The quote (keep under 200 chars)",
+      "expert": "Expert name",
+      "title": "Title",
+      "organization": "Organization",
       "sourceUrl": "URL if available"
     }
   ],
   "trends": [
     {
-      "trend": "Description of the trend or development",
-      "source": "Where this trend was identified",
+      "trend": "Trend description (brief)",
+      "source": "Source",
       "sourceUrl": "URL if available"
     }
   ],
   "keyPoints": [
-    "Key point 1 the blog should definitely cover based on research",
-    "Key point 2 that emerged as important from the research",
-    "Key point 3 that would provide unique value to readers"
+    "Key point 1",
+    "Key point 2"
   ],
   "searchIterations": 5,
   "confidenceLevel": "high"
 }
 
 Set confidenceLevel to:
-- "high" if you found multiple authoritative sources with consistent information
-- "medium" if you found good information but from fewer sources or with some gaps
+- "high" if multiple authoritative sources with consistent information
+- "medium" if good information but fewer sources or some gaps
 - "low" if information was limited or sources were less authoritative
 
-Remember: Quality over quantity. 3 excellent, well-sourced statistics are better than 10 generic ones.`;
+Remember: Quality over quantity. Return ONLY the JSON, nothing else.`;
 }
 
 export function generateResearchUserPrompt(topic: string): string {
