@@ -66,6 +66,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SchedulerTab } from "./components/SchedulerTabNew";
+import { BrandTab } from "./components/BrandTab";
 import { localDateTimeToUTC, utcToLocalDateTime } from "@/lib/timezone-utils";
 
 export default function BlogAdminClient() {
@@ -1367,11 +1368,12 @@ export default function BlogAdminClient() {
           className="space-y-6"
         >
           <div className="flex items-center justify-between">
-            <TabsList className="grid w-full max-w-lg grid-cols-4">
+            <TabsList className="grid w-full max-w-2xl grid-cols-5">
               <TabsTrigger value="posts">Posts</TabsTrigger>
               <TabsTrigger value="topics">Topics</TabsTrigger>
               <TabsTrigger value="images">Images</TabsTrigger>
               <TabsTrigger value="scheduler">Scheduler</TabsTrigger>
+              <TabsTrigger value="brand">Brand</TabsTrigger>
             </TabsList>
           </div>
 
@@ -4182,11 +4184,16 @@ export default function BlogAdminClient() {
 
           {/* Scheduler/Monitoring Tab */}
           <TabsContent value="scheduler" className="space-y-6">
-            <SchedulerTab 
+            <SchedulerTab
               topics={topics}
               isLoadingTopics={isLoadingTopics}
               onRefresh={fetchTopics}
             />
+          </TabsContent>
+
+          {/* Brand Tab */}
+          <TabsContent value="brand" className="space-y-6">
+            <BrandTab />
           </TabsContent>
         </Tabs>
       </div>

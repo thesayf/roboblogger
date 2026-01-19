@@ -119,6 +119,13 @@ export interface ITopic extends Document {
   
   // Estimated completion
   estimatedDuration?: number; // estimated generation time in minutes
+
+  // Vector embedding for semantic search
+  embedding?: {
+    vector: number[];
+    model: string;
+    generatedAt: Date;
+  };
 }
 
 const TopicSchema = new Schema<ITopic>({
@@ -374,6 +381,13 @@ const TopicSchema = new Schema<ITopic>({
     min: 1,
     max: 60,
     default: 5
+  },
+
+  // Vector embedding for semantic search
+  embedding: {
+    vector: { type: [Number], default: undefined },
+    model: { type: String },
+    generatedAt: { type: Date },
   }
 }, {
   timestamps: true // This automatically manages createdAt and updatedAt

@@ -17,6 +17,12 @@ export interface IBlogPost extends Document {
   tags: string[];
   seoTitle?: string;
   seoDescription?: string;
+  // Vector embedding for semantic search
+  embedding?: {
+    vector: number[];
+    model: string;
+    generatedAt: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,6 +49,12 @@ const BlogPostSchema: Schema = new Schema(
     tags: [{ type: String }],
     seoTitle: { type: String },
     seoDescription: { type: String },
+    // Vector embedding for semantic search
+    embedding: {
+      vector: { type: [Number], default: undefined },
+      model: { type: String },
+      generatedAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

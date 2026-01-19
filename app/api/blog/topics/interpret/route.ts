@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 
 // Force dynamic rendering to prevent Clerk auth issues during build
 export const dynamic = 'force-dynamic';
 import Anthropic from '@anthropic-ai/sdk';
+import dbConnect from '@/lib/mongo';
+import BrandSettings from '@/models/BrandSettings';
+import Topic from '@/models/Topic';
+import { topicResearchTools } from '@/lib/seo-research/topic-research-tools';
+import { executeTopicResearchTool } from '@/lib/seo-research/tool-executors';
+import {
+  generateTopicResearchSystemPrompt,
+  generateTopicResearchUserPrompt,
+  TopicResearchConfig,
+} from '@/lib/seo-research/topic-research-prompts';
 
 export const maxDuration = 300;
+
+const MAX_RESEARCH_TURNS = 15;
 
 if (!process.env.ANTHROPIC_API_KEY) {
   throw new Error('ANTHROPIC_API_KEY environment variable is not set');
@@ -15,13 +28,32 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// Interface for SEO research config from frontend
+interface SEOResearchConfig {
+  enabled: boolean;
+  industryNiche?: string;
+  seedKeywords?: string[];
+  competitorUrls?: string[];
+  searchIntents?: string[];
+  contentGoals?: string[];
+}
+
 // POST /api/blog/topics/interpret - Use AI to interpret free-form input into structured JSON
 export async function POST(request: NextRequest) {
   try {
     const { userId } = auth();
+    const currentUser = await getCurrentUser();
 
     const body = await request.json();
-    const { input, brandContext, brandExamples, inputType = 'text', availableImages = [], uploadedImages = [] } = body;
+    const {
+      input,
+      brandContext,
+      brandExamples,
+      inputType = 'text',
+      availableImages = [],
+      uploadedImages = [],
+      seoResearch,
+    } = body;
 
     if (!input || typeof input !== 'string') {
       return NextResponse.json(
@@ -30,24 +62,398 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Construct the AI prompt
-    const imageContext = availableImages.length > 0 || uploadedImages.length > 0 ? `
+    // Fetch saved brand settings if user is authenticated
+    let savedBrandSettings: any = null;
+    if (userId) {
+      try {
+        await dbConnect();
+        savedBrandSettings = await BrandSettings.findOne({ userId }).lean();
+      } catch (dbError) {
+        console.error('Error fetching brand settings:', dbError);
+      }
+    }
+
+    // Check if SEO research is enabled
+    const seoConfig = seoResearch as SEOResearchConfig | undefined;
+    if (seoConfig?.enabled) {
+      console.log('=== SEO RESEARCH ENABLED - Starting Agentic Loop ===');
+      return await handleAgenticResearch(
+        input,
+        seoConfig,
+        savedBrandSettings,
+        brandContext,
+        currentUser?.mongoId?.toString() || userId || 'anonymous'
+      );
+    }
+
+    // Fallback to original single-shot interpretation
+    console.log('=== SEO Research disabled - Using single-shot interpretation ===');
+    return await handleSingleShotInterpretation(
+      input,
+      brandContext,
+      brandExamples,
+      savedBrandSettings,
+      availableImages,
+      uploadedImages
+    );
+
+  } catch (error) {
+    console.error('Error in topic interpretation:', error);
+    return NextResponse.json(
+      { message: 'Failed to interpret input', error: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Handle agentic SEO research with tool use
+ */
+async function handleAgenticResearch(
+  input: string,
+  seoConfig: SEOResearchConfig,
+  brandSettings: any,
+  perRequestBrandContext: string | undefined,
+  userId: string
+): Promise<NextResponse> {
+  // Parse the input to extract number of topics
+  const topicCountMatch = input.match(/(\d+)\s*(?:blog\s*)?topics?/i);
+  const numberOfTopics = topicCountMatch ? parseInt(topicCountMatch[1]) : 5;
+
+  // Build research config
+  const researchConfig: TopicResearchConfig = {
+    numberOfTopics,
+    topicDescription: input,
+    industryNiche: seoConfig.industryNiche || brandSettings?.industryNiche,
+    seedKeywords: seoConfig.seedKeywords,
+    competitorUrls: seoConfig.competitorUrls,
+    searchIntents: seoConfig.searchIntents,
+    contentGoals: seoConfig.contentGoals,
+    brandContext: brandSettings ? {
+      blogName: brandSettings.blogName,
+      blogDescription: brandSettings.blogDescription,
+      targetAudience: brandSettings.targetAudience,
+      tone: brandSettings.tone === 'custom' ? brandSettings.customTone : brandSettings.tone,
+      styleGuidelines: brandSettings.styleGuidelines,
+      topicsWeCover: brandSettings.topicsWeCover,
+      thingsToAvoid: brandSettings.thingsToAvoid,
+    } : undefined,
+  };
+
+  const systemPrompt = generateTopicResearchSystemPrompt();
+  const userPrompt = generateTopicResearchUserPrompt(researchConfig);
+
+  // Initialize conversation
+  const messages: Anthropic.MessageParam[] = [
+    { role: 'user', content: userPrompt }
+  ];
+
+  let turn = 0;
+  let finalResponse: any = null;
+
+  console.log(`\n${'═'.repeat(80)}`);
+  console.log('TOPIC RESEARCH AGENTIC LOOP');
+  console.log(`${'═'.repeat(80)}`);
+  console.log(`Topics requested: ${numberOfTopics}`);
+  console.log(`Industry: ${researchConfig.industryNiche || 'Not specified'}`);
+  console.log(`Seed keywords: ${researchConfig.seedKeywords?.join(', ') || 'None'}`);
+
+  while (turn < MAX_RESEARCH_TURNS) {
+    turn++;
+    console.log(`\n--- Turn ${turn}/${MAX_RESEARCH_TURNS} ---`);
+
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 8000,
+        system: systemPrompt,
+        tools: topicResearchTools,
+        messages,
+      });
+
+      console.log(`Stop reason: ${response.stop_reason}`);
+
+      // Check if Claude wants to use tools
+      if (response.stop_reason === 'tool_use') {
+        const toolUseBlocks = response.content.filter(
+          (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use'
+        );
+
+        // Also capture any text thinking
+        const textBlocks = response.content.filter(
+          (block): block is Anthropic.TextBlock => block.type === 'text'
+        );
+        if (textBlocks.length > 0) {
+          console.log(`Claude's thinking: ${textBlocks[0].text.substring(0, 200)}...`);
+        }
+
+        // Add assistant's response to conversation
+        messages.push({ role: 'assistant', content: response.content });
+
+        // Execute all tools and collect results
+        const toolResults: Anthropic.ToolResultBlockParam[] = [];
+
+        for (const toolUse of toolUseBlocks) {
+          console.log(`\n🔧 Tool: ${toolUse.name}`);
+          console.log(`   Input: ${JSON.stringify(toolUse.input).substring(0, 100)}...`);
+
+          try {
+            const result = await executeTopicResearchTool(
+              toolUse.name,
+              toolUse.input as Record<string, any>,
+              userId
+            );
+
+            console.log(`   Result length: ${result.length} chars`);
+
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: toolUse.id,
+              content: result,
+            });
+          } catch (toolError) {
+            console.error(`   Tool error: ${toolError}`);
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: toolUse.id,
+              content: JSON.stringify({ error: String(toolError) }),
+              is_error: true,
+            });
+          }
+        }
+
+        // Add tool results to conversation
+        messages.push({ role: 'user', content: toolResults });
+
+      } else if (response.stop_reason === 'end_turn') {
+        // Claude is done - extract final response
+        console.log('\n✅ Research complete - extracting final response');
+
+        const textBlock = response.content.find(
+          (block): block is Anthropic.TextBlock => block.type === 'text'
+        );
+
+        if (textBlock) {
+          try {
+            // Try to parse JSON from the response
+            const cleanJson = textBlock.text
+              .replace(/```json\n?/g, '')
+              .replace(/```\n?/g, '')
+              .trim();
+
+            finalResponse = JSON.parse(cleanJson);
+            console.log(`Parsed ${finalResponse.topics?.length || 0} topics from research`);
+          } catch (parseError) {
+            console.error('Failed to parse final response as JSON:', parseError);
+            console.log('Raw response:', textBlock.text.substring(0, 500));
+
+            // Try to extract topics anyway
+            finalResponse = {
+              topics: [],
+              error: 'Failed to parse research results',
+              rawResponse: textBlock.text,
+            };
+          }
+        }
+        break;
+      } else {
+        console.log(`Unexpected stop reason: ${response.stop_reason}`);
+        break;
+      }
+    } catch (apiError) {
+      console.error(`API error on turn ${turn}:`, apiError);
+      break;
+    }
+  }
+
+  if (turn >= MAX_RESEARCH_TURNS) {
+    console.log('⚠️ Max turns reached');
+  }
+
+  // Transform research results to match expected topic format
+  if (finalResponse?.topics) {
+    const transformedTopics = finalResponse.topics.map((topic: any) => ({
+      topic: topic.topic,
+      audience: topic.audience || researchConfig.brandContext?.targetAudience || 'General audience',
+      tone: topic.tone || researchConfig.brandContext?.tone || 'professional',
+      length: topic.length || 'Medium (800-1200 words)',
+      includeImages: topic.includeImages ?? true,
+      includeCallouts: topic.includeCallouts ?? true,
+      includeCTA: topic.includeCTA ?? true,
+      additionalRequirements: topic.additionalRequirements || topic.contentAngle || '',
+      priority: topic.estimatedPotential === 'high' ? 'high' : topic.estimatedPotential === 'low' ? 'low' : 'medium',
+      imageContext: topic.imageContext || '',
+      tags: topic.tags || topic.secondaryKeywords || [],
+      seo: {
+        primaryKeyword: topic.primaryKeyword || '',
+        secondaryKeywords: topic.secondaryKeywords || [],
+        longTailKeywords: topic.longTailKeywords || [],
+        lsiKeywords: topic.lsiKeywords || [],
+        keywordDensity: topic.keywordDensity || 1.5,
+        searchIntent: topic.searchIntent || 'informational',
+        searchVolume: topic.searchVolume,
+        competition: topic.competition,
+        metaTitle: topic.metaTitle || topic.topic.substring(0, 60),
+        metaDescription: topic.metaDescription || '',
+        openGraph: topic.openGraph || {
+          title: topic.topic,
+          description: '',
+          type: 'article',
+        },
+        schemaType: topic.schemaType || 'BlogPosting',
+        slug: topic.slug || topic.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        canonicalUrl: null,
+      },
+      // Include research rationale
+      researchRationale: topic.rationale,
+      estimatedDifficulty: topic.estimatedDifficulty,
+      estimatedPotential: topic.estimatedPotential,
+    }));
+
+    return NextResponse.json({
+      message: 'Topics generated with SEO research',
+      interpretedData: {
+        topics: transformedTopics,
+        researchSummary: finalResponse.researchSummary,
+        researchInsights: finalResponse.researchInsights,
+      },
+      originalInput: input,
+      inputType: 'seo-research',
+      researchTurns: turn,
+    });
+  }
+
+  // Fallback if research didn't produce results
+  return NextResponse.json(
+    { message: 'SEO research did not produce valid topics', error: finalResponse?.error },
+    { status: 500 }
+  );
+}
+
+/**
+ * Original single-shot interpretation (when SEO research is disabled)
+ */
+async function handleSingleShotInterpretation(
+  input: string,
+  brandContext: string | undefined,
+  brandExamples: string | undefined,
+  brandSettings: any,
+  availableImages: any[],
+  uploadedImages: any[]
+): Promise<NextResponse> {
+  // Build saved brand context string
+  let savedBrandContext = '';
+  let savedExampleContent = '';
+
+  if (brandSettings) {
+    const parts: string[] = [];
+
+    if (brandSettings.blogName) parts.push(`Blog/Brand Name: ${brandSettings.blogName}`);
+    if (brandSettings.blogDescription) parts.push(`Blog Description: ${brandSettings.blogDescription}`);
+    if (brandSettings.industryNiche) parts.push(`Industry/Niche: ${brandSettings.industryNiche}`);
+    if (brandSettings.targetAudience) parts.push(`Target Audience: ${brandSettings.targetAudience}`);
+    if (brandSettings.tone) {
+      const toneValue = brandSettings.tone === 'custom' && brandSettings.customTone
+        ? brandSettings.customTone
+        : brandSettings.tone;
+      parts.push(`Brand Tone: ${toneValue}`);
+    }
+    if (brandSettings.styleGuidelines) parts.push(`Style Guidelines: ${brandSettings.styleGuidelines}`);
+    if (brandSettings.topicsWeCover) parts.push(`Topics We Cover: ${brandSettings.topicsWeCover}`);
+    if (brandSettings.thingsToAvoid) parts.push(`Things to Avoid: ${brandSettings.thingsToAvoid}`);
+
+    if (parts.length > 0) {
+      savedBrandContext = `SAVED BRAND SETTINGS:\n${parts.join('\n\n')}\n\nUse these brand settings to ensure all generated topics align with the brand voice, target audience, and content guidelines.\n\n`;
+    }
+
+    if (brandSettings.exampleContent && !brandExamples) {
+      savedExampleContent = brandSettings.exampleContent;
+    }
+  }
+
+  const effectiveBrandExamples = brandExamples || savedExampleContent;
+
+  // Build image context
+  const imageContext = availableImages.length > 0 || uploadedImages.length > 0 ? `
 
 BRAND VISUAL CONTEXT:
-The user has provided ${availableImages.length + uploadedImages.length} brand images to help you understand their visual style and aesthetic preferences. Use this visual context to inform the imageContext and overall tone of the generated topics, but do not reference specific images in the topics unless they are directly relevant to the content.
+The user has provided ${availableImages.length + uploadedImages.length} brand images to help you understand their visual style and aesthetic preferences.
 
-${availableImages.length > 0 ? `Brand Images from Library:
-${availableImages.map((img: any) => `- ${img.name} (${img.width}x${img.height})`).join('\n')}` : ''}
+${availableImages.length > 0 ? `Brand Images from Library:\n${availableImages.map((img: any) => `- ${img.name} (${img.width}x${img.height})`).join('\n')}` : ''}
+${uploadedImages.length > 0 ? `Uploaded Brand Images:\n${uploadedImages.map((img: any) => `- ${img}`).join('\n')}` : ''}` : '';
 
-${uploadedImages.length > 0 ? `Uploaded Brand Images:
-${uploadedImages.map((img: any) => `- ${img}`).join('\n')}` : ''}` : '';
+  const prompt = buildSingleShotPrompt(
+    input,
+    savedBrandContext,
+    brandContext,
+    effectiveBrandExamples,
+    imageContext
+  );
 
-    const prompt = `You are a content strategy assistant. Convert the following raw input into a structured JSON format for blog topic creation.
+  // Call Anthropic API
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-5-20250929',
+    max_tokens: 4000,
+    temperature: 0.3,
+    messages: [{ role: 'user', content: prompt }]
+  });
 
-${brandContext ? `BRAND CONTEXT:
+  const aiResponse = response.content[0].type === 'text' ? response.content[0].text : '';
+
+  // Parse JSON response
+  let interpretedData;
+  try {
+    const cleanJson = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    interpretedData = JSON.parse(cleanJson);
+  } catch (parseError) {
+    console.error('Failed to parse AI response as JSON:', parseError);
+    return NextResponse.json(
+      { message: 'Failed to interpret input - invalid JSON response from AI' },
+      { status: 500 }
+    );
+  }
+
+  // Validate structure
+  if (!interpretedData.topics || !Array.isArray(interpretedData.topics)) {
+    return NextResponse.json(
+      { message: 'Invalid interpretation - missing topics array' },
+      { status: 500 }
+    );
+  }
+
+  // Limit and filter topics
+  if (interpretedData.topics.length > 50) {
+    interpretedData.topics = interpretedData.topics.slice(0, 50);
+  }
+
+  interpretedData.topics = interpretedData.topics.filter((topic: any) =>
+    topic.topic && typeof topic.topic === 'string' && topic.topic.trim().length > 0
+  );
+
+  return NextResponse.json({
+    message: 'Input interpreted successfully',
+    interpretedData,
+    originalInput: input,
+    inputType: 'text'
+  });
+}
+
+/**
+ * Build the single-shot prompt (original implementation)
+ */
+function buildSingleShotPrompt(
+  input: string,
+  savedBrandContext: string,
+  brandContext: string | undefined,
+  brandExamples: string | undefined,
+  imageContext: string
+): string {
+  return `You are a content strategy assistant. Convert the following raw input into a structured JSON format for blog topic creation.
+
+${savedBrandContext}${brandContext ? `ADDITIONAL BRAND CONTEXT (per-request):
 ${brandContext}
 
-Use this brand context to inform the tone, audience, and style of the generated topics.
+Use this additional context along with the saved brand settings above.
 
 ` : ''}${brandExamples ? `BRAND WRITING EXAMPLES:
 The following are examples of the brand's previous content. Analyze the writing style, tone, vocabulary, sentence structure, and overall voice to match this style in your generated topics:
@@ -68,31 +474,31 @@ Please convert this input into a JSON object with the following structure:
       "topic": "string - SEO-optimized blog post title that captures search intent",
       "audience": "string - specific target audience for this topic",
       "tone": "string - optimal tone for this specific topic and audience",
-      "length": "string - optimal length based on topic complexity and search intent: Short (400-600 words), Medium (800-1200 words), Long (1200-1500 words), Comprehensive (2000+ words)",
-      "includeImages": boolean - true if visuals would enhance this specific topic,
-      "includeCallouts": boolean - true if tips/highlights would benefit this topic,
-      "includeCTA": boolean - true if this topic naturally leads to action/conversion,
+      "length": "string - optimal length: Short (400-600 words), Medium (800-1200 words), Long (1200-1500 words), Comprehensive (2000+ words)",
+      "includeImages": boolean,
+      "includeCallouts": boolean,
+      "includeCTA": boolean,
       "additionalRequirements": "string - specific requirements tailored to this topic",
-      "priority": "string - MUST be lowercase: low, medium, or high based on business impact and search volume",
-      "imageContext": "string - specific image style/aesthetic that would work best for this topic",
-      "tags": ["array of SEO-relevant tags specific to this topic"],
+      "priority": "string - MUST be lowercase: low, medium, or high",
+      "imageContext": "string - specific image style/aesthetic",
+      "tags": ["array of SEO-relevant tags"],
       "scheduledAt": "ISO date string if scheduling info provided",
       "seo": {
-        "primaryKeyword": "string - main target keyword for this topic (2-4 words)",
+        "primaryKeyword": "string - main target keyword (2-4 words)",
         "secondaryKeywords": ["array of 3-5 related keywords"],
-        "longTailKeywords": ["array of 2-3 longer, specific search phrases"],
+        "longTailKeywords": ["array of 2-3 longer search phrases"],
         "lsiKeywords": ["array of 3-5 semantically related terms"],
-        "keywordDensity": number - target density percentage (1.0-2.5),
-        "searchIntent": "string - informational, commercial, navigational, or transactional",
-        "metaTitle": "string - SEO title (50-60 characters including primary keyword)",
-        "metaDescription": "string - compelling meta description (MAXIMUM 155 characters - STRICT LIMIT)",
+        "keywordDensity": number,
+        "searchIntent": "informational|commercial|navigational|transactional",
+        "metaTitle": "string - 50-60 characters",
+        "metaDescription": "string - MAXIMUM 155 characters",
         "openGraph": {
-          "title": "string - social media optimized title (can differ from meta title)",
-          "description": "string - social media description (can differ from meta description)",
+          "title": "string",
+          "description": "string",
           "type": "article"
         },
-        "schemaType": "string - Article, BlogPosting, NewsArticle, HowToArticle, or FAQPage",
-        "slug": "string - SEO-friendly URL slug (lowercase, hyphens, no special chars)",
+        "schemaType": "Article|BlogPosting|NewsArticle|HowToArticle|FAQPage",
+        "slug": "string - SEO-friendly URL slug",
         "canonicalUrl": null
       }
     }
@@ -101,203 +507,11 @@ Please convert this input into a JSON object with the following structure:
 
 IMPORTANT INSTRUCTIONS:
 1. Extract as many distinct blog topics as possible from the input
-2. Create SEO-optimized topic titles that target specific search intent and keywords
-3. CUSTOMIZE EACH TOPIC INDIVIDUALLY - Don't use generic settings:
-   - Tailor audience to the specific topic (e.g., "beginner entrepreneurs" vs "experienced marketers")
-   - Optimize tone for the topic type (e.g., "authoritative" for guides, "encouraging" for how-tos)
-   - Set length based on topic complexity and search behavior for that subject
-   - Choose includeImages/includeCallouts/includeCTA based on what would best serve readers for that specific topic
-4. Prioritize based on business impact, search volume potential, and evergreen value
-5. Create topic-specific tags that target relevant SEO keywords and categories
-6. Write additionalRequirements that are uniquely tailored to each topic's needs
-7. Design imageContext specific to each topic's visual requirements
-8. ALWAYS use lowercase for priority: "low", "medium", or "high"
-9. If brand context is provided, ensure all settings align with the brand voice while still optimizing for each topic
-10. If brand images are provided, use them to inform topic-specific imageContext descriptions
-
-11. **SEO STRATEGY REQUIREMENTS** - Generate comprehensive SEO data for each topic:
-    - **Primary Keyword**: Choose the most valuable 2-4 word target keyword with good search volume and relevance
-    - **Secondary Keywords**: Select 3-5 related keywords that complement the primary keyword
-    - **Long-tail Keywords**: Create 2-3 specific, longer search phrases (5+ words) that target niche searches
-    - **LSI Keywords**: Include 3-5 semantically related terms that Google associates with your topic
-    - **Keyword Density**: Set realistic target density (1.0-2.5%) based on keyword competition
-    - **Search Intent**: Determine if users are seeking information, comparing products, navigating to resources, or ready to take action
-    - **Meta Title**: Craft compelling 50-60 character titles that include primary keyword and encourage clicks
-    - **Meta Description**: Write persuasive descriptions that include primary keyword and clear value proposition (MAXIMUM 155 characters - count carefully and do not exceed this limit)
-    - **Open Graph**: Create social-media optimized titles and descriptions that may differ from meta tags for better engagement
-    - **Schema Type**: Choose the most appropriate structured data type (BlogPosting for most blog content, HowToArticle for tutorials, FAQPage for Q&A format, etc.)
-    - **Slug**: Generate clean, SEO-friendly URL slugs using primary keyword and topic focus
-    - **Canonical URL**: Leave as null unless duplicate content is expected
-
-12. Handle scheduling information carefully:
-    - Include "scheduledAt" field ONLY when specific dates/times are mentioned in the input
-    - Format dates as ISO strings (e.g., "2025-07-03T15:30:00")
-    - Parse relative dates (e.g., "next Monday", "in 2 weeks") to specific dates
-    - CURRENT DATE/TIME: ${new Date().toISOString()} - Use this as the reference point for all relative scheduling
-    - When parsing "20 minutes from now", "30 minutes from now", etc., calculate from the current time above
-    - If only a date is given without time, use 09:00:00 as default time
-    - If time ranges are given, use the start time
-
-13. Make topics actionable and engaging
-14. Focus on content strategy rather than specific image assignments
-15. CRITICAL: All enum values MUST be lowercase (priority: "low"/"medium"/"high", searchIntent: "informational"/"commercial"/"navigational"/"transactional")
-16. Return ONLY the JSON object, no additional text
-
-EXAMPLE of individualized topic optimization with complete SEO data:
-{
-  "topics": [
-    {
-      "topic": "Complete Guide to Email Marketing Automation for Small Businesses",
-      "audience": "small business owners with basic email marketing experience",
-      "tone": "instructional and encouraging",
-      "length": "Long (1200-1500 words)",
-      "includeImages": true,
-      "includeCallouts": true,
-      "includeCTA": true,
-      "additionalRequirements": "Include specific tool recommendations, automation workflow examples, and ROI calculation methods",
-      "priority": "high",
-      "imageContext": "email dashboard screenshots, workflow diagrams, and professional business settings",
-      "tags": ["email marketing", "automation", "small business", "lead nurturing", "conversion"],
-      "seo": {
-        "primaryKeyword": "email marketing automation",
-        "secondaryKeywords": ["email automation", "small business marketing", "email workflows", "marketing automation"],
-        "longTailKeywords": ["email marketing automation for small businesses", "how to automate email marketing campaigns"],
-        "lsiKeywords": ["email sequences", "drip campaigns", "customer journey", "lead scoring", "email segmentation"],
-        "keywordDensity": 1.8,
-        "searchIntent": "informational",
-        "metaTitle": "Email Marketing Automation Guide for Small Business Success",
-        "metaDescription": "Master email marketing automation for your small business. Learn workflows, tools, and strategies to increase conversions and save time.",
-        "openGraph": {
-          "title": "Transform Your Small Business with Email Marketing Automation",
-          "description": "Discover powerful email automation strategies that convert prospects into customers automatically.",
-          "type": "article"
-        },
-        "schemaType": "HowToArticle",
-        "slug": "email-marketing-automation-small-business-guide",
-        "canonicalUrl": null
-      }
-    },
-    {
-      "topic": "5 Quick SEO Wins You Can Implement Today",
-      "audience": "busy entrepreneurs seeking immediate results",
-      "tone": "urgent and actionable",
-      "length": "Short (400-600 words)",
-      "includeImages": false,
-      "includeCallouts": true,
-      "includeCTA": true,
-      "additionalRequirements": "Focus on quick wins that take under 30 minutes each, include before/after examples",
-      "priority": "medium",
-      "imageContext": "not applicable",
-      "tags": ["SEO", "quick wins", "website optimization", "search ranking"],
-      "seo": {
-        "primaryKeyword": "quick SEO wins",
-        "secondaryKeywords": ["SEO tips", "website optimization", "search ranking", "SEO strategies"],
-        "longTailKeywords": ["quick SEO improvements you can make today", "fast SEO wins for small business"],
-        "lsiKeywords": ["search engine optimization", "organic traffic", "SERP ranking", "website performance", "SEO audit"],
-        "keywordDensity": 2.1,
-        "searchIntent": "informational",
-        "metaTitle": "5 Quick SEO Wins You Can Implement in 30 Minutes Today",
-        "metaDescription": "Boost your search rankings fast! Discover 5 proven SEO tactics that take under 30 minutes each and deliver immediate results.",
-        "openGraph": {
-          "title": "Get Fast SEO Results: 5 Quick Wins for Instant Rankings",
-          "description": "Stop waiting for SEO results. These 5 quick wins boost your rankings today.",
-          "type": "article"
-        },
-        "schemaType": "Article",
-        "slug": "5-quick-seo-wins-implement-today",
-        "canonicalUrl": null
-      }
-    }
-  ]
-}
+2. Create SEO-optimized topic titles that target specific search intent
+3. CUSTOMIZE EACH TOPIC INDIVIDUALLY
+4. ALWAYS use lowercase for priority and searchIntent
+5. CURRENT DATE/TIME: ${new Date().toISOString()}
+6. Return ONLY the JSON object, no additional text
 
 Generate the JSON now:`;
-
-    // Call Anthropic API
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 4000,
-      temperature: 0.3,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]
-    });
-
-    const aiResponse = response.content[0].type === 'text' ? response.content[0].text : '';
-    
-    // Try to parse the AI response as JSON
-    let interpretedData;
-    try {
-      // Remove any potential markdown formatting
-      const cleanJson = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      // Log the raw response for debugging
-      console.log('Raw AI response:', aiResponse);
-      console.log('Cleaned JSON:', cleanJson);
-      console.log('First 500 chars:', cleanJson.substring(0, 500));
-      console.log('Character at position 333:', cleanJson.charAt(333));
-      console.log('Characters around position 333:', cleanJson.substring(330, 340));
-      
-      interpretedData = JSON.parse(cleanJson);
-    } catch (parseError) {
-      console.error('Failed to parse AI response as JSON:', parseError);
-      const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
-      console.error('Parse error details:', {
-        message: errorMessage,
-        position: errorMessage.match(/position (\d+)/)?.[1]
-      });
-      console.error('Raw response length:', aiResponse.length);
-      console.error('Raw response:', aiResponse);
-      
-      // If we can identify the position, show what's around it
-      const errorPos = errorMessage.match(/position (\d+)/)?.[1];
-      if (errorPos) {
-        const pos = parseInt(errorPos);
-        console.error(`Characters around position ${pos}:`, {
-          before: aiResponse.substring(pos - 20, pos),
-          at: aiResponse.charAt(pos),
-          after: aiResponse.substring(pos, pos + 20)
-        });
-      }
-      return NextResponse.json(
-        { message: 'Failed to interpret input - invalid JSON response from AI' },
-        { status: 500 }
-      );
-    }
-
-    // Validate the structure
-    if (!interpretedData.topics || !Array.isArray(interpretedData.topics)) {
-      return NextResponse.json(
-        { message: 'Invalid interpretation - missing topics array' },
-        { status: 500 }
-      );
-    }
-
-    // Limit topics to 50 for safety
-    if (interpretedData.topics.length > 50) {
-      interpretedData.topics = interpretedData.topics.slice(0, 50);
-    }
-
-    // Ensure all topics have required fields
-    interpretedData.topics = interpretedData.topics.filter((topic: any) => 
-      topic.topic && typeof topic.topic === 'string' && topic.topic.trim().length > 0
-    );
-
-    return NextResponse.json({
-      message: 'Input interpreted successfully',
-      interpretedData,
-      originalInput: input,
-      inputType
-    });
-
-  } catch (error) {
-    console.error('Error in topic interpretation:', error);
-    return NextResponse.json(
-      { message: 'Failed to interpret input', error: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
 }
