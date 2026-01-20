@@ -176,8 +176,26 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
 
       if (response.ok) {
         const result = await response.json();
-        // Navigate to review page or handle success
-        alert(`Successfully generated ${result.interpretedData.topics.length} topics!`);
+        const topics = result.interpretedData.topics;
+
+        // Save each topic to the database
+        let savedCount = 0;
+        for (const topic of topics) {
+          try {
+            const saveResponse = await fetch("/api/blog/topics", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(topic)
+            });
+            if (saveResponse.ok) {
+              savedCount++;
+            }
+          } catch (saveError) {
+            console.error("Error saving topic:", saveError);
+          }
+        }
+
+        alert(`Successfully generated and saved ${savedCount} topics!`);
         router.push("/blog/admin");
       } else {
         const error = await response.json();
