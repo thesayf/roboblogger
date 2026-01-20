@@ -3,6 +3,7 @@
  * Executes the actual API calls for each research tool
  */
 
+import mongoose from 'mongoose';
 import { PerplexityProvider } from '@/lib/ai-providers/perplexity-provider';
 import { generateEmbedding } from '@/lib/embeddings/embedding-service';
 import dbConnect from '@/lib/mongo';
@@ -389,6 +390,7 @@ export async function executeSearchExistingContent(
   const queuedTopics: ExistingContent['queuedTopics'] = [];
 
   // Vector search on blog posts
+  // Note: We filter by owner after vectorSearch to avoid needing owner indexed as filter
   try {
     const postResults = await BlogPost.aggregate([
       {
@@ -396,10 +398,17 @@ export async function executeSearchExistingContent(
           index: 'blog_post_embeddings',
           path: 'embedding.vector',
           queryVector: queryEmbedding,
-          numCandidates: limit * 10,
-          limit: limit,
-          filter: { owner: userId },
+          numCandidates: limit * 20,
+          limit: limit * 5, // Get more results to filter down
         },
+      },
+      {
+        $match: {
+          owner: new mongoose.Types.ObjectId(userId),
+        },
+      },
+      {
+        $limit: limit,
       },
       {
         $project: {
@@ -449,6 +458,7 @@ export async function executeSearchExistingContent(
   }
 
   // Search queued topics
+  // Note: We filter by owner after vectorSearch to avoid needing owner indexed as filter
   if (includeQueued) {
     try {
       const topicResults = await Topic.aggregate([
@@ -457,10 +467,17 @@ export async function executeSearchExistingContent(
             index: 'topic_embeddings',
             path: 'embedding.vector',
             queryVector: queryEmbedding,
-            numCandidates: limit * 5,
-            limit: limit,
-            filter: { owner: userId },
+            numCandidates: limit * 10,
+            limit: limit * 5, // Get more results to filter down
           },
+        },
+        {
+          $match: {
+            owner: new mongoose.Types.ObjectId(userId),
+          },
+        },
+        {
+          $limit: limit,
         },
         {
           $project: {
