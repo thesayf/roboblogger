@@ -84,7 +84,14 @@ IMPORTANT:
 - Each topic must be unique and not duplicate existing content
 - Prioritize topics with the best combination of search volume and low competition
 - Make titles compelling and click-worthy while including the primary keyword
-- Return ONLY the JSON object, no additional text`;
+
+CRITICAL OUTPUT RULE:
+Your final response MUST be ONLY a valid JSON object. Do NOT include any text before or after the JSON.
+- NO greetings like "Perfect!" or "Here are the topics"
+- NO explanations or summaries outside the JSON
+- NO markdown formatting or code blocks
+- Start your response with { and end with }
+- The response must be parseable by JSON.parse()`;
 }
 
 export function generateTopicResearchUserPrompt(config: TopicResearchConfig): string {

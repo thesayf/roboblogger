@@ -236,12 +236,29 @@ async function handleAgenticResearch(
         if (textBlock) {
           try {
             // Try to parse JSON from the response
-            const cleanJson = textBlock.text
+            let cleanJson = textBlock.text
               .replace(/```json\n?/g, '')
               .replace(/```\n?/g, '')
               .trim();
 
-            finalResponse = JSON.parse(cleanJson);
+            // Try direct parse first
+            try {
+              finalResponse = JSON.parse(cleanJson);
+            } catch {
+              // If direct parse fails, try to extract JSON from the text
+              // Look for JSON object pattern - find first { and last }
+              const firstBrace = cleanJson.indexOf('{');
+              const lastBrace = cleanJson.lastIndexOf('}');
+
+              if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                const extractedJson = cleanJson.substring(firstBrace, lastBrace + 1);
+                console.log('Attempting to parse extracted JSON...');
+                finalResponse = JSON.parse(extractedJson);
+              } else {
+                throw new Error('No valid JSON object found in response');
+              }
+            }
+
             console.log(`Parsed ${finalResponse.topics?.length || 0} topics from research`);
           } catch (parseError) {
             console.error('Failed to parse final response as JSON:', parseError);
