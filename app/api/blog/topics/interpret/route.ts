@@ -11,14 +11,16 @@ import Topic from '@/models/Topic';
 import { topicResearchTools } from '@/lib/seo-research/topic-research-tools';
 import { executeTopicResearchTool } from '@/lib/seo-research/tool-executors';
 import {
-  generateTopicResearchSystemPrompt,
-  generateTopicResearchUserPrompt,
+  generateResearchPhaseSystemPrompt,
+  generateResearchPhaseUserPrompt,
+  generateSummarizePhasePrompt,
+  generateTopicsPhasePrompt,
   TopicResearchConfig,
 } from '@/lib/seo-research/topic-research-prompts';
 
 export const maxDuration = 300;
 
-const MAX_RESEARCH_TURNS = 15;
+const MAX_RESEARCH_TURNS = 8; // Reduced since we now have separate phases
 
 if (!process.env.ANTHROPIC_API_KEY) {
   throw new Error('ANTHROPIC_API_KEY environment variable is not set');
@@ -107,7 +109,10 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Handle agentic SEO research with tool use
+ * Handle SEO research with three-phase approach:
+ * Phase 1: Research (agentic loop with tools)
+ * Phase 2: Summarize (condense findings)
+ * Phase 3: Generate (create final topics)
  */
 async function handleAgenticResearch(
   input: string,
@@ -140,62 +145,58 @@ async function handleAgenticResearch(
     } : undefined,
   };
 
-  const systemPrompt = generateTopicResearchSystemPrompt();
-  const userPrompt = generateTopicResearchUserPrompt(researchConfig);
-
-  // Initialize conversation
-  const messages: Anthropic.MessageParam[] = [
-    { role: 'user', content: userPrompt }
-  ];
-
-  let turn = 0;
-  let finalResponse: any = null;
-
   console.log(`\n${'═'.repeat(80)}`);
-  console.log('TOPIC RESEARCH AGENTIC LOOP');
+  console.log('SEO TOPIC RESEARCH - THREE PHASE APPROACH');
   console.log(`${'═'.repeat(80)}`);
   console.log(`Topics requested: ${numberOfTopics}`);
   console.log(`Industry: ${researchConfig.industryNiche || 'Not specified'}`);
   console.log(`Seed keywords: ${researchConfig.seedKeywords?.join(', ') || 'None'}`);
 
-  while (turn < MAX_RESEARCH_TURNS) {
+  // =========================================================================
+  // PHASE 1: RESEARCH - Gather data with tools
+  // =========================================================================
+  console.log(`\n${'─'.repeat(40)}`);
+  console.log('PHASE 1: RESEARCH');
+  console.log(`${'─'.repeat(40)}`);
+
+  const researchSystemPrompt = generateResearchPhaseSystemPrompt();
+  const researchUserPrompt = generateResearchPhaseUserPrompt(researchConfig);
+
+  const messages: Anthropic.MessageParam[] = [
+    { role: 'user', content: researchUserPrompt }
+  ];
+
+  // Collect all tool results for Phase 2
+  const allToolResults: string[] = [];
+  let turn = 0;
+  let researchComplete = false;
+
+  while (turn < MAX_RESEARCH_TURNS && !researchComplete) {
     turn++;
-    console.log(`\n--- Turn ${turn}/${MAX_RESEARCH_TURNS} ---`);
+    console.log(`\n--- Research Turn ${turn}/${MAX_RESEARCH_TURNS} ---`);
 
     try {
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 8000,
-        system: systemPrompt,
+        max_tokens: 4000,
+        system: researchSystemPrompt,
         tools: topicResearchTools,
         messages,
       });
 
       console.log(`Stop reason: ${response.stop_reason}`);
 
-      // Check if Claude wants to use tools
       if (response.stop_reason === 'tool_use') {
         const toolUseBlocks = response.content.filter(
           (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use'
         );
 
-        // Also capture any text thinking
-        const textBlocks = response.content.filter(
-          (block): block is Anthropic.TextBlock => block.type === 'text'
-        );
-        if (textBlocks.length > 0) {
-          console.log(`Claude's thinking: ${textBlocks[0].text.substring(0, 200)}...`);
-        }
-
-        // Add assistant's response to conversation
         messages.push({ role: 'assistant', content: response.content });
 
-        // Execute all tools and collect results
         const toolResults: Anthropic.ToolResultBlockParam[] = [];
 
         for (const toolUse of toolUseBlocks) {
-          console.log(`\n🔧 Tool: ${toolUse.name}`);
-          console.log(`   Input: ${JSON.stringify(toolUse.input).substring(0, 100)}...`);
+          console.log(`🔧 Tool: ${toolUse.name}`);
 
           try {
             const result = await executeTopicResearchTool(
@@ -205,6 +206,9 @@ async function handleAgenticResearch(
             );
 
             console.log(`   Result length: ${result.length} chars`);
+
+            // Store for Phase 2
+            allToolResults.push(`[${toolUse.name}]\n${result}`);
 
             toolResults.push({
               type: 'tool_result',
@@ -222,70 +226,127 @@ async function handleAgenticResearch(
           }
         }
 
-        // Add tool results to conversation
         messages.push({ role: 'user', content: toolResults });
 
       } else if (response.stop_reason === 'end_turn') {
-        // Claude is done - extract final response
-        console.log('\n✅ Research complete - extracting final response');
-
         const textBlock = response.content.find(
           (block): block is Anthropic.TextBlock => block.type === 'text'
         );
 
-        if (textBlock) {
-          try {
-            // Try to parse JSON from the response
-            let cleanJson = textBlock.text
-              .replace(/```json\n?/g, '')
-              .replace(/```\n?/g, '')
-              .trim();
-
-            // Try direct parse first
-            try {
-              finalResponse = JSON.parse(cleanJson);
-            } catch {
-              // If direct parse fails, try to extract JSON from the text
-              // Look for JSON object pattern - find first { and last }
-              const firstBrace = cleanJson.indexOf('{');
-              const lastBrace = cleanJson.lastIndexOf('}');
-
-              if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-                const extractedJson = cleanJson.substring(firstBrace, lastBrace + 1);
-                console.log('Attempting to parse extracted JSON...');
-                finalResponse = JSON.parse(extractedJson);
-              } else {
-                throw new Error('No valid JSON object found in response');
-              }
-            }
-
-            console.log(`Parsed ${finalResponse.topics?.length || 0} topics from research`);
-          } catch (parseError) {
-            console.error('Failed to parse final response as JSON:', parseError);
-            console.log('Raw response:', textBlock.text.substring(0, 500));
-
-            // Try to extract topics anyway
-            finalResponse = {
-              topics: [],
-              error: 'Failed to parse research results',
-              rawResponse: textBlock.text,
-            };
-          }
+        if (textBlock?.text.includes('RESEARCH_COMPLETE')) {
+          console.log('✅ Phase 1 complete - research gathered');
+          researchComplete = true;
+        } else {
+          // Claude finished without the marker, consider it done
+          console.log('✅ Phase 1 complete (end_turn)');
+          researchComplete = true;
         }
-        break;
-      } else {
-        console.log(`Unexpected stop reason: ${response.stop_reason}`);
-        break;
       }
     } catch (apiError) {
       console.error(`API error on turn ${turn}:`, apiError);
-      break;
+      throw apiError;
     }
   }
 
-  if (turn >= MAX_RESEARCH_TURNS) {
-    console.log('⚠️ Max turns reached');
+  if (allToolResults.length === 0) {
+    return NextResponse.json(
+      { message: 'Research phase did not gather any data' },
+      { status: 500 }
+    );
   }
+
+  console.log(`\nPhase 1 collected ${allToolResults.length} tool results`);
+
+  // =========================================================================
+  // PHASE 2: SUMMARIZE - Condense research into key insights
+  // =========================================================================
+  console.log(`\n${'─'.repeat(40)}`);
+  console.log('PHASE 2: SUMMARIZE');
+  console.log(`${'─'.repeat(40)}`);
+
+  const rawResearch = allToolResults.join('\n\n---\n\n');
+  console.log(`Raw research size: ${rawResearch.length} chars`);
+
+  const summarizePrompt = generateSummarizePhasePrompt(rawResearch, researchConfig);
+
+  let researchSummary: string;
+  try {
+    const summarizeResponse = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: summarizePrompt }],
+    });
+
+    const summaryBlock = summarizeResponse.content.find(
+      (block): block is Anthropic.TextBlock => block.type === 'text'
+    );
+
+    if (!summaryBlock) {
+      throw new Error('No summary generated');
+    }
+
+    researchSummary = summaryBlock.text;
+    console.log(`✅ Phase 2 complete - summary: ${researchSummary.length} chars`);
+  } catch (summarizeError) {
+    console.error('Phase 2 error:', summarizeError);
+    throw summarizeError;
+  }
+
+  // =========================================================================
+  // PHASE 3: GENERATE - Create final topics from summary
+  // =========================================================================
+  console.log(`\n${'─'.repeat(40)}`);
+  console.log('PHASE 3: GENERATE');
+  console.log(`${'─'.repeat(40)}`);
+
+  const generatePrompt = generateTopicsPhasePrompt(researchSummary, researchConfig);
+
+  let finalResponse: any;
+  try {
+    const generateResponse = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 8000,
+      messages: [{ role: 'user', content: generatePrompt }],
+    });
+
+    const generateBlock = generateResponse.content.find(
+      (block): block is Anthropic.TextBlock => block.type === 'text'
+    );
+
+    if (!generateBlock) {
+      throw new Error('No topics generated');
+    }
+
+    // Parse the JSON response
+    let cleanJson = generateBlock.text
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+
+    try {
+      finalResponse = JSON.parse(cleanJson);
+    } catch {
+      // Try to extract JSON from surrounding text
+      const firstBrace = cleanJson.indexOf('{');
+      const lastBrace = cleanJson.lastIndexOf('}');
+
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const extractedJson = cleanJson.substring(firstBrace, lastBrace + 1);
+        finalResponse = JSON.parse(extractedJson);
+      } else {
+        throw new Error('No valid JSON in response');
+      }
+    }
+
+    console.log(`✅ Phase 3 complete - generated ${finalResponse.topics?.length || 0} topics`);
+  } catch (generateError) {
+    console.error('Phase 3 error:', generateError);
+    throw generateError;
+  }
+
+  console.log(`\n${'═'.repeat(80)}`);
+  console.log('ALL PHASES COMPLETE');
+  console.log(`${'═'.repeat(80)}`)
 
   // Transform research results to match expected topic format
   if (finalResponse?.topics) {

@@ -650,58 +650,6 @@ Be specific and provide evidence for why these are actual gaps.`;
   }
 }
 
-// Maximum characters per tool result to prevent context overflow
-const MAX_TOOL_RESULT_LENGTH = 15000;
-
-/**
- * Truncate a result object to fit within size limits
- */
-function truncateResult(result: any, maxLength: number): any {
-  const resultStr = JSON.stringify(result, null, 2);
-
-  if (resultStr.length <= maxLength) {
-    return result;
-  }
-
-  console.log(`[ToolExecutor] Truncating result from ${resultStr.length} to ~${maxLength} chars`);
-
-  // For arrays, reduce number of items
-  if (Array.isArray(result)) {
-    let truncated = [...result];
-    while (JSON.stringify(truncated).length > maxLength && truncated.length > 1) {
-      truncated = truncated.slice(0, Math.ceil(truncated.length / 2));
-    }
-    return truncated;
-  }
-
-  // For objects with array properties, truncate the arrays
-  if (typeof result === 'object' && result !== null) {
-    const truncated = { ...result };
-    for (const key of Object.keys(truncated)) {
-      if (Array.isArray(truncated[key]) && truncated[key].length > 5) {
-        truncated[key] = truncated[key].slice(0, 5);
-      }
-      // Truncate long string properties
-      if (typeof truncated[key] === 'string' && truncated[key].length > 2000) {
-        truncated[key] = truncated[key].substring(0, 2000) + '... [truncated]';
-      }
-    }
-
-    // If still too long, stringify and cut
-    const truncatedStr = JSON.stringify(truncated, null, 2);
-    if (truncatedStr.length > maxLength) {
-      return {
-        ...truncated,
-        _truncated: true,
-        _note: 'Result was truncated due to size limits'
-      };
-    }
-    return truncated;
-  }
-
-  return result;
-}
-
 /**
  * Main tool executor dispatcher
  */
@@ -743,9 +691,6 @@ export async function executeTopicResearchTool(
     default:
       throw new Error(`Unknown tool: ${toolName}`);
   }
-
-  // Truncate result if too large
-  result = truncateResult(result, MAX_TOOL_RESULT_LENGTH);
 
   const resultStr = JSON.stringify(result, null, 2);
   console.log(`[ToolExecutor] Result length: ${resultStr.length} chars`);
