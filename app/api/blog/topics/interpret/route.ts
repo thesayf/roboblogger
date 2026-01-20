@@ -199,21 +199,34 @@ async function handleAgenticResearch(
           console.log(`🔧 Tool: ${toolUse.name}`);
 
           try {
-            const result = await executeTopicResearchTool(
+            let result = await executeTopicResearchTool(
               toolUse.name,
               toolUse.input as Record<string, any>,
               userId
             );
+
+            // Truncate individual tool results to prevent context overflow
+            const MAX_TOOL_RESULT_CHARS = 25000;
+            if (result.length > MAX_TOOL_RESULT_CHARS) {
+              console.log(`   ⚠️ Truncating ${toolUse.name} result from ${result.length} to ${MAX_TOOL_RESULT_CHARS} chars`);
+              result = result.slice(0, MAX_TOOL_RESULT_CHARS) + '\n... [truncated]';
+            }
 
             console.log(`   Result length: ${result.length} chars`);
 
             // Store for Phase 2
             allToolResults.push(`[${toolUse.name}]\n${result}`);
 
+            // For Phase 1 context, use shorter version to keep context manageable
+            const MAX_PHASE1_RESULT_CHARS = 8000;
+            const phase1Result = result.length > MAX_PHASE1_RESULT_CHARS
+              ? result.slice(0, MAX_PHASE1_RESULT_CHARS) + '\n... [see full data in summary phase]'
+              : result;
+
             toolResults.push({
               type: 'tool_result',
               tool_use_id: toolUse.id,
-              content: result,
+              content: phase1Result,
             });
           } catch (toolError) {
             console.error(`   Tool error: ${toolError}`);
@@ -264,8 +277,15 @@ async function handleAgenticResearch(
   console.log('PHASE 2: SUMMARIZE');
   console.log(`${'─'.repeat(40)}`);
 
-  const rawResearch = allToolResults.join('\n\n---\n\n');
+  let rawResearch = allToolResults.join('\n\n---\n\n');
   console.log(`Raw research size: ${rawResearch.length} chars`);
+
+  // Truncate if too large (120k chars ≈ 30k tokens, leaves room for prompt)
+  const MAX_RESEARCH_CHARS = 120000;
+  if (rawResearch.length > MAX_RESEARCH_CHARS) {
+    console.log(`⚠️ Truncating research from ${rawResearch.length} to ${MAX_RESEARCH_CHARS} chars`);
+    rawResearch = rawResearch.slice(0, MAX_RESEARCH_CHARS) + '\n\n[... additional research data truncated for processing ...]';
+  }
 
   const summarizePrompt = generateSummarizePhasePrompt(rawResearch, researchConfig);
 
