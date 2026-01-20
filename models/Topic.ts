@@ -139,7 +139,7 @@ const TopicSchema = new Schema<ITopic>({
   audience: {
     type: String,
     trim: true,
-    maxlength: 200
+    maxlength: 1000
   },
   tone: {
     type: String,
