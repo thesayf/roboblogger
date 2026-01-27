@@ -1340,7 +1340,7 @@ export default function BlogAdminClient() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: '#FAFAF8' }}>
       <div className="max-w-[1080px] mx-auto px-8 py-8 pb-16">
         {/* Main Content */}
         <Tabs
