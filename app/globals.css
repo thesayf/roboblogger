@@ -269,7 +269,7 @@ html::-webkit-scrollbar {
   border-radius: 0;
   padding: 0;
   height: auto;
-  gap: 0;
+  gap: 32px;
 }
 
 .admin-content [role="tab"] {
@@ -278,7 +278,7 @@ html::-webkit-scrollbar {
   border-bottom: 2px solid transparent;
   border-radius: 0;
   color: #888888;
-  padding: 10px 20px;
+  padding: 10px 0;
   margin-bottom: -1px;
   font-weight: 500;
   box-shadow: none;
@@ -373,4 +373,36 @@ html::-webkit-scrollbar {
 
 .admin-content::-webkit-scrollbar-thumb:hover {
   background: #C8C6C0;
+}
+
+/* Editorial posts table */
+.admin-content .posts-table-header {
+  display: grid;
+  grid-template-columns: 1fr 110px 140px 110px 48px;
+  padding: 12px 20px;
+  gap: 16px;
+  align-items: center;
+}
+
+.admin-content .posts-table-header span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #888888;
+  font-weight: 500;
+}
+
+.admin-content .posts-table-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 140px 110px 48px;
+  padding: 16px 20px;
+  gap: 16px;
+  align-items: center;
+  border-top: 1px solid #F0EEE8;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.admin-content .posts-table-row:hover {
+  background-color: #FAFAF8;
 }
