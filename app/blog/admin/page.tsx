@@ -3,7 +3,7 @@ import BlogAdminClient from "./BlogAdminClient";
 import AdminPasswordGate from "@/components/auth/AdminPasswordGate";
 
 export const metadata: Metadata = {
-  title: "Dashboard - RoboBlogger",
+  title: "Dashboard - Vibeblogger",
   description: "AI-powered blog content management dashboard",
 };
 

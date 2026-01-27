@@ -122,21 +122,21 @@ export default function ApiKeysPage() {
       <div className="mb-8">
         <Link
           href="/blog/admin"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
+          className="inline-flex items-center gap-2 text-[#666666] hover:text-[#111111] mb-4 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
           Back to Dashboard
         </Link>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">API Keys</h1>
-            <p className="text-slate-400 mt-1">
+            <h1 className="text-2xl font-bold text-[#111111]">API Keys</h1>
+            <p className="text-[#666666] mt-1">
               Manage API keys to access your blog content from external applications
             </p>
           </div>
           <button
             onClick={() => setShowNewKeyForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-[#111111] hover:bg-[#333333] text-white rounded-full transition-colors"
           >
             <Plus className="w-4 h-4" />
             Generate Key
@@ -146,10 +146,10 @@ export default function ApiKeysPage() {
 
       {/* Error message */}
       {error && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400" />
-          <p className="text-red-400">{error}</p>
-          <button onClick={() => setError('')} className="ml-auto text-red-400 hover:text-red-300">
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <p className="text-red-600">{error}</p>
+          <button onClick={() => setError('')} className="ml-auto text-red-600 hover:text-red-700">
             &times;
           </button>
         </div>
@@ -157,35 +157,35 @@ export default function ApiKeysPage() {
 
       {/* Newly created key banner */}
       {newlyCreatedKey && (
-        <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
           <div className="flex items-start gap-3">
-            <Check className="w-5 h-5 text-emerald-400 mt-0.5" />
+            <Check className="w-5 h-5 text-emerald-600 mt-0.5" />
             <div className="flex-1">
-              <p className="text-emerald-400 font-medium mb-2">
+              <p className="text-emerald-600 font-medium mb-2">
                 API Key Created Successfully!
               </p>
-              <p className="text-slate-400 text-sm mb-3">
+              <p className="text-[#666666] text-sm mb-3">
                 Copy this key now. For security reasons, it won&apos;t be shown again.
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 px-3 py-2 bg-slate-800 rounded-lg text-sm text-slate-200 font-mono overflow-x-auto">
+                <code className="flex-1 px-3 py-2 bg-[#111111] rounded-lg text-sm text-slate-200 font-mono overflow-x-auto">
                   {newlyCreatedKey}
                 </code>
                 <button
                   onClick={() => copyToClipboard(newlyCreatedKey)}
-                  className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                  className="px-3 py-2 bg-[#F5F4F0] hover:bg-[#E0DED8] rounded-lg transition-colors"
                 >
                   {copied ? (
-                    <Check className="w-4 h-4 text-emerald-400" />
+                    <Check className="w-4 h-4 text-emerald-600" />
                   ) : (
-                    <Copy className="w-4 h-4 text-slate-300" />
+                    <Copy className="w-4 h-4 text-[#444444]" />
                   )}
                 </button>
               </div>
             </div>
             <button
               onClick={() => setNewlyCreatedKey(null)}
-              className="text-slate-400 hover:text-slate-300"
+              className="text-[#666666] hover:text-[#444444]"
             >
               &times;
             </button>
@@ -195,10 +195,10 @@ export default function ApiKeysPage() {
 
       {/* New key form */}
       {showNewKeyForm && (
-        <div className="mb-6 p-4 bg-slate-800/50 border border-white/10 rounded-lg">
+        <div className="mb-6 p-4 bg-white border border-[#E0DED8] rounded-lg">
           <form onSubmit={createKey} className="flex items-end gap-4">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-[#444444] mb-2">
                 Key Name
               </label>
               <input
@@ -206,21 +206,21 @@ export default function ApiKeysPage() {
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
                 placeholder="e.g., Production, Development, My Website"
-                className="w-full px-3 py-2 bg-slate-700/50 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-white border border-[#E0DED8] rounded-lg text-[#111111] placeholder-[#888888] focus:ring-2 focus:ring-[#111111] focus:border-transparent"
                 disabled={isCreating}
               />
             </div>
             <button
               type="submit"
               disabled={isCreating || !newKeyName.trim()}
-              className="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              className="px-4 py-2 bg-[#111111] hover:bg-[#333333] disabled:bg-[#E0DED8] disabled:cursor-not-allowed text-white rounded-full transition-colors"
             >
               {isCreating ? 'Creating...' : 'Create Key'}
             </button>
             <button
               type="button"
               onClick={() => setShowNewKeyForm(false)}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+              className="px-4 py-2 bg-[#F5F4F0] hover:bg-[#E0DED8] text-[#111111] rounded-full transition-colors"
             >
               Cancel
             </button>
@@ -231,18 +231,18 @@ export default function ApiKeysPage() {
       {/* API Keys list */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#111111]"></div>
         </div>
       ) : keys.length === 0 ? (
-        <div className="text-center py-12 bg-slate-800/30 border border-white/10 rounded-lg">
-          <Key className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No API Keys</h3>
-          <p className="text-slate-400 mb-4">
+        <div className="text-center py-12 bg-white border border-[#E0DED8] rounded-lg">
+          <Key className="w-12 h-12 text-[#888888] mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-[#111111] mb-2">No API Keys</h3>
+          <p className="text-[#666666] mb-4">
             Generate an API key to access your blog content from external applications.
           </p>
           <button
             onClick={() => setShowNewKeyForm(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#111111] hover:bg-[#333333] text-white rounded-full transition-colors"
           >
             <Plus className="w-4 h-4" />
             Generate Your First Key
@@ -253,22 +253,22 @@ export default function ApiKeysPage() {
           {keys.map((key) => (
             <div
               key={key._id}
-              className="p-4 bg-slate-800/30 border border-white/10 rounded-lg"
+              className="p-4 bg-white border border-[#E0DED8] rounded-lg"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center">
-                    <Key className="w-5 h-5 text-violet-400" />
+                  <div className="w-10 h-10 rounded-lg bg-[#F5F4F0] flex items-center justify-center">
+                    <Key className="w-5 h-5 text-[#111111]" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-white">{key.name}</h3>
-                    <code className="text-sm text-slate-400 font-mono">{key.keyPrefix}</code>
+                    <h3 className="font-medium text-[#111111]">{key.name}</h3>
+                    <code className="text-sm text-[#666666] font-mono">{key.keyPrefix}</code>
                   </div>
                 </div>
 
                 {deletingKeyId === key._id ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-400">Delete this key?</span>
+                    <span className="text-sm text-[#666666]">Delete this key?</span>
                     <button
                       onClick={() => deleteKey(key._id)}
                       className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-sm rounded transition-colors"
@@ -277,7 +277,7 @@ export default function ApiKeysPage() {
                     </button>
                     <button
                       onClick={() => setDeletingKeyId(null)}
-                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded transition-colors"
+                      className="px-3 py-1 bg-[#F5F4F0] hover:bg-[#E0DED8] text-[#111111] text-sm rounded transition-colors"
                     >
                       Cancel
                     </button>
@@ -285,14 +285,14 @@ export default function ApiKeysPage() {
                 ) : (
                   <button
                     onClick={() => setDeletingKeyId(key._id)}
-                    className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                    className="p-2 text-[#888888] hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
               </div>
 
-              <div className="mt-4 flex items-center gap-6 text-sm text-slate-400">
+              <div className="mt-4 flex items-center gap-6 text-sm text-[#666666]">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
                   Created {formatDate(key.createdAt)}
@@ -311,17 +311,17 @@ export default function ApiKeysPage() {
       )}
 
       {/* Usage documentation */}
-      <div className="mt-8 p-6 bg-slate-800/30 border border-white/10 rounded-lg">
+      <div className="mt-8 p-6 bg-white border border-[#E0DED8] rounded-lg">
         <div className="flex items-center gap-3 mb-4">
-          <Code className="w-5 h-5 text-violet-400" />
-          <h3 className="font-medium text-white">API Usage</h3>
+          <Code className="w-5 h-5 text-[#111111]" />
+          <h3 className="font-medium text-[#111111]">API Usage</h3>
         </div>
 
-        <p className="text-slate-400 text-sm mb-4">
+        <p className="text-[#666666] text-sm mb-4">
           Use your API key to fetch blog posts from your application:
         </p>
 
-        <div className="bg-slate-900 rounded-lg p-4 overflow-x-auto">
+        <div className="bg-[#111111] rounded-lg p-4 overflow-x-auto">
           <pre className="text-sm text-slate-300">
             <code>{`// Fetch all published posts
 const response = await fetch('https://roboblogger.vercel.app/api/v1/posts', {
@@ -341,12 +341,12 @@ const { post } = await response.json();`}</code>
           </pre>
         </div>
 
-        <div className="mt-4 text-sm text-slate-400">
-          <p><strong className="text-slate-300">Rate Limit:</strong> 1,000 requests per hour</p>
-          <p className="mt-1"><strong className="text-slate-300">Available Endpoints:</strong></p>
+        <div className="mt-4 text-sm text-[#666666]">
+          <p><strong className="text-[#444444]">Rate Limit:</strong> 1,000 requests per hour</p>
+          <p className="mt-1"><strong className="text-[#444444]">Available Endpoints:</strong></p>
           <ul className="mt-2 space-y-1 ml-4">
-            <li><code className="text-violet-400">GET /api/v1/posts</code> - List published posts</li>
-            <li><code className="text-violet-400">GET /api/v1/posts/:slug</code> - Get post by slug</li>
+            <li><code className="text-[#111111]">GET /api/v1/posts</code> - List published posts</li>
+            <li><code className="text-[#111111]">GET /api/v1/posts/:slug</code> - Get post by slug</li>
           </ul>
         </div>
       </div>
