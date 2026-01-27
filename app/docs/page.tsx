@@ -3,13 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import {
-  Book,
-  Key,
-  Code,
-  Layers,
   Copy,
   Check,
-  ChevronRight,
   FileText,
   Image,
   MessageSquare,
@@ -26,7 +21,6 @@ import {
   GitBranch,
   ListOrdered,
   Terminal,
-  Sparkles
 } from 'lucide-react';
 
 export default function DocsPage() {
@@ -38,91 +32,92 @@ export default function DocsPage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const CodeBlock = ({ code, language = 'javascript', id }: { code: string; language?: string; id: string }) => (
+  const CodeBlock = ({ code, id }: { code: string; id: string }) => (
     <div className="relative group">
-      <pre className="bg-slate-900 rounded-lg p-4 overflow-x-auto text-sm">
-        <code className="text-slate-300">{code}</code>
+      <pre className="bg-[#111111] rounded-lg p-4 overflow-x-auto text-sm">
+        <code className="text-[#CCCCCC]">{code}</code>
       </pre>
       <button
         onClick={() => copyCode(code, id)}
-        className="absolute top-2 right-2 p-2 bg-slate-800 hover:bg-slate-700 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-2 right-2 p-2 bg-[#222222] hover:bg-[#333333] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
       >
         {copiedCode === id ? (
           <Check className="w-4 h-4 text-emerald-400" />
         ) : (
-          <Copy className="w-4 h-4 text-slate-400" />
+          <Copy className="w-4 h-4 text-[#888888]" />
         )}
       </button>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-bold text-white">RoboBlogger</span>
-            <span className="text-slate-500 mx-2">/</span>
-            <span className="text-slate-300">Documentation</span>
+    <div className="min-h-screen bg-[#FAFAF8] text-[#111111]">
+      {/* Nav */}
+      <nav className="max-w-[1100px] mx-auto px-8 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="font-lora text-2xl font-bold tracking-tight">
+            Vibeblogger
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/blog/admin" className="text-sm text-slate-400 hover:text-white transition-colors">
-              Dashboard
-            </Link>
-            <Link href="/blog/admin/api-keys" className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors text-sm">
-              <Key className="w-4 h-4" />
-              Get API Key
-            </Link>
-          </div>
+          <span className="text-[#CCCCCC]">/</span>
+          <span className="text-[#666666] text-sm">Documentation</span>
         </div>
-      </header>
+        <div className="flex items-center gap-8">
+          <Link href="/pricing" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            Pricing
+          </Link>
+          <Link href="/blog/admin" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            Dashboard
+          </Link>
+          <Link href="/blog/admin/api-keys" className="text-sm font-semibold text-white bg-[#111111] px-6 py-2.5 rounded-full hover:bg-[#333333] transition-colors hidden sm:block">
+            Get API Key
+          </Link>
+        </div>
+      </nav>
 
-      <div className="max-w-6xl mx-auto px-6 py-12">
+      <div className="mx-8 border-b border-[#E0DED8]" />
+
+      <div className="max-w-[800px] mx-auto px-8 py-16">
         {/* Hero */}
         <div className="mb-16">
-          <h1 className="text-4xl font-bold text-white mb-4">API Documentation</h1>
-          <p className="text-xl text-slate-400 max-w-2xl">
-            Integrate RoboBlogger into your website. Fetch your blog content via API and render it with your own components.
+          <p className="text-sm font-medium text-[#888888] uppercase tracking-[0.15em] mb-6">
+            API Documentation
+          </p>
+          <h1 className="font-lora text-[36px] sm:text-[48px] font-normal leading-[1.15] tracking-[-0.02em] mb-5">
+            Integrate Vibeblogger<br />into your app
+          </h1>
+          <p className="text-lg text-[#666666] leading-[1.7] max-w-[520px]">
+            Fetch your blog content via API and render it with your own components. Works with Next.js, Remix, Astro, or any frontend.
           </p>
         </div>
 
         {/* Quick Start */}
         <section className="mb-16" id="quick-start">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-              <ChevronRight className="w-5 h-5 text-emerald-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-white">Quick Start</h2>
-          </div>
+          <h2 className="font-lora text-[28px] font-normal mb-8">Quick Start</h2>
 
           <div className="space-y-6">
-            <div className="p-6 bg-slate-800/30 border border-white/10 rounded-xl">
-              <h3 className="text-lg font-semibold text-white mb-4">1. Get your API key</h3>
-              <p className="text-slate-400 mb-4">
-                Go to your <Link href="/blog/admin/api-keys" className="text-violet-400 hover:underline">API Keys dashboard</Link> and generate a new key.
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h3 className="font-lora text-lg font-normal mb-3">1. Get your API key</h3>
+              <p className="text-sm text-[#666666] leading-relaxed">
+                Go to your <Link href="/blog/admin/api-keys" className="text-[#111111] underline underline-offset-2 hover:text-[#444444]">API Keys dashboard</Link> and generate a new key.
               </p>
             </div>
 
-            <div className="p-6 bg-slate-800/30 border border-white/10 rounded-xl">
-              <h3 className="text-lg font-semibold text-white mb-4">2. Store it in your environment</h3>
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h3 className="font-lora text-lg font-normal mb-3">2. Store it in your environment</h3>
               <CodeBlock
                 id="env"
                 code={`# .env.local
-ROBOBLOGGER_API_KEY=rb_live_your_key_here`}
+VIBEBLOGGER_API_KEY=vb_live_your_key_here`}
               />
             </div>
 
-            <div className="p-6 bg-slate-800/30 border border-white/10 rounded-xl">
-              <h3 className="text-lg font-semibold text-white mb-4">3. Fetch your posts</h3>
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h3 className="font-lora text-lg font-normal mb-3">3. Fetch your posts</h3>
               <CodeBlock
                 id="fetch"
-                code={`const response = await fetch('https://roboblogger.vercel.app/api/v1/posts', {
+                code={`const response = await fetch('https://vibeblogger.io/api/v1/posts', {
   headers: {
-    'Authorization': \`Bearer \${process.env.ROBOBLOGGER_API_KEY}\`
+    'Authorization': \`Bearer \${process.env.VIBEBLOGGER_API_KEY}\`
   }
 });
 
@@ -132,68 +127,65 @@ const { posts } = await response.json();`}
           </div>
         </section>
 
+        <div className="border-b border-[#E0DED8] mb-16" />
+
         {/* API Reference */}
         <section className="mb-16" id="api-reference">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-              <Code className="w-5 h-5 text-blue-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-white">API Reference</h2>
-          </div>
+          <h2 className="font-lora text-[28px] font-normal mb-8">API Reference</h2>
 
           <div className="space-y-6">
             {/* Authentication */}
-            <div className="p-6 bg-slate-800/30 border border-white/10 rounded-xl">
-              <h3 className="text-lg font-semibold text-white mb-4">Authentication</h3>
-              <p className="text-slate-400 mb-4">
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h3 className="font-lora text-lg font-normal mb-3">Authentication</h3>
+              <p className="text-sm text-[#666666] leading-relaxed mb-4">
                 All API requests require authentication via API key. Include it in the request headers:
               </p>
               <CodeBlock
                 id="auth"
                 code={`// Option 1: Authorization header (recommended)
-Authorization: Bearer rb_live_your_key_here
+Authorization: Bearer vb_live_your_key_here
 
 // Option 2: X-API-Key header
-X-API-Key: rb_live_your_key_here`}
+X-API-Key: vb_live_your_key_here`}
               />
             </div>
 
             {/* List Posts */}
-            <div className="p-6 bg-slate-800/30 border border-white/10 rounded-xl">
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
               <div className="flex items-center gap-3 mb-4">
-                <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-mono rounded">GET</span>
-                <code className="text-white font-mono">/api/v1/posts</code>
+                <span className="px-2 py-1 bg-[#E8F5E8] text-[#1B7A1B] text-xs font-mono rounded">GET</span>
+                <code className="text-[#111111] font-mono text-sm">/api/v1/posts</code>
               </div>
-              <p className="text-slate-400 mb-4">List all published blog posts.</p>
+              <p className="text-sm text-[#666666] mb-4">List all published blog posts.</p>
 
-              <h4 className="text-sm font-semibold text-slate-300 mb-2">Query Parameters</h4>
-              <div className="overflow-x-auto mb-4">
+              <h4 className="text-sm font-medium text-[#111111] mb-2">Query Parameters</h4>
+              <div className="overflow-x-auto mb-6">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/10">
-                      <th className="text-left py-2 text-slate-400 font-medium">Parameter</th>
-                      <th className="text-left py-2 text-slate-400 font-medium">Type</th>
-                      <th className="text-left py-2 text-slate-400 font-medium">Description</th>
+                    <tr className="border-b border-[#E0DED8]">
+                      <th className="text-left py-2 text-[#888888] font-medium">Parameter</th>
+                      <th className="text-left py-2 text-[#888888] font-medium">Type</th>
+                      <th className="text-left py-2 text-[#888888] font-medium">Description</th>
                     </tr>
                   </thead>
-                  <tbody className="text-slate-300">
-                    <tr className="border-b border-white/5">
-                      <td className="py-2 font-mono text-violet-400">page</td>
+                  <tbody className="text-[#444444]">
+                    <tr className="border-b border-[#F0EEE8]">
+                      <td className="py-2 font-mono text-[#111111]">page</td>
                       <td className="py-2">number</td>
                       <td className="py-2">Page number (default: 1)</td>
                     </tr>
-                    <tr className="border-b border-white/5">
-                      <td className="py-2 font-mono text-violet-400">limit</td>
+                    <tr className="border-b border-[#F0EEE8]">
+                      <td className="py-2 font-mono text-[#111111]">limit</td>
                       <td className="py-2">number</td>
                       <td className="py-2">Posts per page (default: 10, max: 100)</td>
                     </tr>
-                    <tr className="border-b border-white/5">
-                      <td className="py-2 font-mono text-violet-400">category</td>
+                    <tr className="border-b border-[#F0EEE8]">
+                      <td className="py-2 font-mono text-[#111111]">category</td>
                       <td className="py-2">string</td>
                       <td className="py-2">Filter by category</td>
                     </tr>
                     <tr>
-                      <td className="py-2 font-mono text-violet-400">tag</td>
+                      <td className="py-2 font-mono text-[#111111]">tag</td>
                       <td className="py-2">string</td>
                       <td className="py-2">Filter by tag</td>
                     </tr>
@@ -201,7 +193,7 @@ X-API-Key: rb_live_your_key_here`}
                 </table>
               </div>
 
-              <h4 className="text-sm font-semibold text-slate-300 mb-2">Response</h4>
+              <h4 className="text-sm font-medium text-[#111111] mb-2">Response</h4>
               <CodeBlock
                 id="list-response"
                 code={`{
@@ -238,14 +230,14 @@ X-API-Key: rb_live_your_key_here`}
             </div>
 
             {/* Get Single Post */}
-            <div className="p-6 bg-slate-800/30 border border-white/10 rounded-xl">
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
               <div className="flex items-center gap-3 mb-4">
-                <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-mono rounded">GET</span>
-                <code className="text-white font-mono">/api/v1/posts/:slug</code>
+                <span className="px-2 py-1 bg-[#E8F5E8] text-[#1B7A1B] text-xs font-mono rounded">GET</span>
+                <code className="text-[#111111] font-mono text-sm">/api/v1/posts/:slug</code>
               </div>
-              <p className="text-slate-400 mb-4">Get a single blog post by its slug.</p>
+              <p className="text-sm text-[#666666] mb-4">Get a single blog post by its slug.</p>
 
-              <h4 className="text-sm font-semibold text-slate-300 mb-2">Response</h4>
+              <h4 className="text-sm font-medium text-[#111111] mb-2">Response</h4>
               <CodeBlock
                 id="single-response"
                 code={`{
@@ -263,12 +255,12 @@ X-API-Key: rb_live_your_key_here`}
             </div>
 
             {/* Rate Limits */}
-            <div className="p-6 bg-slate-800/30 border border-white/10 rounded-xl">
-              <h3 className="text-lg font-semibold text-white mb-4">Rate Limits</h3>
-              <p className="text-slate-400 mb-4">
-                API requests are rate limited to <strong className="text-white">1,000 requests per hour</strong> per API key.
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h3 className="font-lora text-lg font-normal mb-3">Rate Limits</h3>
+              <p className="text-sm text-[#666666] mb-4">
+                API requests are rate limited to <strong className="text-[#111111]">1,000 requests per hour</strong> per API key.
               </p>
-              <p className="text-slate-400 mb-2">Rate limit headers are included in every response:</p>
+              <p className="text-sm text-[#666666] mb-3">Rate limit headers are included in every response:</p>
               <CodeBlock
                 id="rate-headers"
                 code={`X-RateLimit-Limit: 1000
@@ -279,22 +271,18 @@ X-RateLimit-Reset: 1705123456789`}
           </div>
         </section>
 
+        <div className="border-b border-[#E0DED8] mb-16" />
+
         {/* Component Types */}
         <section className="mb-16" id="components">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-              <Layers className="w-5 h-5 text-purple-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-white">Component Types</h2>
-          </div>
-
-          <p className="text-slate-400 mb-6">
-            Blog posts are made up of components. Each component has a <code className="text-violet-400">type</code> and type-specific fields.
+          <h2 className="font-lora text-[28px] font-normal mb-4">Component Types</h2>
+          <p className="text-sm text-[#666666] leading-relaxed mb-8">
+            Blog posts are made up of components. Each component has a <code className="text-[#111111] bg-[#F0EEE8] px-1.5 py-0.5 rounded text-xs">type</code> and type-specific fields.
           </p>
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             {[
-              { type: 'rich_text', icon: FileText, fields: 'content (Markdown string)', desc: 'Rich text content - requires markdown parsing' },
+              { type: 'rich_text', icon: FileText, fields: 'content (Markdown string)', desc: 'Rich text content — requires markdown parsing' },
               { type: 'image', icon: Image, fields: 'url, alt, caption, width, height', desc: 'Image with optional caption' },
               { type: 'callout', icon: MessageSquare, fields: 'variant, title, content', desc: 'Highlighted box (info/success/warning/error)' },
               { type: 'quote', icon: Quote, fields: 'content, author, citation', desc: 'Blockquote with attribution' },
@@ -311,38 +299,34 @@ X-RateLimit-Reset: 1705123456789`}
               { type: 'step_by_step', icon: ListOrdered, fields: 'data.steps', desc: 'Numbered steps guide' },
               { type: 'code_block', icon: Terminal, fields: 'content, data.language', desc: 'Syntax-highlighted code' },
             ].map(({ type, icon: Icon, fields, desc }) => (
-              <div key={type} className="p-4 bg-slate-800/30 border border-white/10 rounded-lg">
+              <div key={type} className="bg-white border border-[#E0DED8] rounded-lg p-4">
                 <div className="flex items-center gap-3 mb-2">
-                  <Icon className="w-5 h-5 text-violet-400" />
-                  <code className="text-white font-mono text-sm">{type}</code>
+                  <Icon className="w-4 h-4 text-[#888888]" />
+                  <code className="text-[#111111] font-mono text-sm">{type}</code>
                 </div>
-                <p className="text-slate-400 text-sm mb-2">{desc}</p>
-                <p className="text-xs text-slate-500">Fields: {fields}</p>
+                <p className="text-sm text-[#666666] mb-1">{desc}</p>
+                <p className="text-xs text-[#AAAAAA]">Fields: {fields}</p>
               </div>
             ))}
           </div>
         </section>
 
+        <div className="border-b border-[#E0DED8] mb-16" />
+
         {/* React Components */}
         <section className="mb-16" id="react-components">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-              <Code className="w-5 h-5 text-cyan-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-white">React Component Library</h2>
-          </div>
-
-          <p className="text-slate-400 mb-6">
+          <h2 className="font-lora text-[28px] font-normal mb-4">React Component Library</h2>
+          <p className="text-sm text-[#666666] leading-relaxed mb-6">
             Copy this component renderer into your project to render all blog component types:
           </p>
 
-          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg mb-6">
-            <p className="text-amber-300 text-sm">
-              <strong>Important:</strong> The <code className="text-amber-200">rich_text</code> component contains Markdown, not HTML.
-              You need to parse it using a library like <code className="text-amber-200">react-markdown</code> or <code className="text-amber-200">markdown-it</code>.
+          <div className="bg-[#FFF8E8] border border-[#E8DCC0] rounded-lg p-4 mb-6">
+            <p className="text-sm text-[#8B6914]">
+              <strong>Important:</strong> The <code className="bg-[#F0E8D0] px-1 rounded text-xs">rich_text</code> component contains Markdown, not HTML.
+              You need to parse it using a library like <code className="bg-[#F0E8D0] px-1 rounded text-xs">react-markdown</code>.
             </p>
-            <p className="text-amber-300/80 text-sm mt-2">
-              Install: <code className="text-amber-200">npm install react-markdown</code>
+            <p className="text-sm text-[#8B6914] mt-2 opacity-80">
+              Install: <code className="bg-[#F0E8D0] px-1 rounded text-xs">npm install react-markdown</code>
             </p>
           </div>
 
@@ -447,7 +431,6 @@ export function BlogComponentRenderer({ component }: { component: BlogComponent 
       );
 
     case 'video':
-      // Extract YouTube/Vimeo embed URL
       const getEmbedUrl = (url: string) => {
         if (url.includes('youtube.com') || url.includes('youtu.be')) {
           const videoId = url.match(/(?:youtu\\.be\\/|youtube\\.com\\/(?:embed\\/|v\\/|watch\\?v=))([^&?]+)/)?.[1];
@@ -514,7 +497,7 @@ export function BlogComponentRenderer({ component }: { component: BlogComponent 
       return (
         <div className="my-8 grid md:grid-cols-2 gap-4">
           <div className="p-4 bg-green-50 rounded-lg">
-            <h4 className="font-semibold text-green-800 mb-2">✓ Pros</h4>
+            <h4 className="font-semibold text-green-800 mb-2">Pros</h4>
             <ul className="space-y-1">
               {component.data?.pros?.map((pro: string, i: number) => (
                 <li key={i} className="text-green-700">{pro}</li>
@@ -522,7 +505,7 @@ export function BlogComponentRenderer({ component }: { component: BlogComponent 
             </ul>
           </div>
           <div className="p-4 bg-red-50 rounded-lg">
-            <h4 className="font-semibold text-red-800 mb-2">✗ Cons</h4>
+            <h4 className="font-semibold text-red-800 mb-2">Cons</h4>
             <ul className="space-y-1">
               {component.data?.cons?.map((con: string, i: number) => (
                 <li key={i} className="text-red-700">{con}</li>
@@ -564,7 +547,6 @@ export function BlogComponentRenderer({ component }: { component: BlogComponent 
       );
 
     default:
-      // For chart types and others, you might want to use a charting library
       console.warn(\`Unknown component type: \${component.type}\`);
       return null;
   }
@@ -585,32 +567,28 @@ export function BlogContent({ components }: { components: BlogComponent[] }) {
           />
         </section>
 
+        <div className="border-b border-[#E0DED8] mb-16" />
+
         {/* Full Example */}
         <section className="mb-16" id="full-example">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
-              <Book className="w-5 h-5 text-orange-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-white">Full Integration Example</h2>
-          </div>
-
-          <p className="text-slate-400 mb-6">
+          <h2 className="font-lora text-[28px] font-normal mb-4">Full Integration Example</h2>
+          <p className="text-sm text-[#666666] leading-relaxed mb-6">
             Here's a complete Next.js App Router integration:
           </p>
 
           <div className="space-y-6">
-            <div className="p-4 bg-slate-800/50 border border-white/10 rounded-lg">
-              <h4 className="text-white font-mono text-sm mb-3">lib/blog.ts</h4>
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h4 className="font-mono text-sm text-[#888888] mb-3">lib/blog.ts</h4>
               <CodeBlock
                 id="full-lib"
-                code={`const API_URL = 'https://roboblogger.vercel.app/api/v1';
+                code={`const API_URL = 'https://vibeblogger.io/api/v1';
 
 export async function getBlogPosts(page = 1, limit = 10) {
   const res = await fetch(
     \`\${API_URL}/posts?page=\${page}&limit=\${limit}\`,
     {
       headers: {
-        'Authorization': \`Bearer \${process.env.ROBOBLOGGER_API_KEY}\`
+        'Authorization': \`Bearer \${process.env.VIBEBLOGGER_API_KEY}\`
       },
       next: { revalidate: 60 } // Revalidate every 60 seconds
     }
@@ -628,7 +606,7 @@ export async function getBlogPost(slug: string) {
     \`\${API_URL}/posts/\${slug}\`,
     {
       headers: {
-        'Authorization': \`Bearer \${process.env.ROBOBLOGGER_API_KEY}\`
+        'Authorization': \`Bearer \${process.env.VIBEBLOGGER_API_KEY}\`
       },
       next: { revalidate: 60 }
     }
@@ -644,8 +622,8 @@ export async function getBlogPost(slug: string) {
               />
             </div>
 
-            <div className="p-4 bg-slate-800/50 border border-white/10 rounded-lg">
-              <h4 className="text-white font-mono text-sm mb-3">app/blog/page.tsx</h4>
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h4 className="font-mono text-sm text-[#888888] mb-3">app/blog/page.tsx</h4>
               <CodeBlock
                 id="full-list"
                 code={`import Link from 'next/link';
@@ -690,7 +668,7 @@ export default async function BlogPage() {
           href={\`/blog?page=\${pagination.page + 1}\`}
           className="mt-8 inline-block text-blue-600 hover:underline"
         >
-          Load more posts →
+          Load more posts
         </Link>
       )}
     </main>
@@ -699,8 +677,8 @@ export default async function BlogPage() {
               />
             </div>
 
-            <div className="p-4 bg-slate-800/50 border border-white/10 rounded-lg">
-              <h4 className="text-white font-mono text-sm mb-3">app/blog/[slug]/page.tsx</h4>
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h4 className="font-mono text-sm text-[#888888] mb-3">app/blog/[slug]/page.tsx</h4>
               <CodeBlock
                 id="full-post"
                 code={`import { notFound } from 'next/navigation';
@@ -758,16 +736,22 @@ export default async function PostPage({
         </section>
 
         {/* Help */}
-        <section className="p-6 bg-violet-500/10 border border-violet-500/20 rounded-xl">
-          <h3 className="text-lg font-semibold text-white mb-2">Need Help?</h3>
-          <p className="text-slate-400">
+        <section className="bg-white border border-[#E0DED8] rounded-lg p-6 mb-16">
+          <h3 className="font-lora text-lg font-normal mb-2">Need help?</h3>
+          <p className="text-sm text-[#666666]">
             If you have questions or run into issues, reach out at{' '}
-            <a href="mailto:support@roboblogger.com" className="text-violet-400 hover:underline">
-              support@roboblogger.com
+            <a href="mailto:support@vibeblogger.io" className="text-[#111111] underline underline-offset-2 hover:text-[#444444]">
+              support@vibeblogger.io
             </a>
           </p>
         </section>
       </div>
+
+      {/* Footer */}
+      <div className="mx-8 border-b border-[#E0DED8]" />
+      <footer className="px-8 py-8 text-center">
+        <p className="text-[13px] text-[#AAAAAA]">vibeblogger.io</p>
+      </footer>
     </div>
   );
 }
