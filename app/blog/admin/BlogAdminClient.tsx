@@ -1341,41 +1341,19 @@ export default function BlogAdminClient() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Blog Admin</h1>
-              <p className="text-gray-600 mt-2">
-                Manage your blog content and settings
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => (window.location.href = "/blog")}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Blog
-            </Button>
-          </div>
-        </div>
-
         {/* Main Content */}
         <Tabs
           value={selectedTab}
           onValueChange={setSelectedTab}
           className="space-y-6"
         >
-          <div className="flex items-center justify-between">
-            <TabsList className="grid w-full max-w-2xl grid-cols-5">
-              <TabsTrigger value="posts">Posts</TabsTrigger>
-              <TabsTrigger value="topics">Topics</TabsTrigger>
-              <TabsTrigger value="images">Images</TabsTrigger>
-              <TabsTrigger value="scheduler">Scheduler</TabsTrigger>
-              <TabsTrigger value="brand">Brand</TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="inline-flex w-auto">
+            <TabsTrigger value="posts">Posts</TabsTrigger>
+            <TabsTrigger value="topics">Topics</TabsTrigger>
+            <TabsTrigger value="images">Images</TabsTrigger>
+            <TabsTrigger value="scheduler">Scheduler</TabsTrigger>
+            <TabsTrigger value="brand">Brand</TabsTrigger>
+          </TabsList>
 
           {/* Posts Tab */}
           <TabsContent value="posts" className="space-y-6">
@@ -1428,7 +1406,7 @@ export default function BlogAdminClient() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
                           {/* AI Generation Option */}
                           <Card
-                            className="cursor-pointer hover:bg-blue-50 border-blue-200"
+                            className="cursor-pointer hover:bg-[#F5F4F0] border-[#E0DED8]"
                             onClick={() => {
                               setShowNewPostDialog(false);
                               window.location.href = "/blog/admin/ai";
@@ -1436,8 +1414,8 @@ export default function BlogAdminClient() {
                           >
                             <CardContent className="p-6 text-center">
                               <div className="flex flex-col items-center space-y-4">
-                                <div className="p-3 bg-blue-100 rounded-full">
-                                  <Sparkles className="h-8 w-8 text-blue-600" />
+                                <div className="p-3 bg-[#F5F4F0] rounded-full">
+                                  <Sparkles className="h-8 w-8 text-[#111111]" />
                                 </div>
                                 <div>
                                   <h3 className="font-semibold text-gray-900">
@@ -1450,7 +1428,7 @@ export default function BlogAdminClient() {
                                 </div>
                                 <Badge
                                   variant="secondary"
-                                  className="bg-blue-100 text-blue-700"
+                                  className="bg-[#F5F4F0] text-[#111111]"
                                 >
                                   Recommended
                                 </Badge>
@@ -1460,7 +1438,7 @@ export default function BlogAdminClient() {
 
                           {/* Manual Creation Option */}
                           <Card
-                            className="cursor-pointer hover:bg-green-50 border-green-200"
+                            className="cursor-pointer hover:bg-[#F5F4F0] border-[#E0DED8]"
                             onClick={() => {
                               setShowNewPostDialog(false);
                               window.location.href = "/blog/admin/manual";
@@ -1468,8 +1446,8 @@ export default function BlogAdminClient() {
                           >
                             <CardContent className="p-6 text-center">
                               <div className="flex flex-col items-center space-y-4">
-                                <div className="p-3 bg-green-100 rounded-full">
-                                  <Edit className="h-8 w-8 text-green-600" />
+                                <div className="p-3 bg-[#F5F4F0] rounded-full">
+                                  <Edit className="h-8 w-8 text-[#111111]" />
                                 </div>
                                 <div>
                                   <h3 className="font-semibold text-gray-900">
@@ -1486,7 +1464,7 @@ export default function BlogAdminClient() {
 
                           {/* JSON Import Option */}
                           <Card
-                            className="cursor-pointer hover:bg-purple-50 border-purple-200"
+                            className="cursor-pointer hover:bg-[#F5F4F0] border-[#E0DED8]"
                             onClick={() => {
                               setShowNewPostDialog(false);
                               window.location.href = "/blog/admin/import";
@@ -1494,8 +1472,8 @@ export default function BlogAdminClient() {
                           >
                             <CardContent className="p-6 text-center">
                               <div className="flex flex-col items-center space-y-4">
-                                <div className="p-3 bg-purple-100 rounded-full">
-                                  <Code className="h-8 w-8 text-purple-600" />
+                                <div className="p-3 bg-[#F5F4F0] rounded-full">
+                                  <Code className="h-8 w-8 text-[#111111]" />
                                 </div>
                                 <div>
                                   <h3 className="font-semibold text-gray-900">
@@ -1561,7 +1539,7 @@ export default function BlogAdminClient() {
                                 // Fallback if image fails to load
                                 e.currentTarget.style.display = "none";
                                 e.currentTarget.parentElement!.innerHTML = `
-                                  <div class="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                                  <div class="w-full h-full bg-[#F5F4F0] flex items-center justify-center">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400">
                                       <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                                       <polyline points="9,22 9,12 15,12 15,22"></polyline>
@@ -1571,7 +1549,7 @@ export default function BlogAdminClient() {
                               }}
                             />
                           ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                            <div className="w-full h-full bg-[#F5F4F0] flex items-center justify-center">
                               <FileText className="h-6 w-6 text-gray-400" />
                             </div>
                           )}

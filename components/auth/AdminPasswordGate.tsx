@@ -12,7 +12,7 @@ interface AdminPasswordGateProps {
 export default function AdminPasswordGate({ children }: AdminPasswordGateProps) {
   // Clerk handles authentication - this component just provides the admin header wrapper
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
+    <div className="min-h-screen bg-white">
       {/* Admin Header */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-[#E0DED8] sticky top-0 z-50">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">

@@ -137,14 +137,15 @@ html::-webkit-scrollbar {
   --input: 40 8% 87%;
   --ring: 0 0% 7%;
 
-  background: #FAFAF8;
+  background: #FFFFFF;
   min-height: calc(100vh - 64px);
 }
 
 /* Card styling in admin */
 .admin-content [class*="rounded-lg"],
 .admin-content [class*="rounded-xl"] {
-  border-color: #E0DED8;
+  border-color: transparent;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
 }
 
 /* Override white backgrounds */
@@ -260,19 +261,39 @@ html::-webkit-scrollbar {
   color: #991B1B !important;
 }
 
-/* Tabs styling */
+/* Tabs styling — underline style */
 .admin-content [role="tablist"] {
-  background: #FFFFFF;
-  border-color: #E0DED8;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #E0DED8;
+  border-radius: 0;
+  padding: 0;
+  height: auto;
+  gap: 0;
 }
 
 .admin-content [role="tab"] {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   color: #888888;
+  padding: 10px 20px;
+  margin-bottom: -1px;
+  font-weight: 500;
+  box-shadow: none;
 }
 
 .admin-content [role="tab"][data-state="active"] {
-  background: #F5F4F0;
+  background: transparent;
   color: #111111;
+  border-bottom-color: #111111;
+  box-shadow: none;
+}
+
+.admin-content [role="tab"]:hover {
+  color: #444444;
+  background: transparent;
 }
 
 /* Dialog/Modal styling */
@@ -327,7 +348,7 @@ html::-webkit-scrollbar {
 /* Hover states for cards/rows */
 .admin-content .hover\:bg-gray-50:hover,
 .admin-content .hover\:bg-gray-100:hover {
-  background: #F5F4F0 !important;
+  background: #F9FAFB !important;
 }
 
 /* Ring focus */
@@ -342,7 +363,7 @@ html::-webkit-scrollbar {
 }
 
 .admin-content::-webkit-scrollbar-track {
-  background: #FAFAF8;
+  background: #FFFFFF;
 }
 
 .admin-content::-webkit-scrollbar-thumb {
