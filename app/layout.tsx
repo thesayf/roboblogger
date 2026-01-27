@@ -12,19 +12,19 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://roboblogger.com"),
+  metadataBase: new URL("https://vibeblogger.io"),
   title: {
-    template: "%s | RoboBlogger",
-    default: "RoboBlogger - AI-Powered Blog CMS",
+    template: "%s | Vibeblogger",
+    default: "Vibeblogger — Blog posts that rank. Zero effort.",
   },
   description:
-    "Generate beautiful blog posts with AI. Rich components, SEO optimization, and scheduled publishing.",
+    "AI that researches, writes, and publishes SEO-optimized blog posts for your app. Headless API. Beautiful components. Zero effort.",
   icons: {
     icon: "/favicon.ico",
   },
   openGraph: {
     type: "website",
-    siteName: "RoboBlogger",
+    siteName: "Vibeblogger",
   },
   twitter: {
     card: "summary_large_image",

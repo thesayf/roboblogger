@@ -6,146 +6,169 @@ import { redirect } from 'next/navigation'
 export default async function HomePage() {
   const { userId } = await auth()
 
-  // Redirect authenticated users to the blog admin
   if (userId) {
     redirect('/blog/admin')
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col">
-      {/* Subtle grid pattern overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-
-      {/* Navigation */}
-      <nav className="relative z-10 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
-              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-              </svg>
-            </div>
-            <span className="text-xl font-bold text-white">RoboBlogger</span>
+    <div className="min-h-screen bg-[#FAFAF8] text-[#111111]">
+      {/* Nav */}
+      <nav className="max-w-[1100px] mx-auto px-8 py-6 flex items-center justify-between">
+        <Link href="/" className="font-lora text-2xl font-bold tracking-tight">
+          Vibeblogger
+        </Link>
+        <div className="flex items-center gap-8">
+          <Link href="/docs" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            Features
           </Link>
-          <div className="flex items-center gap-6">
-            <Link href="/docs" className="text-sm text-slate-400 hover:text-white transition-colors">
-              Docs
-            </Link>
-            <Link href="/blog" className="text-sm text-slate-400 hover:text-white transition-colors">
-              Blog
-            </Link>
-            <SignInButton mode="modal">
-              <button className="text-sm px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer">
-                Sign In
-              </button>
-            </SignInButton>
-          </div>
+          <Link href="/docs" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            Pricing
+          </Link>
+          <Link href="/docs" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            Docs
+          </Link>
+          <SignInButton mode="modal">
+            <button className="text-sm text-[#666666] hover:text-[#111111] transition-colors cursor-pointer hidden sm:block">
+              Sign in
+            </button>
+          </SignInButton>
+          <SignUpButton mode="modal">
+            <button className="text-sm font-semibold text-white bg-[#111111] px-6 py-2.5 rounded-full hover:bg-[#333333] transition-colors cursor-pointer">
+              Get Started
+            </button>
+          </SignUpButton>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative z-10 flex-1 flex items-center justify-center px-6 py-20">
-        <div className="max-w-4xl text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/20 mb-8">
-            <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
-            <span className="text-sm text-violet-300 font-medium">AI-Powered Content Creation</span>
+      <div className="mx-8 border-b border-[#E0DED8]" />
+
+      {/* Hero */}
+      <section className="max-w-[720px] mx-auto px-8 pt-24 pb-20 sm:pt-32 sm:pb-24 text-center">
+        <p className="text-sm font-medium text-[#888888] uppercase tracking-[0.15em] mb-8">
+          The AI-powered blog engine
+        </p>
+        <h1 className="font-lora text-5xl sm:text-7xl font-normal leading-[1.15] tracking-tight mb-7">
+          Write less.<br />
+          Publish more.<br />
+          <em>Rank higher.</em>
+        </h1>
+        <p className="text-lg text-[#666666] leading-relaxed max-w-[480px] mx-auto mb-12">
+          Vibeblogger researches, writes, and publishes SEO-optimized blog posts for your app. Headless. Automated. Beautiful.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <SignUpButton mode="modal">
+            <button className="text-[15px] font-semibold text-white bg-[#111111] px-9 py-3.5 rounded-full hover:bg-[#333333] transition-colors cursor-pointer">
+              Start publishing →
+            </button>
+          </SignUpButton>
+          <Link
+            href="/blog"
+            className="text-[15px] font-medium text-[#111111] bg-transparent border border-[#CCCCCC] px-9 py-3.5 rounded-full hover:border-[#999999] transition-colors text-center"
+          >
+            See examples
+          </Link>
+        </div>
+      </section>
+
+      {/* Divider */}
+      <div className="max-w-[120px] mx-auto border-b-2 border-[#111111]" />
+
+      {/* How It Works */}
+      <section className="max-w-[900px] mx-auto px-8 py-20">
+        <h2 className="text-sm font-medium text-[#888888] uppercase tracking-[0.15em] text-center mb-16">
+          How it works
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-12 sm:gap-12">
+          {[
+            { num: "01", title: "Describe your niche", desc: "Tell us your industry, audience, and competitors. Our AI handles the keyword and topic research." },
+            { num: "02", title: "AI creates everything", desc: "Research, writing, images, SEO metadata — all generated automatically with your brand voice." },
+            { num: "03", title: "Fetch via API", desc: "Structured JSON content delivered through our headless API. Plug into any frontend you're building." }
+          ].map((item) => (
+            <div key={item.num}>
+              <div className="text-[13px] text-[#AAAAAA] mb-3">{item.num}</div>
+              <h3 className="font-lora text-[22px] font-normal mb-3">{item.title}</h3>
+              <p className="text-sm text-[#666666] leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="mx-8 border-b border-[#E0DED8]" />
+
+      {/* Content Preview */}
+      <section className="max-w-[900px] mx-auto px-8 py-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center">
+          <div>
+            <h2 className="font-lora text-3xl sm:text-4xl font-normal leading-snug mb-5">
+              Content that reads like<br />a <em>human</em> wrote it
+            </h2>
+            <p className="text-[15px] text-[#666666] leading-relaxed mb-6">
+              No generic AI slop. Every post is researched with real data, structured with 15+ component types, and optimized for the keywords your audience is actually searching for.
+            </p>
+            <div className="flex flex-col gap-3">
+              {["SEO keyword research & gap analysis", "15+ content components (callouts, tables, CTAs)", "AI-generated images matching your brand", "Automatic meta tags & Open Graph data"].map((item) => (
+                <div key={item} className="flex items-center gap-2.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#111111] shrink-0" />
+                  <span className="text-sm text-[#444444]">{item}</span>
+                </div>
+              ))}
+            </div>
           </div>
-
-          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 tracking-tight">
-            Your blog on
-            <span className="block bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
-              autopilot
-            </span>
-          </h1>
-
-          <p className="text-xl text-slate-400 mb-12 leading-relaxed max-w-2xl mx-auto">
-            Generate SEO-optimized blog posts with AI. Beautiful components,
-            scheduled publishing, and a headless API for your frontend.
-          </p>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-            <SignUpButton mode="modal">
-              <button className="px-8 py-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold text-lg hover:from-violet-500 hover:to-fuchsia-500 transition-all shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 cursor-pointer">
-                Get Started Free
-              </button>
-            </SignUpButton>
-            <Link
-              href="/blog"
-              className="px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-lg hover:bg-white/10 transition-all"
-            >
-              View Blog
-            </Link>
-          </div>
-
-          {/* Feature pills */}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {['Claude AI', 'DALL-E Images', '15+ Components', 'SEO Optimized', 'Headless API'].map((feature) => (
-              <span
-                key={feature}
-                className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm text-slate-300"
-              >
-                {feature}
-              </span>
-            ))}
+          <div className="bg-white border border-[#E0DED8] rounded p-8">
+            <div className="text-[11px] text-[#AAAAAA] uppercase tracking-[0.1em] mb-4">Generated post preview</div>
+            <div className="font-lora text-[22px] font-normal mb-3">10 Home Workouts That Build Muscle Without Equipment</div>
+            <div className="text-[13px] text-[#999999] mb-4">
+              home workouts · 33,100 searches/mo · Medium difficulty
+            </div>
+            <div className="border-t border-[#E0DED8] pt-4 flex gap-4">
+              <span className="text-xs text-[#666666]">2,400 words</span>
+              <span className="text-xs text-[#666666]">8 components</span>
+              <span className="text-xs text-[#666666]">SEO: 94/100</span>
+            </div>
           </div>
         </div>
       </section>
 
+      <div className="mx-8 border-b border-[#E0DED8]" />
+
       {/* Features Grid */}
-      <section className="relative z-10 px-6 py-20 border-t border-white/10">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center mb-4">
-                <svg className="w-6 h-6 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">AI Content Generation</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Claude writes engaging, well-researched blog posts. DALL-E creates stunning featured images.
-              </p>
+      <section className="max-w-[900px] mx-auto px-8 py-20">
+        <h2 className="text-sm font-medium text-[#888888] uppercase tracking-[0.15em] text-center mb-16">
+          Everything included
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 sm:gap-10">
+          {[
+            { title: "SEO Research", desc: "Keywords, trends, competitor analysis — all automated." },
+            { title: "AI Writing", desc: "Long-form articles that read naturally, not like ChatGPT." },
+            { title: "Visual Components", desc: "Callouts, tables, comparisons, CTAs — auto-structured." },
+            { title: "Headless API", desc: "JSON responses. Build your frontend however you want." },
+            { title: "AI Images", desc: "DALL-E images generated to match your content." },
+            { title: "Auto-publish", desc: "Set your schedule. Content flows automatically." },
+          ].map((feature) => (
+            <div key={feature.title} className="pb-6 border-b border-[#E0DED8]">
+              <h3 className="font-lora text-lg font-normal mb-2">{feature.title}</h3>
+              <p className="text-[13px] text-[#666666] leading-relaxed">{feature.desc}</p>
             </div>
+          ))}
+        </div>
+      </section>
 
-            {/* Feature 2 */}
-            <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center mb-4">
-                <svg className="w-6 h-6 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">Scheduled Publishing</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Queue up topics and let RoboBlogger publish them automatically on your schedule.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center mb-4">
-                <svg className="w-6 h-6 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">Headless API</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Fetch your content via API. Build any frontend you want with full design control.
-              </p>
-            </div>
-          </div>
+      {/* CTA */}
+      <section className="bg-[#111111] text-white">
+        <div className="max-w-[600px] mx-auto px-8 py-24 sm:py-28 text-center">
+          <h2 className="font-lora text-4xl sm:text-[40px] font-normal tracking-tight mb-4">Ready to start?</h2>
+          <p className="text-base text-[#999999] mb-9">Your first blog post is free. No credit card required.</p>
+          <SignUpButton mode="modal">
+            <button className="text-[15px] font-semibold text-[#111111] bg-white px-9 py-3.5 rounded-full hover:bg-[#F0F0F0] transition-colors cursor-pointer">
+              Create your first post →
+            </button>
+          </SignUpButton>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-8 text-center">
-          <p className="text-sm text-slate-500">
-            © 2025 RoboBlogger. AI-powered content creation.
-          </p>
-        </div>
+      <footer className="px-8 py-8 text-center">
+        <p className="text-[13px] text-[#AAAAAA]">vibeblogger.io</p>
       </footer>
     </div>
   )
