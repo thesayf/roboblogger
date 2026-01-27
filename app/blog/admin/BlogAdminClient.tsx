@@ -1634,87 +1634,82 @@ export default function BlogAdminClient() {
 
           {/* Topics Tab */}
           <TabsContent value="topics" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Blog Topics
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    {selectedTopics.length > 0 && (
-                      <div className="flex items-center gap-2 mr-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-lg">
-                        <span className="text-sm text-blue-700">
-                          {selectedTopics.length} selected
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={clearSelection}
-                          className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
-                        >
-                          ×
-                        </Button>
-                      </div>
+            {/* Toolbar */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {selectedTopics.length > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-lg">
+                    <span className="text-sm text-blue-700">
+                      {selectedTopics.length} selected
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearSelection}
+                      className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </Button>
+                  </div>
+                )}
+
+                {selectedTopics.length > 0 && (
+                  <Button
+                    onClick={handleBatchGeneration}
+                    disabled={isBatchGenerating}
+                    className="bg-purple-600 hover:bg-purple-700 rounded-full"
+                  >
+                    {isBatchGenerating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Generate {selectedTopics.length}
+                      </>
                     )}
+                  </Button>
+                )}
 
-                    {selectedTopics.length > 0 && (
-                      <Button
-                        onClick={handleBatchGeneration}
-                        disabled={isBatchGenerating}
-                        className="bg-purple-600 hover:bg-purple-700"
-                      >
-                        {isBatchGenerating ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Generate {selectedTopics.length}
-                          </>
-                        )}
-                      </Button>
-                    )}
-
-                    {topics.filter((t) => t.status === "pending").length > 0 &&
-                      selectedTopics.length === 0 && (
-                        <Button
-                          variant="outline"
-                          onClick={selectAllPendingTopics}
-                          className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Select All Pending
-                        </Button>
-                      )}
-
+                {topics.filter((t) => t.status === "pending").length > 0 &&
+                  selectedTopics.length === 0 && (
                     <Button
                       variant="outline"
-                      onClick={() => router.push("/blog/admin/bulk/generate")}
+                      onClick={selectAllPendingTopics}
                     >
-                      <Brain className="h-4 w-4 mr-2" />
-                      AI Generate
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Select All Pending
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => router.push("/blog/admin/bulk/import")}
-                    >
-                      <FileJson className="h-4 w-4 mr-2" />
-                      Import JSON
-                    </Button>
+                  )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/blog/admin/bulk/generate")}
+                >
+                  <Brain className="h-4 w-4 mr-2" />
+                  AI Generate
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/blog/admin/bulk/import")}
+                >
+                  <FileJson className="h-4 w-4 mr-2" />
+                  Import JSON
+                </Button>
 
-                    <Dialog
-                      open={showAddTopicDialog}
-                      onOpenChange={setShowAddTopicDialog}
-                    >
-                      <DialogTrigger asChild>
-                        <Button>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Topic
-                        </Button>
-                      </DialogTrigger>
+                <Dialog
+                  open={showAddTopicDialog}
+                  onOpenChange={setShowAddTopicDialog}
+                >
+                  <DialogTrigger asChild>
+                    <Button className="rounded-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Topic
+                    </Button>
+                  </DialogTrigger>
                       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Create New Topic</DialogTitle>
@@ -3568,11 +3563,11 @@ export default function BlogAdminClient() {
                         </div>
                       </DialogContent>
                     </Dialog>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isLoadingTopics ? (
+              </div>
+            </div>
+
+            {/* Topic list */}
+            {isLoadingTopics ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin mr-2" />
                     <span>Loading topics...</span>
@@ -3589,252 +3584,212 @@ export default function BlogAdminClient() {
                       Add Topics
                     </Button>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Inner tabs for pending/completed */}
-                    <Tabs value={queueTab} onValueChange={(value) => setQueueTab(value as "pending" | "completed")}>
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="pending">
-                          Pending ({pendingPagination.total})
-                        </TabsTrigger>
-                        <TabsTrigger value="completed">
-                          Completed ({completedPagination.total})
-                        </TabsTrigger>
-                      </TabsList>
+            ) : (
+              <>
+              <div className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
+                {/* Inner tabs for pending/completed */}
+                <Tabs value={queueTab} onValueChange={(value) => setQueueTab(value as "pending" | "completed")}>
+                  <div className="px-5 pt-3">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="pending">
+                        Pending ({pendingPagination.total})
+                      </TabsTrigger>
+                      <TabsTrigger value="completed">
+                        Completed ({completedPagination.total})
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
 
-                      <TabsContent value="pending" className="mt-4">
-                        {pendingTopics.map((topic) => (
+                  <TabsContent value="pending" className="mt-0">
+                    {/* Table header */}
+                    <div className="posts-table-header">
+                      <span>Topic</span>
+                      <span>Status</span>
+                      <span>Priority</span>
+                      <span className="text-right">Date</span>
+                      <span></span>
+                    </div>
+
+                    {/* Table rows */}
+                    {pendingTopics.map((topic) => (
                       <div
                         key={topic._id}
-                        className={`flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors ${
+                        className={`posts-table-row ${
                           selectedTopics.includes(topic._id)
-                            ? "bg-blue-50 border-blue-200"
+                            ? "bg-blue-50"
                             : ""
                         }`}
                       >
-                        {/* Selection checkbox */}
-                        {(topic.status === "pending" ||
-                          topic.status === "failed") && (
-                          <Checkbox
-                            checked={selectedTopics.includes(topic._id)}
-                            onCheckedChange={() =>
-                              toggleTopicSelection(topic._id)
-                            }
-                            className="flex-shrink-0"
-                          />
-                        )}
-
-                        <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          {getStatusIcon(topic.status)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-gray-900 truncate">
-                            {topic.topic}
-                          </h3>
-                          <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {new Date(topic.createdAt).toLocaleDateString()}
-                            </span>
-                            {topic.scheduledAt && (
-                              <span className="flex items-center gap-1 text-blue-600">
-                                <Calendar className="h-4 w-4" />
-                                Scheduled:{" "}
-                                {new Date(topic.scheduledAt).toLocaleString()}
-                              </span>
-                            )}
-                            {topic.estimatedDuration && (
-                              <span>{topic.estimatedDuration} min est.</span>
-                            )}
-                            <span className="capitalize">
-                              {topic.priority} priority
-                            </span>
+                        {/* Topic cell */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          {(topic.status === "pending" ||
+                            topic.status === "failed") && (
+                            <Checkbox
+                              checked={selectedTopics.includes(topic._id)}
+                              onCheckedChange={() =>
+                                toggleTopicSelection(topic._id)
+                              }
+                              className="flex-shrink-0"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <h3 className="text-[16px] text-gray-900 truncate" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+                              {topic.topic}
+                            </h3>
+                            <p className="text-[13px] text-gray-500 truncate">
+                              {topic.audience || "No audience specified"}
+                            </p>
                           </div>
-                          {topic.tags && topic.tags.length > 0 && (
-                            <div className="flex items-center gap-2 mt-2">
-                              {topic.tags.map((tag: string, index: number) => (
-                                <Badge
-                                  key={index}
-                                  variant="outline"
-                                  className="text-xs"
-                                >
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                          {topic.audience && (
-                            <p className="text-xs text-gray-500 mt-1 truncate">
-                              Audience: {topic.audience}
-                            </p>
-                          )}
-                          {topic.errorMessage && (
-                            <p className="text-xs text-red-600 mt-1 truncate">
-                              Error: {topic.errorMessage}
-                            </p>
-                          )}
                         </div>
-                        <div className="flex items-center gap-2">
+
+                        {/* Status cell */}
+                        <div>
                           <Badge
                             variant="secondary"
                             className={getStatusBadge(topic.status)}
                           >
                             {topic.status}
                           </Badge>
-                          {topic.status === "pending" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleGenerateTopic(topic._id)}
-                              title="Generate blog post"
-                            >
-                              <PlayCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {topic.status === "failed" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleGenerateTopic(topic._id)}
-                              title="Retry generation"
-                            >
-                              <PlayCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {topic.status === "completed" &&
-                            topic.generatedPostId && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  handleEditPost(topic.generatedPostId)
-                                }
-                                title="View generated post"
-                              >
-                                <Eye className="h-4 w-4" />
+                        </div>
+
+                        {/* Priority cell */}
+                        <div className="text-[13px] text-[#444444] capitalize">
+                          {topic.priority}
+                        </div>
+
+                        {/* Date cell */}
+                        <div className="text-[13px] text-[#888888] text-right">
+                          {new Date(topic.createdAt).toLocaleDateString()}
+                        </div>
+
+                        {/* Actions cell */}
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
                               </Button>
-                            )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditTopic(topic)}
-                            title="Edit topic"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteTopic(topic._id)}
-                            title="Delete topic"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {(topic.status === "pending" || topic.status === "failed") && (
+                                <DropdownMenuItem
+                                  onClick={() => handleGenerateTopic(topic._id)}
+                                >
+                                  <PlayCircle className="h-4 w-4 mr-2" />
+                                  Generate
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                onClick={() => handleEditTopic(topic)}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteTopic(topic._id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     ))}
-                        </TabsContent>
+                  </TabsContent>
 
-                        <TabsContent value="completed" className="mt-4">
-                          {completedTopics.map((topic) => (
-                              <div
-                                key={topic._id}
-                                className={`flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors ${
-                                  selectedTopics.includes(topic._id)
-                                    ? "bg-blue-50 border-blue-200"
-                                    : ""
-                                }`}
+                  <TabsContent value="completed" className="mt-0">
+                    {/* Table header */}
+                    <div className="posts-table-header">
+                      <span>Topic</span>
+                      <span>Status</span>
+                      <span>Priority</span>
+                      <span className="text-right">Date</span>
+                      <span></span>
+                    </div>
+
+                    {/* Table rows */}
+                    {completedTopics.map((topic) => (
+                      <div
+                        key={topic._id}
+                        className="posts-table-row"
+                      >
+                        {/* Topic cell */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="min-w-0">
+                            <h3 className="text-[16px] text-gray-900 truncate" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+                              {topic.topic}
+                            </h3>
+                            <p className="text-[13px] text-gray-500 truncate">
+                              {topic.audience || "No audience specified"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status cell */}
+                        <div>
+                          <Badge
+                            variant="secondary"
+                            className={getStatusBadge(topic.status)}
+                          >
+                            {topic.status}
+                          </Badge>
+                        </div>
+
+                        {/* Priority cell */}
+                        <div className="text-[13px] text-[#444444] capitalize">
+                          {topic.priority}
+                        </div>
+
+                        {/* Date cell */}
+                        <div className="text-[13px] text-[#888888] text-right">
+                          {new Date(topic.createdAt).toLocaleDateString()}
+                        </div>
+
+                        {/* Actions cell */}
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {topic.status === "completed" &&
+                                topic.generatedPostId && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleEditPost(topic.generatedPostId)
+                                    }
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    View Post
+                                  </DropdownMenuItem>
+                                )}
+                              <DropdownMenuItem
+                                onClick={() => handleEditTopic(topic)}
                               >
-                                <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                  {getStatusIcon(topic.status)}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="font-medium text-gray-900 truncate">
-                                    {topic.topic}
-                                  </h3>
-                                  <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="h-4 w-4" />
-                                      {new Date(topic.createdAt).toLocaleDateString()}
-                                    </span>
-                                    {topic.scheduledAt && (
-                                      <span className="flex items-center gap-1 text-blue-600">
-                                        <Calendar className="h-4 w-4" />
-                                        Scheduled:{" "}
-                                        {new Date(topic.scheduledAt).toLocaleString()}
-                                      </span>
-                                    )}
-                                    {topic.estimatedDuration && (
-                                      <span>{topic.estimatedDuration} min est.</span>
-                                    )}
-                                    <span className="capitalize">
-                                      {topic.priority} priority
-                                    </span>
-                                  </div>
-                                  {topic.tags && topic.tags.length > 0 && (
-                                    <div className="flex items-center gap-2 mt-2">
-                                      {topic.tags.map((tag: string, index: number) => (
-                                        <Badge
-                                          key={index}
-                                          variant="outline"
-                                          className="text-xs"
-                                        >
-                                          {tag}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {topic.audience && (
-                                    <p className="text-xs text-gray-500 mt-1 truncate">
-                                      Audience: {topic.audience}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Badge
-                                    variant="secondary"
-                                    className={getStatusBadge(topic.status)}
-                                  >
-                                    {topic.status}
-                                  </Badge>
-                                  {topic.status === "completed" &&
-                                    topic.generatedPostId && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                          handleEditPost(topic.generatedPostId)
-                                        }
-                                        title="View generated post"
-                                      >
-                                        <Eye className="h-4 w-4" />
-                                      </Button>
-                                    )}
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEditTopic(topic)}
-                                    title="Edit topic"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteTopic(topic._id)}
-                                    title="Delete topic"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                        </TabsContent>
-                      </Tabs>
-                      
-                      {/* Pagination Controls */}
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteTopic(topic._id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    ))}
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              {/* Pagination Controls */}
                       {(() => {
                         const currentPagination = queueTab === "pending" ? pendingPagination : completedPagination;
                         const currentPage = queueTab === "pending" ? pendingPage : completedPage;
@@ -3898,10 +3853,8 @@ export default function BlogAdminClient() {
                           </div>
                         );
                       })()}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              </>
+            )}
 
             {/* Queue Statistics */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
