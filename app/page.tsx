@@ -43,16 +43,16 @@ export default async function HomePage() {
       <div className="mx-8 border-b border-[#E0DED8]" />
 
       {/* Hero */}
-      <section className="max-w-[720px] mx-auto px-8 pt-24 pb-20 sm:pt-32 sm:pb-24 text-center">
+      <section className="max-w-[720px] mx-auto px-8 pt-[120px] pb-20 text-center">
         <p className="text-sm font-medium text-[#888888] uppercase tracking-[0.15em] mb-8">
           The AI-powered blog engine
         </p>
-        <h1 className="font-lora text-5xl sm:text-7xl font-normal leading-[1.15] tracking-tight mb-7">
+        <h1 className="font-lora text-[40px] sm:text-[64px] font-normal leading-[1.15] tracking-[-0.02em] mb-7">
           Write less.<br />
           Publish more.<br />
           <em>Rank higher.</em>
         </h1>
-        <p className="text-lg text-[#666666] leading-relaxed max-w-[480px] mx-auto mb-12">
+        <p className="text-lg text-[#666666] leading-[1.7] max-w-[480px] mx-auto mb-12">
           Vibeblogger researches, writes, and publishes SEO-optimized blog posts for your app. Headless. Automated. Beautiful.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
