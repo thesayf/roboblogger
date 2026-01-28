@@ -1350,10 +1350,10 @@ export default function BlogAdminClient() {
         >
           <TabsList className="inline-flex w-auto">
             <TabsTrigger value="posts">Posts</TabsTrigger>
-            <TabsTrigger value="topics">Topics</TabsTrigger>
-            <TabsTrigger value="images">Images</TabsTrigger>
-            <TabsTrigger value="scheduler">Scheduler</TabsTrigger>
-            <TabsTrigger value="brand">Brand</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
+            <TabsTrigger value="jobs">Jobs</TabsTrigger>
+            <TabsTrigger value="media">Media</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           {/* Posts Tab */}
@@ -1632,8 +1632,8 @@ export default function BlogAdminClient() {
             )}
           </TabsContent>
 
-          {/* Topics Tab */}
-          <TabsContent value="topics" className="space-y-6">
+          {/* Schedule Tab */}
+          <TabsContent value="schedule" className="space-y-6">
             {/* Toolbar */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -3913,8 +3913,8 @@ export default function BlogAdminClient() {
             </div>
           </TabsContent>
 
-          {/* Images Tab */}
-          <TabsContent value="images" className="space-y-6">
+          {/* Media Tab */}
+          <TabsContent value="media" className="space-y-6">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -4130,8 +4130,8 @@ export default function BlogAdminClient() {
             )}
           </TabsContent>
 
-          {/* Scheduler/Monitoring Tab */}
-          <TabsContent value="scheduler" className="space-y-6">
+          {/* Jobs Tab */}
+          <TabsContent value="jobs" className="space-y-6">
             <SchedulerTab
               topics={topics}
               isLoadingTopics={isLoadingTopics}
@@ -4139,8 +4139,8 @@ export default function BlogAdminClient() {
             />
           </TabsContent>
 
-          {/* Brand Tab */}
-          <TabsContent value="brand" className="space-y-6">
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="space-y-6">
             <BrandTab />
           </TabsContent>
         </Tabs>
