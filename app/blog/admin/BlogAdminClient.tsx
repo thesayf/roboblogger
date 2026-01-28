@@ -1384,118 +1384,13 @@ export default function BlogAdminClient() {
                   </SelectContent>
                 </Select>
 
-                <Dialog
-                  open={showNewPostDialog}
-                  onOpenChange={setShowNewPostDialog}
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 rounded-full"
+                  onClick={() => window.location.href = "/blog/admin/manual"}
                 >
-                  <DialogTrigger asChild>
-                    <Button className="bg-blue-600 hover:bg-blue-700 rounded-full">
-                      <Plus className="h-4 w-4 mr-2" />
-                      New Post
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Create New Blog Post</DialogTitle>
-                      <DialogDescription>
-                        Open the editor to start writing your post
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="py-4">
-                      {/* Manual Creation Option */}
-                      <Card
-                        className="cursor-pointer hover:bg-[#F5F4F0] border-[#E0DED8]"
-                        onClick={() => {
-                          setShowNewPostDialog(false);
-                          window.location.href = "/blog/admin/manual";
-                        }}
-                      >
-                        <CardContent className="p-6 text-center">
-                          <div className="flex flex-col items-center space-y-4">
-                            <div className="p-3 bg-[#F5F4F0] rounded-full">
-                              <Edit className="h-8 w-8 text-[#111111]" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900">
-                                Open Editor
-                              </h3>
-                              <p className="text-sm text-gray-600 mt-1">
-                                Build your post component by component with
-                                full control
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* AI Generation Option - Commented out for now
-                      <Card
-                        className="cursor-pointer hover:bg-[#F5F4F0] border-[#E0DED8]"
-                        onClick={() => {
-                          setShowNewPostDialog(false);
-                          window.location.href = "/blog/admin/ai";
-                        }}
-                      >
-                        <CardContent className="p-6 text-center">
-                          <div className="flex flex-col items-center space-y-4">
-                            <div className="p-3 bg-[#F5F4F0] rounded-full">
-                              <Sparkles className="h-8 w-8 text-[#111111]" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900">
-                                Generate with AI
-                              </h3>
-                              <p className="text-sm text-gray-600 mt-1">
-                                Enter a topic and let AI create a complete
-                                blog structure
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      */}
-
-                      {/* JSON Import Option - Commented out for now
-                      <Card
-                        className="cursor-pointer hover:bg-[#F5F4F0] border-[#E0DED8]"
-                        onClick={() => {
-                          setShowNewPostDialog(false);
-                          window.location.href = "/blog/admin/import";
-                        }}
-                      >
-                        <CardContent className="p-6 text-center">
-                          <div className="flex flex-col items-center space-y-4">
-                            <div className="p-3 bg-[#F5F4F0] rounded-full">
-                              <Code className="h-8 w-8 text-[#111111]" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900">
-                                Import JSON
-                              </h3>
-                              <p className="text-sm text-gray-600 mt-1">
-                                Paste a JSON structure to quickly create a
-                                post
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      */}
-                    </div>
-
-                    <div className="border-t pt-4">
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowNewPostDialog(false)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Post
+                </Button>
               </div>
             </div>
 
@@ -1510,7 +1405,7 @@ export default function BlogAdminClient() {
                 <p className="text-gray-500">No blog posts found.</p>
                 <Button
                   className="mt-4"
-                  onClick={() => setShowNewPostDialog(true)}
+                  onClick={() => window.location.href = "/blog/admin/manual"}
                 >
                   Create your first post
                 </Button>
