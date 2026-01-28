@@ -1350,7 +1350,7 @@ export default function BlogAdminClient() {
         >
           <TabsList className="inline-flex w-auto">
             <TabsTrigger value="posts">Posts</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
+            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="media">Media</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -1394,16 +1394,42 @@ export default function BlogAdminClient() {
                       New Post
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-md">
                     <DialogHeader>
                       <DialogTitle>Create New Blog Post</DialogTitle>
                       <DialogDescription>
-                        Choose how you&apos;d like to create your new blog post
+                        Open the editor to start writing your post
                       </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
-                      {/* AI Generation Option */}
+                    <div className="py-4">
+                      {/* Manual Creation Option */}
+                      <Card
+                        className="cursor-pointer hover:bg-[#F5F4F0] border-[#E0DED8]"
+                        onClick={() => {
+                          setShowNewPostDialog(false);
+                          window.location.href = "/blog/admin/manual";
+                        }}
+                      >
+                        <CardContent className="p-6 text-center">
+                          <div className="flex flex-col items-center space-y-4">
+                            <div className="p-3 bg-[#F5F4F0] rounded-full">
+                              <Edit className="h-8 w-8 text-[#111111]" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-gray-900">
+                                Open Editor
+                              </h3>
+                              <p className="text-sm text-gray-600 mt-1">
+                                Build your post component by component with
+                                full control
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* AI Generation Option - Commented out for now
                       <Card
                         className="cursor-pointer hover:bg-[#F5F4F0] border-[#E0DED8]"
                         onClick={() => {
@@ -1425,43 +1451,12 @@ export default function BlogAdminClient() {
                                 blog structure
                               </p>
                             </div>
-                            <Badge
-                              variant="secondary"
-                              className="bg-[#F5F4F0] text-[#111111]"
-                            >
-                              Recommended
-                            </Badge>
                           </div>
                         </CardContent>
                       </Card>
+                      */}
 
-                      {/* Manual Creation Option */}
-                      <Card
-                        className="cursor-pointer hover:bg-[#F5F4F0] border-[#E0DED8]"
-                        onClick={() => {
-                          setShowNewPostDialog(false);
-                          window.location.href = "/blog/admin/manual";
-                        }}
-                      >
-                        <CardContent className="p-6 text-center">
-                          <div className="flex flex-col items-center space-y-4">
-                            <div className="p-3 bg-[#F5F4F0] rounded-full">
-                              <Edit className="h-8 w-8 text-[#111111]" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900">
-                                Manual Editor
-                              </h3>
-                              <p className="text-sm text-gray-600 mt-1">
-                                Build your post component by component with
-                                full control
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* JSON Import Option */}
+                      {/* JSON Import Option - Commented out for now
                       <Card
                         className="cursor-pointer hover:bg-[#F5F4F0] border-[#E0DED8]"
                         onClick={() => {
@@ -1486,6 +1481,7 @@ export default function BlogAdminClient() {
                           </div>
                         </CardContent>
                       </Card>
+                      */}
                     </div>
 
                     <div className="border-t pt-4">
@@ -1632,8 +1628,8 @@ export default function BlogAdminClient() {
             )}
           </TabsContent>
 
-          {/* Schedule Tab */}
-          <TabsContent value="schedule" className="space-y-6">
+          {/* Pipeline Tab */}
+          <TabsContent value="pipeline" className="space-y-6">
             {/* Toolbar */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
