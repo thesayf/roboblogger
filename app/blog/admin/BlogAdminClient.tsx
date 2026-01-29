@@ -1768,6 +1768,79 @@ export default function BlogAdminClient() {
                             </div>
                           </div>
 
+                          {/* Image Options - Only show when Images is enabled */}
+                          {topicForm.includeImages && (
+                            <div className="bg-[#F5F4F0] rounded-xl p-4 space-y-4">
+                              <div className="flex items-center gap-2">
+                                <ImageIcon className="h-4 w-4 text-[#666666]" />
+                                <span className="text-[13px] font-medium text-[#111111]">Image Options</span>
+                              </div>
+
+                              {/* Image Style */}
+                              <div>
+                                <label className="text-[12px] font-medium text-[#666666] mb-1.5 block">
+                                  Image Style Description
+                                </label>
+                                <Textarea
+                                  value={topicForm.imageContext}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      imageContext: e.target.value,
+                                    }))
+                                  }
+                                  placeholder="e.g., Modern minimalist with blue corporate tones, clean geometric shapes..."
+                                  rows={2}
+                                  className="bg-white border-[#E0DED8] focus:border-[#111111] text-[13px] resize-none"
+                                />
+                              </div>
+
+                              {/* Reference Images */}
+                              <div>
+                                <label className="text-[12px] font-medium text-[#666666] mb-1.5 block">
+                                  Reference Images
+                                </label>
+                                <p className="text-[11px] text-[#888888] mb-2">
+                                  AI will analyze these to match their visual style
+                                </p>
+
+                                {/* Selected Images Preview */}
+                                {selectedExistingImages.length > 0 && (
+                                  <div className="flex flex-wrap gap-2 mb-3">
+                                    {selectedExistingImages.map((imageRef, index) => {
+                                      const image = images.find(img => img.url === imageRef || img._id === imageRef);
+                                      return (
+                                        <div key={index} className="relative group">
+                                          <img
+                                            src={image?.thumbnailUrl || image?.url || imageRef}
+                                            alt={`Reference ${index + 1}`}
+                                            className="w-16 h-16 object-cover rounded-lg border border-[#E0DED8]"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedExistingImages(prev => prev.filter(ref => ref !== imageRef))}
+                                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => setShowImagePicker(true)}
+                                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#CCCCCC] text-[13px] text-[#666666] hover:border-[#111111] hover:text-[#111111] transition-colors w-full justify-center"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  {selectedExistingImages.length > 0 ? 'Add More from Library' : 'Select from Library'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Tags */}
                           <div>
                             <label className="text-[13px] font-medium text-[#111111] mb-2 block">
@@ -2162,6 +2235,79 @@ export default function BlogAdminClient() {
                               </label>
                             </div>
                           </div>
+
+                          {/* Image Options - Only show when Images is enabled */}
+                          {topicForm.includeImages && (
+                            <div className="bg-[#F5F4F0] rounded-xl p-4 space-y-4">
+                              <div className="flex items-center gap-2">
+                                <ImageIcon className="h-4 w-4 text-[#666666]" />
+                                <span className="text-[13px] font-medium text-[#111111]">Image Options</span>
+                              </div>
+
+                              {/* Image Style */}
+                              <div>
+                                <label className="text-[12px] font-medium text-[#666666] mb-1.5 block">
+                                  Image Style Description
+                                </label>
+                                <Textarea
+                                  value={topicForm.imageContext}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      imageContext: e.target.value,
+                                    }))
+                                  }
+                                  placeholder="e.g., Modern minimalist with blue corporate tones, clean geometric shapes..."
+                                  rows={2}
+                                  className="bg-white border-[#E0DED8] focus:border-[#111111] text-[13px] resize-none"
+                                />
+                              </div>
+
+                              {/* Reference Images */}
+                              <div>
+                                <label className="text-[12px] font-medium text-[#666666] mb-1.5 block">
+                                  Reference Images
+                                </label>
+                                <p className="text-[11px] text-[#888888] mb-2">
+                                  AI will analyze these to match their visual style
+                                </p>
+
+                                {/* Selected Images Preview */}
+                                {selectedExistingImages.length > 0 && (
+                                  <div className="flex flex-wrap gap-2 mb-3">
+                                    {selectedExistingImages.map((imageRef, index) => {
+                                      const image = images.find(img => img.url === imageRef || img._id === imageRef);
+                                      return (
+                                        <div key={index} className="relative group">
+                                          <img
+                                            src={image?.thumbnailUrl || image?.url || imageRef}
+                                            alt={`Reference ${index + 1}`}
+                                            className="w-16 h-16 object-cover rounded-lg border border-[#E0DED8]"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedExistingImages(prev => prev.filter(ref => ref !== imageRef))}
+                                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => setShowImagePicker(true)}
+                                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#CCCCCC] text-[13px] text-[#666666] hover:border-[#111111] hover:text-[#111111] transition-colors w-full justify-center"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  {selectedExistingImages.length > 0 ? 'Add More from Library' : 'Select from Library'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Tags */}
                           <div>
