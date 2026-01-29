@@ -58,8 +58,13 @@ export default function AIGeneratePage() {
   const [formData, setFormData] = useState({
     topicDescription: "",
     numberOfTopics: "5",
-    brandContext: "",
     topicFocus: "variety",
+    // Content defaults
+    length: "Medium (800-1200 words)",
+    includeImages: true,
+    includeCallouts: true,
+    includeCTA: true,
+    // Image settings
     imageStyle: "",
     // SEO Research fields
     industryNiche: "",
@@ -119,6 +124,19 @@ export default function AIGeneratePage() {
     }
   }, [isGenerating, formData.enableSeoResearch]);
 
+  // Convert File to base64
+  const convertToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]); // Remove data URL prefix
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleGenerate = async () => {
     if (!formData.topicDescription.trim()) {
       alert("Please describe what topics you want to generate");
@@ -127,6 +145,11 @@ export default function AIGeneratePage() {
 
     setIsGenerating(true);
     try {
+      // Convert reference images to base64
+      const referenceImagesBase64 = await Promise.all(
+        brandImages.map(file => convertToBase64(file))
+      );
+
       // Build SEO context for the prompt
       const seoContext = formData.enableSeoResearch ? `
 
@@ -158,9 +181,8 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           input: prompt,
-          brandContext: formData.brandContext,
           inputType: "text",
-          uploadedImages: brandImages.map(f => f.name),
+          referenceImages: referenceImagesBase64,
           imageStyle: formData.imageStyle,
           // Pass SEO research config
           seoResearch: formData.enableSeoResearch ? {
@@ -178,14 +200,22 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
         const result = await response.json();
         const topics = result.interpretedData.topics;
 
-        // Save each topic to the database
+        // Save each topic to the database with content defaults
         let savedCount = 0;
         for (const topic of topics) {
           try {
             const saveResponse = await fetch("/api/blog/topics", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(topic)
+              body: JSON.stringify({
+                ...topic,
+                length: formData.length,
+                includeImages: formData.includeImages,
+                includeCallouts: formData.includeCallouts,
+                includeCTA: formData.includeCTA,
+                imageContext: formData.imageStyle,
+                referenceImages: referenceImagesBase64,
+              })
             });
             if (saveResponse.ok) {
               savedCount++;
@@ -328,23 +358,73 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
                 {/* Topic Description */}
                 <div>
                   <Label>Describe what topics you want</Label>
-                  <Textarea 
+                  <Textarea
                     value={formData.topicDescription}
                     onChange={(e) => setFormData(prev => ({ ...prev, topicDescription: e.target.value }))}
                     placeholder="Example: I need content about AI scheduling tools, productivity tips, and time management strategies for busy professionals. Focus on practical advice and real-world applications."
                     rows={4}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Brand voice and audience are pulled from your Brand Settings automatically
+                  </p>
                 </div>
 
-                {/* Brand Context */}
-                <div>
-                  <Label>Brand Context & Style Guide (Optional)</Label>
-                  <Textarea 
-                    value={formData.brandContext}
-                    onChange={(e) => setFormData(prev => ({ ...prev, brandContext: e.target.value }))}
-                    placeholder="Describe your brand voice, target audience, and any specific requirements..."
-                    rows={3}
-                  />
+                {/* Content Defaults */}
+                <div className="border rounded-lg p-4 space-y-4 bg-gray-50">
+                  <Label className="text-base font-medium">Content Defaults</Label>
+                  <p className="text-xs text-gray-500 -mt-2">
+                    These settings will apply to all generated topics
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Article Length</Label>
+                      <Select
+                        value={formData.length}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, length: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Short (400-600 words)">Short (400-600 words)</SelectItem>
+                          <SelectItem value="Medium (800-1200 words)">Medium (800-1200 words)</SelectItem>
+                          <SelectItem value="Long (1500-2000 words)">Long (1500-2000 words)</SelectItem>
+                          <SelectItem value="Comprehensive (2500+ words)">Comprehensive (2500+ words)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="mb-2 block">Include in Generated Posts</Label>
+                    <div className="flex flex-wrap gap-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="includeImages"
+                          checked={formData.includeImages}
+                          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, includeImages: checked as boolean }))}
+                        />
+                        <Label htmlFor="includeImages" className="text-sm cursor-pointer">AI Images</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="includeCallouts"
+                          checked={formData.includeCallouts}
+                          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, includeCallouts: checked as boolean }))}
+                        />
+                        <Label htmlFor="includeCallouts" className="text-sm cursor-pointer">Callout Boxes</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="includeCTA"
+                          checked={formData.includeCTA}
+                          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, includeCTA: checked as boolean }))}
+                        />
+                        <Label htmlFor="includeCTA" className="text-sm cursor-pointer">Call to Action</Label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Image Style */}
