@@ -11,7 +11,7 @@ import {
   Wand2,
   Calendar,
   Clock,
-  Image,
+  Image as ImageIcon,
   X,
   Search,
   Target,
@@ -21,6 +21,7 @@ import {
   Database,
   FileSearch,
   Sparkles,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +38,13 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Research phases for progress tracking
 const RESEARCH_PHASES = [
@@ -81,6 +89,25 @@ export default function AIGeneratePage() {
     }
   });
   const [brandImages, setBrandImages] = useState<File[]>([]);
+  const [libraryImages, setLibraryImages] = useState<any[]>([]);
+  const [selectedLibraryImages, setSelectedLibraryImages] = useState<string[]>([]);
+  const [showImagePicker, setShowImagePicker] = useState(false);
+
+  // Fetch images from media library
+  useEffect(() => {
+    const fetchImages = async () => {
+      try {
+        const response = await fetch("/api/blog/images");
+        if (response.ok) {
+          const data = await response.json();
+          setLibraryImages(data.images || []);
+        }
+      } catch (error) {
+        console.error("Error fetching images:", error);
+      }
+    };
+    fetchImages();
+  }, []);
 
   // Effect to cycle through phases when generating with SEO research
   useEffect(() => {
@@ -145,10 +172,16 @@ export default function AIGeneratePage() {
 
     setIsGenerating(true);
     try {
-      // Convert reference images to base64
-      const referenceImagesBase64 = await Promise.all(
+      // Convert uploaded images to base64
+      const uploadedImagesBase64 = await Promise.all(
         brandImages.map(file => convertToBase64(file))
       );
+
+      // Combine library images (URLs) and uploaded images (base64)
+      const allReferenceImages = [
+        ...selectedLibraryImages,
+        ...uploadedImagesBase64,
+      ];
 
       // Build SEO context for the prompt
       const seoContext = formData.enableSeoResearch ? `
@@ -182,7 +215,7 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
         body: JSON.stringify({
           input: prompt,
           inputType: "text",
-          referenceImages: referenceImagesBase64,
+          referenceImages: allReferenceImages,
           imageStyle: formData.imageStyle,
           // Pass SEO research config
           seoResearch: formData.enableSeoResearch ? {
@@ -214,7 +247,7 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
                 includeCallouts: formData.includeCallouts,
                 includeCTA: formData.includeCTA,
                 imageContext: formData.imageStyle,
-                referenceImages: referenceImagesBase64,
+                referenceImages: allReferenceImages,
               })
             });
             if (saveResponse.ok) {
@@ -438,10 +471,75 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
                   />
                 </div>
 
-                {/* Brand Images */}
+                {/* Reference Images */}
                 <div>
-                  <Label>Brand Reference Images (Optional)</Label>
-                  <div className="space-y-2">
+                  <Label>Reference Images (Optional)</Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    AI will analyze these to match their visual style
+                  </p>
+
+                  {/* Selected Images Preview */}
+                  {(selectedLibraryImages.length > 0 || brandImages.length > 0) && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {/* Library images */}
+                      {selectedLibraryImages.map((imageRef, index) => {
+                        const image = libraryImages.find(img => img.url === imageRef || img._id === imageRef);
+                        return (
+                          <div key={`lib-${index}`} className="relative group">
+                            <img
+                              src={image?.thumbnailUrl || image?.url || imageRef}
+                              alt={`Reference ${index + 1}`}
+                              className="w-16 h-16 object-cover rounded border"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setSelectedLibraryImages(prev => prev.filter(ref => ref !== imageRef))}
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {/* Uploaded images */}
+                      {brandImages.map((file, index) => (
+                        <div key={`upload-${index}`} className="relative group">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`Uploaded ${index + 1}`}
+                            className="w-16 h-16 object-cover rounded border"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setShowImagePicker(true)}
+                    >
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      From Library
+                    </Button>
+                    <label htmlFor="brand-image-upload" className="flex-1">
+                      <Button variant="outline" asChild size="sm" className="w-full">
+                        <span className="cursor-pointer">
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload
+                        </span>
+                      </Button>
+                    </label>
                     <input
                       type="file"
                       accept="image/*"
@@ -450,40 +548,6 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
                       className="hidden"
                       id="brand-image-upload"
                     />
-                    <label htmlFor="brand-image-upload">
-                      <Button variant="outline" asChild size="sm" className="w-full">
-                        <span className="cursor-pointer">
-                          <Image className="h-4 w-4 mr-2" />
-                          Upload Reference Images
-                        </span>
-                      </Button>
-                    </label>
-                    
-                    {brandImages.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        {brandImages.map((file, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt={file.name}
-                              className="w-full h-24 object-cover rounded border"
-                            />
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="absolute top-1 right-1 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => removeImage(index)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                            <p className="text-xs text-center mt-1 truncate">{file.name}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-500">
-                      Upload images that represent your brand&apos;s visual style
-                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -818,6 +882,65 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
           </div>
         </div>
       </div>
+
+      {/* Image Picker Dialog */}
+      <Dialog open={showImagePicker} onOpenChange={setShowImagePicker}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Select Reference Images</DialogTitle>
+            <DialogDescription>
+              Choose images from your library to use as style references
+            </DialogDescription>
+          </DialogHeader>
+
+          {libraryImages.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No images in your library yet. Upload some in the Media tab first.
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 md:grid-cols-6 gap-2 mt-4">
+              {libraryImages.map((image) => (
+                <div
+                  key={image.fileId || image._id}
+                  className={`relative cursor-pointer rounded border-2 transition-all ${
+                    selectedLibraryImages.includes(image.url) || selectedLibraryImages.includes(image._id)
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                  onClick={() => {
+                    const imageRef = image.url || image._id;
+                    setSelectedLibraryImages(prev =>
+                      prev.includes(imageRef)
+                        ? prev.filter(ref => ref !== imageRef)
+                        : [...prev, imageRef]
+                    );
+                  }}
+                >
+                  <img
+                    src={image.thumbnailUrl || image.url}
+                    alt={image.name}
+                    className="w-full h-20 object-cover rounded"
+                  />
+                  {(selectedLibraryImages.includes(image.url) || selectedLibraryImages.includes(image._id)) && (
+                    <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                      ✓
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowImagePicker(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => setShowImagePicker(false)}>
+              Done ({selectedLibraryImages.length} selected)
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminPasswordGate>
   );
 }
