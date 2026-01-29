@@ -36,6 +36,7 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1573,19 +1574,22 @@ export default function BlogAdminClient() {
                       Add Topic
                     </Button>
                   </DialogTrigger>
-                      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Create New Topic</DialogTitle>
-                          <DialogDescription>
-                            Add a topic for AI blog generation
+                      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0 bg-[#FAFAF8]">
+                        {/* Header */}
+                        <div className="px-6 py-5 border-b border-[#E0DED8] bg-white">
+                          <DialogTitle className="text-[20px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+                            Create New Topic
+                          </DialogTitle>
+                          <DialogDescription className="text-[14px] text-[#666666] mt-1">
+                            Add a topic for AI-powered blog generation
                           </DialogDescription>
-                        </DialogHeader>
+                        </div>
 
-                        <div className="space-y-5 py-4">
+                        <div className="px-6 py-5 space-y-5">
                           {/* Topic Title */}
                           <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                              Topic Title *
+                            <label className="text-[13px] font-medium text-[#111111] mb-2 block">
+                              Topic Title <span className="text-red-500">*</span>
                             </label>
                             <Input
                               value={topicForm.topic}
@@ -1596,14 +1600,14 @@ export default function BlogAdminClient() {
                                 }))
                               }
                               placeholder="e.g., The Future of Remote Work in 2025"
-                              className="w-full"
+                              className="w-full h-11 bg-white border-[#E0DED8] focus:border-[#111111] focus:ring-[#111111] text-[15px]"
                             />
                           </div>
 
                           {/* Two column layout */}
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                 Target Audience
                               </label>
                               <Input
@@ -1615,11 +1619,12 @@ export default function BlogAdminClient() {
                                   }))
                                 }
                                 placeholder="e.g., Marketing professionals"
+                                className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
                               />
                             </div>
 
                             <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                 Tone
                               </label>
                               <Select
@@ -1631,7 +1636,7 @@ export default function BlogAdminClient() {
                                   }))
                                 }
                               >
-                                <SelectTrigger>
+                                <SelectTrigger className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1644,7 +1649,7 @@ export default function BlogAdminClient() {
                             </div>
 
                             <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                 Length
                               </label>
                               <Select
@@ -1656,20 +1661,20 @@ export default function BlogAdminClient() {
                                   }))
                                 }
                               >
-                                <SelectTrigger>
+                                <SelectTrigger className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Short (400-600 words)">Short (400-600 words)</SelectItem>
-                                  <SelectItem value="Medium (800-1200 words)">Medium (800-1200 words)</SelectItem>
-                                  <SelectItem value="Long (1200-1500 words)">Long (1200-1500 words)</SelectItem>
+                                  <SelectItem value="Short (400-600 words)">Short (400-600)</SelectItem>
+                                  <SelectItem value="Medium (800-1200 words)">Medium (800-1200)</SelectItem>
+                                  <SelectItem value="Long (1200-1500 words)">Long (1200-1500)</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
 
                             <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Schedule (Optional)
+                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
+                                Schedule <span className="text-[#888888] font-normal">(Optional)</span>
                               </label>
                               <Input
                                 type="datetime-local"
@@ -1680,63 +1685,92 @@ export default function BlogAdminClient() {
                                     scheduledAt: e.target.value,
                                   }))
                                 }
-                                className="w-full"
+                                className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
                               />
                             </div>
                           </div>
 
                           {/* Content Options */}
-                          <div className="flex items-center gap-6">
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="includeImages"
-                                checked={topicForm.includeImages}
-                                onCheckedChange={(checked) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    includeImages: !!checked,
-                                  }))
-                                }
-                              />
-                              <label htmlFor="includeImages" className="text-sm text-gray-700">
-                                Include Images
+                          <div className="bg-white rounded-xl border border-[#E0DED8] p-4">
+                            <label className="text-[13px] font-medium text-[#111111] mb-3 block">
+                              Content Options
+                            </label>
+                            <div className="flex items-center gap-4">
+                              <label
+                                htmlFor="includeImages"
+                                className={`flex items-center gap-2 px-3 py-2 rounded-full cursor-pointer transition-all text-[13px] ${
+                                  topicForm.includeImages
+                                    ? "bg-[#111111] text-white"
+                                    : "bg-[#F5F4F0] text-[#666666] hover:bg-[#E8E6E1]"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  id="includeImages"
+                                  checked={topicForm.includeImages}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      includeImages: e.target.checked,
+                                    }))
+                                  }
+                                  className="sr-only"
+                                />
+                                <ImageIcon className="h-3.5 w-3.5" />
+                                Images
                               </label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="includeCallouts"
-                                checked={topicForm.includeCallouts}
-                                onCheckedChange={(checked) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    includeCallouts: !!checked,
-                                  }))
-                                }
-                              />
-                              <label htmlFor="includeCallouts" className="text-sm text-gray-700">
-                                Include Callouts
+                              <label
+                                htmlFor="includeCallouts"
+                                className={`flex items-center gap-2 px-3 py-2 rounded-full cursor-pointer transition-all text-[13px] ${
+                                  topicForm.includeCallouts
+                                    ? "bg-[#111111] text-white"
+                                    : "bg-[#F5F4F0] text-[#666666] hover:bg-[#E8E6E1]"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  id="includeCallouts"
+                                  checked={topicForm.includeCallouts}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      includeCallouts: e.target.checked,
+                                    }))
+                                  }
+                                  className="sr-only"
+                                />
+                                <AlertCircle className="h-3.5 w-3.5" />
+                                Callouts
                               </label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="includeCTA"
-                                checked={topicForm.includeCTA}
-                                onCheckedChange={(checked) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    includeCTA: !!checked,
-                                  }))
-                                }
-                              />
-                              <label htmlFor="includeCTA" className="text-sm text-gray-700">
-                                Include CTA
+                              <label
+                                htmlFor="includeCTA"
+                                className={`flex items-center gap-2 px-3 py-2 rounded-full cursor-pointer transition-all text-[13px] ${
+                                  topicForm.includeCTA
+                                    ? "bg-[#111111] text-white"
+                                    : "bg-[#F5F4F0] text-[#666666] hover:bg-[#E8E6E1]"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  id="includeCTA"
+                                  checked={topicForm.includeCTA}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      includeCTA: e.target.checked,
+                                    }))
+                                  }
+                                  className="sr-only"
+                                />
+                                <Sparkles className="h-3.5 w-3.5" />
+                                CTA
                               </label>
                             </div>
                           </div>
 
                           {/* Tags */}
                           <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                            <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                               Tags
                             </label>
                             <div className="flex gap-2 mb-2">
@@ -1745,13 +1779,14 @@ export default function BlogAdminClient() {
                                 onChange={(e) => setNewTagInput(e.target.value)}
                                 placeholder="Add a tag and press Enter..."
                                 onKeyPress={(e) => e.key === "Enter" && addTag()}
-                                className="flex-1"
+                                className="flex-1 h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
                               />
                               <Button
                                 type="button"
                                 variant="outline"
                                 onClick={addTag}
                                 disabled={!newTagInput.trim()}
+                                className="h-10 border-[#E0DED8] hover:bg-[#F5F4F0]"
                               >
                                 Add
                               </Button>
@@ -1759,14 +1794,14 @@ export default function BlogAdminClient() {
                             {topicForm.tags.length > 0 && (
                               <div className="flex flex-wrap gap-2">
                                 {topicForm.tags.map((tag, index) => (
-                                  <Badge
+                                  <span
                                     key={index}
-                                    variant="secondary"
-                                    className="cursor-pointer hover:bg-red-100"
+                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[13px] bg-[#111111] text-white cursor-pointer hover:bg-[#333333] transition-colors"
                                     onClick={() => removeTag(tag)}
                                   >
-                                    {tag} ×
-                                  </Badge>
+                                    {tag}
+                                    <X className="h-3 w-3" />
+                                  </span>
                                 ))}
                               </div>
                             )}
@@ -1774,8 +1809,8 @@ export default function BlogAdminClient() {
 
                           {/* Additional Instructions */}
                           <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                              Additional Instructions (Optional)
+                            <label className="text-[13px] font-medium text-[#111111] mb-2 block">
+                              Additional Instructions <span className="text-[#888888] font-normal">(Optional)</span>
                             </label>
                             <Textarea
                               value={topicForm.additionalRequirements}
@@ -1787,18 +1822,23 @@ export default function BlogAdminClient() {
                               }
                               placeholder="Any specific requirements, keywords to include, topics to cover, or style notes..."
                               rows={3}
+                              className="bg-white border-[#E0DED8] focus:border-[#111111] text-[14px] resize-none"
                             />
                           </div>
 
                           {/* Advanced SEO - Collapsible */}
-                          <details className="border rounded-lg">
-                            <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:bg-gray-50">
-                              Advanced SEO Options
+                          <details className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden group">
+                            <summary className="px-4 py-3 cursor-pointer text-[13px] font-medium text-[#111111] hover:bg-[#FAFAF8] transition-colors flex items-center justify-between list-none">
+                              <span className="flex items-center gap-2">
+                                <Search className="h-4 w-4 text-[#888888]" />
+                                Advanced SEO Options
+                              </span>
+                              <ChevronDown className="h-4 w-4 text-[#888888] transition-transform group-open:rotate-180" />
                             </summary>
-                            <div className="px-4 pb-4 pt-2 space-y-4 border-t">
+                            <div className="px-4 pb-4 pt-3 space-y-4 border-t border-[#E0DED8] bg-[#FAFAF8]">
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                  <label className="text-[12px] font-medium text-[#444444] mb-1.5 block">
                                     Primary Keyword
                                   </label>
                                   <Input
@@ -1810,10 +1850,11 @@ export default function BlogAdminClient() {
                                       }))
                                     }
                                     placeholder="e.g., remote work tips"
+                                    className="h-9 bg-white border-[#E0DED8] text-[13px]"
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                  <label className="text-[12px] font-medium text-[#444444] mb-1.5 block">
                                     URL Slug
                                   </label>
                                   <div className="flex gap-2">
@@ -1826,7 +1867,7 @@ export default function BlogAdminClient() {
                                         }))
                                       }
                                       placeholder="auto-generated"
-                                      className="flex-1 font-mono text-sm"
+                                      className="flex-1 h-9 bg-white border-[#E0DED8] font-mono text-[12px]"
                                     />
                                     <Button
                                       type="button"
@@ -1834,6 +1875,7 @@ export default function BlogAdminClient() {
                                       size="sm"
                                       onClick={updateSlug}
                                       disabled={!topicForm.seo.primaryKeyword && !topicForm.topic}
+                                      className="h-9 text-[12px] border-[#E0DED8]"
                                     >
                                       Auto
                                     </Button>
@@ -1842,9 +1884,9 @@ export default function BlogAdminClient() {
                               </div>
 
                               <div>
-                                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                <label className="text-[12px] font-medium text-[#444444] mb-1.5 flex items-center justify-between">
                                   Meta Title
-                                  <span className={`ml-2 text-xs ${topicForm.seo.metaTitle.length > 50 ? 'text-red-500' : 'text-gray-400'}`}>
+                                  <span className={`font-normal ${topicForm.seo.metaTitle.length > 50 ? 'text-red-500' : 'text-[#888888]'}`}>
                                     {topicForm.seo.metaTitle.length}/60
                                   </span>
                                 </label>
@@ -1858,13 +1900,14 @@ export default function BlogAdminClient() {
                                   }
                                   placeholder="Leave blank to auto-generate"
                                   maxLength={60}
+                                  className="h-9 bg-white border-[#E0DED8] text-[13px]"
                                 />
                               </div>
 
                               <div>
-                                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                <label className="text-[12px] font-medium text-[#444444] mb-1.5 flex items-center justify-between">
                                   Meta Description
-                                  <span className={`ml-2 text-xs ${topicForm.seo.metaDescription.length > 140 ? 'text-red-500' : 'text-gray-400'}`}>
+                                  <span className={`font-normal ${topicForm.seo.metaDescription.length > 140 ? 'text-red-500' : 'text-[#888888]'}`}>
                                     {topicForm.seo.metaDescription.length}/155
                                   </span>
                                 </label>
@@ -1879,13 +1922,15 @@ export default function BlogAdminClient() {
                                   placeholder="Leave blank to auto-generate"
                                   rows={2}
                                   maxLength={155}
+                                  className="bg-white border-[#E0DED8] text-[13px] resize-none"
                                 />
                               </div>
                             </div>
                           </details>
                         </div>
 
-                        <div className="flex gap-2 justify-end border-t pt-4">
+                        {/* Footer */}
+                        <div className="flex gap-3 justify-end px-6 py-4 border-t border-[#E0DED8] bg-white">
                           <Button
                             variant="outline"
                             onClick={() => {
@@ -1893,12 +1938,14 @@ export default function BlogAdminClient() {
                               setShowAddTopicDialog(false);
                             }}
                             disabled={isCreatingTopic}
+                            className="h-10 px-5 border-[#E0DED8] text-[#666666] hover:bg-[#F5F4F0] hover:text-[#111111]"
                           >
                             Cancel
                           </Button>
                           <Button
                             onClick={handleCreateTopic}
                             disabled={isCreatingTopic || !topicForm.topic.trim()}
+                            className="h-10 px-5 bg-[#111111] hover:bg-[#333333] text-white"
                           >
                             {isCreatingTopic ? (
                               <>
@@ -1907,7 +1954,7 @@ export default function BlogAdminClient() {
                               </>
                             ) : (
                               <>
-                                <Plus className="h-4 w-4 mr-2" />
+                                <Sparkles className="h-4 w-4 mr-2" />
                                 Create Topic
                               </>
                             )}
@@ -1921,19 +1968,22 @@ export default function BlogAdminClient() {
                       open={showEditTopicDialog}
                       onOpenChange={setShowEditTopicDialog}
                     >
-                      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Edit Topic</DialogTitle>
-                          <DialogDescription>
+                      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0 bg-[#FAFAF8]">
+                        {/* Header */}
+                        <div className="px-6 py-5 border-b border-[#E0DED8] bg-white">
+                          <DialogTitle className="text-[20px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+                            Edit Topic
+                          </DialogTitle>
+                          <DialogDescription className="text-[14px] text-[#666666] mt-1">
                             Update topic details
                           </DialogDescription>
-                        </DialogHeader>
+                        </div>
 
-                        <div className="space-y-5 py-4">
+                        <div className="px-6 py-5 space-y-5">
                           {/* Topic Title */}
                           <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                              Topic Title *
+                            <label className="text-[13px] font-medium text-[#111111] mb-2 block">
+                              Topic Title <span className="text-red-500">*</span>
                             </label>
                             <Input
                               value={topicForm.topic}
@@ -1944,14 +1994,14 @@ export default function BlogAdminClient() {
                                 }))
                               }
                               placeholder="e.g., The Future of Remote Work in 2025"
-                              className="w-full"
+                              className="w-full h-11 bg-white border-[#E0DED8] focus:border-[#111111] focus:ring-[#111111] text-[15px]"
                             />
                           </div>
 
                           {/* Two column layout */}
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                 Target Audience
                               </label>
                               <Input
@@ -1963,11 +2013,12 @@ export default function BlogAdminClient() {
                                   }))
                                 }
                                 placeholder="e.g., Marketing professionals"
+                                className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
                               />
                             </div>
 
                             <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                 Tone
                               </label>
                               <Select
@@ -1979,7 +2030,7 @@ export default function BlogAdminClient() {
                                   }))
                                 }
                               >
-                                <SelectTrigger>
+                                <SelectTrigger className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1992,7 +2043,7 @@ export default function BlogAdminClient() {
                             </div>
 
                             <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                 Length
                               </label>
                               <Select
@@ -2004,20 +2055,20 @@ export default function BlogAdminClient() {
                                   }))
                                 }
                               >
-                                <SelectTrigger>
+                                <SelectTrigger className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Short (400-600 words)">Short (400-600 words)</SelectItem>
-                                  <SelectItem value="Medium (800-1200 words)">Medium (800-1200 words)</SelectItem>
-                                  <SelectItem value="Long (1200-1500 words)">Long (1200-1500 words)</SelectItem>
+                                  <SelectItem value="Short (400-600 words)">Short (400-600)</SelectItem>
+                                  <SelectItem value="Medium (800-1200 words)">Medium (800-1200)</SelectItem>
+                                  <SelectItem value="Long (1200-1500 words)">Long (1200-1500)</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
 
                             <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Schedule (Optional)
+                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
+                                Schedule <span className="text-[#888888] font-normal">(Optional)</span>
                               </label>
                               <Input
                                 type="datetime-local"
@@ -2029,63 +2080,92 @@ export default function BlogAdminClient() {
                                     scheduledAt: e.target.value,
                                   }))
                                 }
-                                className={editingTopic?.status === 'completed' || editingTopic?.generatedPostId ? "bg-gray-100 text-gray-500" : ""}
+                                className={`h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px] ${editingTopic?.status === 'completed' || editingTopic?.generatedPostId ? "opacity-50" : ""}`}
                               />
                             </div>
                           </div>
 
                           {/* Content Options */}
-                          <div className="flex items-center gap-6">
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="edit-includeImages"
-                                checked={topicForm.includeImages}
-                                onCheckedChange={(checked) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    includeImages: !!checked,
-                                  }))
-                                }
-                              />
-                              <label htmlFor="edit-includeImages" className="text-sm text-gray-700">
-                                Include Images
+                          <div className="bg-white rounded-xl border border-[#E0DED8] p-4">
+                            <label className="text-[13px] font-medium text-[#111111] mb-3 block">
+                              Content Options
+                            </label>
+                            <div className="flex items-center gap-4">
+                              <label
+                                htmlFor="edit-includeImages"
+                                className={`flex items-center gap-2 px-3 py-2 rounded-full cursor-pointer transition-all text-[13px] ${
+                                  topicForm.includeImages
+                                    ? "bg-[#111111] text-white"
+                                    : "bg-[#F5F4F0] text-[#666666] hover:bg-[#E8E6E1]"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  id="edit-includeImages"
+                                  checked={topicForm.includeImages}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      includeImages: e.target.checked,
+                                    }))
+                                  }
+                                  className="sr-only"
+                                />
+                                <ImageIcon className="h-3.5 w-3.5" />
+                                Images
                               </label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="edit-includeCallouts"
-                                checked={topicForm.includeCallouts}
-                                onCheckedChange={(checked) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    includeCallouts: !!checked,
-                                  }))
-                                }
-                              />
-                              <label htmlFor="edit-includeCallouts" className="text-sm text-gray-700">
-                                Include Callouts
+                              <label
+                                htmlFor="edit-includeCallouts"
+                                className={`flex items-center gap-2 px-3 py-2 rounded-full cursor-pointer transition-all text-[13px] ${
+                                  topicForm.includeCallouts
+                                    ? "bg-[#111111] text-white"
+                                    : "bg-[#F5F4F0] text-[#666666] hover:bg-[#E8E6E1]"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  id="edit-includeCallouts"
+                                  checked={topicForm.includeCallouts}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      includeCallouts: e.target.checked,
+                                    }))
+                                  }
+                                  className="sr-only"
+                                />
+                                <AlertCircle className="h-3.5 w-3.5" />
+                                Callouts
                               </label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="edit-includeCTA"
-                                checked={topicForm.includeCTA}
-                                onCheckedChange={(checked) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    includeCTA: !!checked,
-                                  }))
-                                }
-                              />
-                              <label htmlFor="edit-includeCTA" className="text-sm text-gray-700">
-                                Include CTA
+                              <label
+                                htmlFor="edit-includeCTA"
+                                className={`flex items-center gap-2 px-3 py-2 rounded-full cursor-pointer transition-all text-[13px] ${
+                                  topicForm.includeCTA
+                                    ? "bg-[#111111] text-white"
+                                    : "bg-[#F5F4F0] text-[#666666] hover:bg-[#E8E6E1]"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  id="edit-includeCTA"
+                                  checked={topicForm.includeCTA}
+                                  onChange={(e) =>
+                                    setTopicForm((prev) => ({
+                                      ...prev,
+                                      includeCTA: e.target.checked,
+                                    }))
+                                  }
+                                  className="sr-only"
+                                />
+                                <Sparkles className="h-3.5 w-3.5" />
+                                CTA
                               </label>
                             </div>
                           </div>
 
                           {/* Tags */}
                           <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                            <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                               Tags
                             </label>
                             <div className="flex gap-2 mb-2">
@@ -2094,13 +2174,14 @@ export default function BlogAdminClient() {
                                 onChange={(e) => setNewTagInput(e.target.value)}
                                 placeholder="Add a tag and press Enter..."
                                 onKeyPress={(e) => e.key === "Enter" && addTag()}
-                                className="flex-1"
+                                className="flex-1 h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
                               />
                               <Button
                                 type="button"
                                 variant="outline"
                                 onClick={addTag}
                                 disabled={!newTagInput.trim()}
+                                className="h-10 border-[#E0DED8] hover:bg-[#F5F4F0]"
                               >
                                 Add
                               </Button>
@@ -2108,14 +2189,14 @@ export default function BlogAdminClient() {
                             {topicForm.tags.length > 0 && (
                               <div className="flex flex-wrap gap-2">
                                 {topicForm.tags.map((tag, index) => (
-                                  <Badge
+                                  <span
                                     key={index}
-                                    variant="secondary"
-                                    className="cursor-pointer hover:bg-red-100"
+                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[13px] bg-[#111111] text-white cursor-pointer hover:bg-[#333333] transition-colors"
                                     onClick={() => removeTag(tag)}
                                   >
-                                    {tag} ×
-                                  </Badge>
+                                    {tag}
+                                    <X className="h-3 w-3" />
+                                  </span>
                                 ))}
                               </div>
                             )}
@@ -2123,7 +2204,7 @@ export default function BlogAdminClient() {
 
                           {/* Additional Instructions */}
                           <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                            <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                               Additional Instructions (Optional)
                             </label>
                             <Textarea
@@ -2136,18 +2217,23 @@ export default function BlogAdminClient() {
                               }
                               placeholder="Any specific requirements, keywords to include, topics to cover, or style notes..."
                               rows={3}
+                              className="bg-white border-[#E0DED8] focus:border-[#111111] text-[14px] resize-none"
                             />
                           </div>
 
                           {/* Advanced SEO - Collapsible */}
-                          <details className="border rounded-lg">
-                            <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:bg-gray-50">
-                              Advanced SEO Options
+                          <details className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden group">
+                            <summary className="px-4 py-3 cursor-pointer text-[13px] font-medium text-[#111111] hover:bg-[#FAFAF8] transition-colors flex items-center justify-between list-none">
+                              <span className="flex items-center gap-2">
+                                <Search className="h-4 w-4 text-[#888888]" />
+                                Advanced SEO Options
+                              </span>
+                              <ChevronDown className="h-4 w-4 text-[#888888] transition-transform group-open:rotate-180" />
                             </summary>
-                            <div className="px-4 pb-4 pt-2 space-y-4 border-t">
+                            <div className="px-4 pb-4 pt-2 space-y-4 border-t border-[#E0DED8] bg-[#FAFAF8]">
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                  <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                     Primary Keyword
                                   </label>
                                   <Input
@@ -2159,10 +2245,11 @@ export default function BlogAdminClient() {
                                       }))
                                     }
                                     placeholder="e.g., remote work tips"
+                                    className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                  <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                     URL Slug
                                   </label>
                                   <div className="flex gap-2">
@@ -2175,14 +2262,14 @@ export default function BlogAdminClient() {
                                         }))
                                       }
                                       placeholder="auto-generated"
-                                      className="flex-1 font-mono text-sm"
+                                      className="flex-1 h-10 bg-white border-[#E0DED8] focus:border-[#111111] font-mono text-[13px]"
                                     />
                                     <Button
                                       type="button"
                                       variant="outline"
-                                      size="sm"
                                       onClick={updateSlug}
                                       disabled={!topicForm.seo.primaryKeyword && !topicForm.topic}
+                                      className="h-10 border-[#E0DED8] hover:bg-white text-[13px]"
                                     >
                                       Auto
                                     </Button>
@@ -2191,9 +2278,9 @@ export default function BlogAdminClient() {
                               </div>
 
                               <div>
-                                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                   Meta Title
-                                  <span className={`ml-2 text-xs ${topicForm.seo.metaTitle.length > 50 ? 'text-red-500' : 'text-gray-400'}`}>
+                                  <span className={`ml-2 text-[11px] ${topicForm.seo.metaTitle.length > 50 ? 'text-red-500' : 'text-[#888888]'}`}>
                                     {topicForm.seo.metaTitle.length}/60
                                   </span>
                                 </label>
@@ -2207,13 +2294,14 @@ export default function BlogAdminClient() {
                                   }
                                   placeholder="Leave blank to auto-generate"
                                   maxLength={60}
+                                  className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
                                 />
                               </div>
 
                               <div>
-                                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                   Meta Description
-                                  <span className={`ml-2 text-xs ${topicForm.seo.metaDescription.length > 140 ? 'text-red-500' : 'text-gray-400'}`}>
+                                  <span className={`ml-2 text-[11px] ${topicForm.seo.metaDescription.length > 140 ? 'text-red-500' : 'text-[#888888]'}`}>
                                     {topicForm.seo.metaDescription.length}/155
                                   </span>
                                 </label>
@@ -2228,59 +2316,62 @@ export default function BlogAdminClient() {
                                   placeholder="Leave blank to auto-generate"
                                   rows={2}
                                   maxLength={155}
+                                  className="bg-white border-[#E0DED8] focus:border-[#111111] text-[14px] resize-none"
                                 />
                               </div>
                             </div>
                           </details>
                         </div>
 
-                        <div className="flex gap-2 justify-end border-t pt-4">
-                          <Button
-                            variant="outline"
+                        {/* Footer */}
+                        <div className="flex gap-3 justify-end border-t border-[#E0DED8] pt-5 mt-2">
+                          <button
+                            type="button"
                             onClick={() => setShowEditTopicDialog(false)}
+                            className="px-5 py-2.5 rounded-full text-[14px] font-medium text-[#666666] hover:bg-[#F5F4F0] transition-colors"
                           >
                             Cancel
-                          </Button>
-                          
+                          </button>
+
                           {topicForm.scheduledAt && !editingTopic?.generatedPostId && editingTopic?.status !== 'completed' && (
-                            <Button
-                              variant="outline"
+                            <button
+                              type="button"
                               onClick={handleRescheduleTopic}
                               disabled={isUpdatingTopic}
-                              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[14px] font-medium border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
                             >
                               {isUpdatingTopic ? (
                                 <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  <Loader2 className="h-4 w-4 animate-spin" />
                                   Rescheduling...
                                 </>
                               ) : (
                                 <>
-                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  <RefreshCw className="h-4 w-4" />
                                   Reschedule Only
                                 </>
                               )}
-                            </Button>
+                            </button>
                           )}
-                          
-                          <Button
+
+                          <button
+                            type="button"
                             onClick={handleUpdateTopic}
-                            disabled={
-                              isUpdatingTopic || !topicForm.topic.trim()
-                            }
+                            disabled={isUpdatingTopic || !topicForm.topic.trim()}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[14px] font-medium bg-[#111111] text-white hover:bg-[#333333] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isUpdatingTopic ? (
                               <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                <Loader2 className="h-4 w-4 animate-spin" />
                                 Updating...
                               </>
                             ) : (
                               <>
-                                <Edit className="h-4 w-4 mr-2" />
+                                <Edit className="h-4 w-4" />
                                 Update Topic
                               </>
                             )}
-                          </Button>
+                          </button>
                         </div>
                       </DialogContent>
                     </Dialog>
