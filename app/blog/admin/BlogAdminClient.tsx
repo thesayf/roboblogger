@@ -3586,9 +3586,9 @@ export default function BlogAdminClient() {
                       <p className="text-sm text-gray-400 mb-4">
                         Add topics to generate blog posts
                       </p>
-                      <Button onClick={() => router.push("/blog/admin/bulk")}>
-                        <Zap className="h-4 w-4 mr-2" />
-                        Add Topics
+                      <Button onClick={() => setShowAddTopicDialog(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Topic
                       </Button>
                     </div>
                   ) : (
