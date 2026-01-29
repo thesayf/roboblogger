@@ -328,7 +328,7 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
               </div>
               <Button
                 variant="outline"
-                onClick={() => router.push("/blog/admin/bulk")}
+                onClick={() => router.push("/blog/admin")}
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -783,7 +783,7 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
             <div className="flex justify-end space-x-2">
               <Button
                 variant="outline"
-                onClick={() => router.push("/blog/admin/bulk")}
+                onClick={() => router.push("/blog/admin")}
                 disabled={isGenerating}
               >
                 Cancel
