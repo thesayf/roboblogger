@@ -536,7 +536,6 @@ export default function BlogAdminClient() {
     }
   };
 
-
   const handleEditTopic = (topic: any) => {
     setEditingTopic(topic);
     setTopicForm({
@@ -1805,14 +1804,18 @@ export default function BlogAdminClient() {
                                 </p>
 
                                 {/* Selected Images Preview */}
-                                {selectedExistingImages.length > 0 && (
+                                {(selectedExistingImages.length > 0 || newReferenceImages.length > 0) && (
                                   <div className="flex flex-wrap gap-2 mb-3">
+                                    {/* Library images */}
                                     {selectedExistingImages.map((imageRef, index) => {
                                       const image = images.find(img => img.url === imageRef || img._id === imageRef);
+                                      // Check if imageRef is base64 (no http/https prefix and long string)
+                                      const isBase64 = !imageRef.startsWith('http') && imageRef.length > 100;
+                                      const imageSrc = image?.thumbnailUrl || image?.url || (isBase64 ? `data:image/jpeg;base64,${imageRef}` : imageRef);
                                       return (
-                                        <div key={index} className="relative group">
+                                        <div key={`lib-${index}`} className="relative group">
                                           <img
-                                            src={image?.thumbnailUrl || image?.url || imageRef}
+                                            src={imageSrc}
                                             alt={`Reference ${index + 1}`}
                                             className="w-16 h-16 object-cover rounded-lg border border-[#E0DED8]"
                                           />
@@ -1826,17 +1829,47 @@ export default function BlogAdminClient() {
                                         </div>
                                       );
                                     })}
+                                    {/* Uploaded images */}
+                                    {newReferenceImages.map((file, index) => (
+                                      <div key={`upload-${index}`} className="relative group">
+                                        <img
+                                          src={URL.createObjectURL(file)}
+                                          alt={`Uploaded ${index + 1}`}
+                                          className="w-16 h-16 object-cover rounded-lg border border-[#E0DED8]"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => setNewReferenceImages(prev => prev.filter((_, i) => i !== index))}
+                                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    ))}
                                   </div>
                                 )}
 
-                                <button
-                                  type="button"
-                                  onClick={() => setShowImagePicker(true)}
-                                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#CCCCCC] text-[13px] text-[#666666] hover:border-[#111111] hover:text-[#111111] transition-colors w-full justify-center"
-                                >
-                                  <Plus className="h-4 w-4" />
-                                  {selectedExistingImages.length > 0 ? 'Add More from Library' : 'Select from Library'}
-                                </button>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowImagePicker(true)}
+                                    className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#CCCCCC] text-[13px] text-[#666666] hover:border-[#111111] hover:text-[#111111] transition-colors justify-center"
+                                  >
+                                    <ImageIcon className="h-4 w-4" />
+                                    From Library
+                                  </button>
+                                  <label className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#CCCCCC] text-[13px] text-[#666666] hover:border-[#111111] hover:text-[#111111] transition-colors justify-center cursor-pointer">
+                                    <Upload className="h-4 w-4" />
+                                    Upload
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      multiple
+                                      onChange={(e) => handleReferenceImageUpload(e.target.files)}
+                                      className="sr-only"
+                                    />
+                                  </label>
+                                </div>
                               </div>
                             </div>
                           )}
@@ -2273,14 +2306,18 @@ export default function BlogAdminClient() {
                                 </p>
 
                                 {/* Selected Images Preview */}
-                                {selectedExistingImages.length > 0 && (
+                                {(selectedExistingImages.length > 0 || newReferenceImages.length > 0) && (
                                   <div className="flex flex-wrap gap-2 mb-3">
+                                    {/* Library images */}
                                     {selectedExistingImages.map((imageRef, index) => {
                                       const image = images.find(img => img.url === imageRef || img._id === imageRef);
+                                      // Check if imageRef is base64 (no http/https prefix and long string)
+                                      const isBase64 = !imageRef.startsWith('http') && imageRef.length > 100;
+                                      const imageSrc = image?.thumbnailUrl || image?.url || (isBase64 ? `data:image/jpeg;base64,${imageRef}` : imageRef);
                                       return (
-                                        <div key={index} className="relative group">
+                                        <div key={`lib-${index}`} className="relative group">
                                           <img
-                                            src={image?.thumbnailUrl || image?.url || imageRef}
+                                            src={imageSrc}
                                             alt={`Reference ${index + 1}`}
                                             className="w-16 h-16 object-cover rounded-lg border border-[#E0DED8]"
                                           />
@@ -2294,17 +2331,47 @@ export default function BlogAdminClient() {
                                         </div>
                                       );
                                     })}
+                                    {/* Uploaded images */}
+                                    {newReferenceImages.map((file, index) => (
+                                      <div key={`upload-${index}`} className="relative group">
+                                        <img
+                                          src={URL.createObjectURL(file)}
+                                          alt={`Uploaded ${index + 1}`}
+                                          className="w-16 h-16 object-cover rounded-lg border border-[#E0DED8]"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => setNewReferenceImages(prev => prev.filter((_, i) => i !== index))}
+                                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    ))}
                                   </div>
                                 )}
 
-                                <button
-                                  type="button"
-                                  onClick={() => setShowImagePicker(true)}
-                                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#CCCCCC] text-[13px] text-[#666666] hover:border-[#111111] hover:text-[#111111] transition-colors w-full justify-center"
-                                >
-                                  <Plus className="h-4 w-4" />
-                                  {selectedExistingImages.length > 0 ? 'Add More from Library' : 'Select from Library'}
-                                </button>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowImagePicker(true)}
+                                    className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#CCCCCC] text-[13px] text-[#666666] hover:border-[#111111] hover:text-[#111111] transition-colors justify-center"
+                                  >
+                                    <ImageIcon className="h-4 w-4" />
+                                    From Library
+                                  </button>
+                                  <label className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#CCCCCC] text-[13px] text-[#666666] hover:border-[#111111] hover:text-[#111111] transition-colors justify-center cursor-pointer">
+                                    <Upload className="h-4 w-4" />
+                                    Upload
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      multiple
+                                      onChange={(e) => handleReferenceImageUpload(e.target.files)}
+                                      className="sr-only"
+                                    />
+                                  </label>
+                                </div>
                               </div>
                             </div>
                           )}
