@@ -52,6 +52,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
 
 interface ManualBlogEditorProps {
   onBack: () => void;
@@ -154,11 +155,13 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useUser();
+  const { showToast } = useToast();
   const [showAddComponent, setShowAddComponent] = useState(false);
   const [showJSONImport, setShowJSONImport] = useState(false);
   const [jsonInput, setJsonInput] = useState("");
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+  const scrollIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [currentPostId, setCurrentPostId] = useState<string | null>(null);
@@ -176,7 +179,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
     category: "",
     tags: [] as string[],
     components: [] as any[],
-    author: "",
+    authorName: "",
   });
 
   // Check for imported data or edit mode on component mount
@@ -215,7 +218,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         status: post.status,
         category: post.category || "",
         tags: post.tags || [],
-        author: post.author?.name || "",
+        authorName: post.authorName || "",
         components: post.components.map((comp) => ({
           ...comp,
           id: comp._id, // Use _id as id for local state
@@ -223,7 +226,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
       });
     } catch (error) {
       console.error("Error loading post:", error);
-      alert("Failed to load post for editing. Please try again.");
+      showToast("Failed to load post for editing. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -231,31 +234,39 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
 
   const addComponent = async (type: string) => {
     try {
-      // If no post exists yet, create a draft post first
+      // If we have an existing post, add the component to the database
       let postId = currentPostId;
+
+      // If no post exists yet, just add the component locally
+      // It will be saved when the user saves the draft
       if (!postId) {
-        if (!postData.title.trim()) {
-          alert("Please enter a title before adding components.");
-          return;
-        }
+        const localComponent = {
+          id: `local-${Date.now()}`,
+          type: type as BlogComponent["type"],
+          order: postData.components.length,
+          ...(type === "rich_text" && { content: "" }),
+          ...(type === "image" && { src: "", alt: "", caption: "" }),
+          ...(type === "callout" && { variant: "info", title: "", content: "" }),
+          ...(type === "quote" && { content: "", author: "", citation: "" }),
+          ...(type === "cta" && { text: "", link: "", style: "primary" }),
+          ...(type === "video" && { videoUrl: "", thumbnail: "", videoTitle: "" }),
+          ...(type === "table" && { headers: [], rows: [], tableCaption: "" }),
+          ...(type === "bar_chart" && { data: { title: "", description: "", chartData: [], xAxisLabel: "", yAxisLabel: "" } }),
+          ...(type === "line_chart" && { data: { title: "", description: "", chartData: [], xAxisLabel: "", yAxisLabel: "" } }),
+          ...(type === "pie_chart" && { data: { title: "", description: "", chartData: [] } }),
+          ...(type === "comparison_table" && { data: { title: "", description: "", columns: [], rows: [] } }),
+          ...(type === "pros_cons" && { data: { title: "", description: "", pros: [], cons: [] } }),
+          ...(type === "timeline" && { data: { title: "", description: "", events: [] } }),
+          ...(type === "flowchart" && { data: { title: "", description: "", nodes: [], connections: [] } }),
+          ...(type === "step_by_step" && { data: { title: "", description: "", steps: [] } }),
+        };
 
-        const slug = postData.slug || generateSlug(postData.title);
-        const newPost = await blogApi.createPost(
-          {
-            title: postData.title,
-            description: postData.description || "",
-            slug,
-            featuredImage: postData.featuredImage || "",
-            status: "draft" as const,
-            category: postData.category || "",
-            tags: postData.tags || [],
-            components: [],
-          },
-          "anonymous" // Use anonymous as dummy clerkId
-        );
-
-        postId = newPost._id;
-        setCurrentPostId(postId);
+        setPostData({
+          ...postData,
+          components: [...postData.components, localComponent],
+        });
+        setShowAddComponent(false);
+        return;
       }
 
       const componentData: Partial<BlogComponent> = {
@@ -410,14 +421,14 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
       setShowAddComponent(false);
     } catch (error) {
       console.error("Error adding component:", error);
-      alert("Failed to add component. Please try again.");
+      showToast("Failed to add component. Please try again.", "error");
     }
   };
 
   const removeComponent = async (id: string) => {
     const component = postData.components.find((c) => c.id === id);
     if (!component) {
-      alert("Component not found.");
+      showToast("Component not found.", "error");
       return;
     }
 
@@ -434,9 +445,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
       });
     } catch (error) {
       console.error("Error removing component:", error);
-      alert(
-        `Failed to remove component: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      showToast(`Failed to remove component: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
     }
   };
 
@@ -449,7 +458,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
       let postId = currentPostId;
       if (!postId) {
         if (!postData.title.trim()) {
-          alert("Please enter a title before duplicating components.");
+          showToast("Please enter a title before duplicating components.", "info");
           return;
         }
 
@@ -500,7 +509,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
       setPostData({ ...postData, components: newComponents });
     } catch (error) {
       console.error("Error duplicating component:", error);
-      alert("Failed to duplicate component. Please try again.");
+      showToast("Failed to duplicate component. Please try again.", "error");
     }
   };
 
@@ -530,7 +539,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
     // Validate the file before uploading
     const validation = validateImageFile(file);
     if (!validation.valid) {
-      alert(`Upload failed: ${validation.error}`);
+      showToast(`Upload failed: ${validation.error}`, "error");
       return;
     }
 
@@ -587,9 +596,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         },
       });
 
-      alert(
-        `Image uploaded successfully! 🎉\n${result.width}×${result.height} • ${result.format?.toUpperCase()} • ${formatFileSize(result.size)}`
-      );
+      showToast(`Image uploaded! ${result.width}×${result.height} • ${result.format?.toUpperCase()}`, "success");
     } catch (error) {
       console.error("Error uploading image:", error);
 
@@ -600,9 +607,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         src: "", // Clear any partial data
       });
 
-      alert(
-        `Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      showToast(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
     }
   };
 
@@ -612,7 +617,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
     // Validate the file before uploading
     const validation = validateImageFile(file);
     if (!validation.valid) {
-      alert(`Upload failed: ${validation.error}`);
+      showToast(`Upload failed: ${validation.error}`, "error");
       return;
     }
 
@@ -657,17 +662,13 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           setFeaturedImageUploadProgress(0);
         }, 1000);
 
-        alert(
-          `Featured image uploaded successfully! 🎉\n${result.width}×${result.height} • ${result.format?.toUpperCase()} • ${formatFileSize(result.size)}`
-        );
+        showToast(`Featured image uploaded! ${result.width}×${result.height} • ${result.format?.toUpperCase()}`, "success");
       } else {
         throw new Error(result.error || "Upload failed");
       }
     } catch (error) {
       console.error("Error uploading featured image:", error);
-      alert(
-        `Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      showToast(`Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
     } finally {
       setIsUploadingFeaturedImage(false);
     }
@@ -691,13 +692,13 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
       setShowJSONImport(false);
       setJsonInput("");
     } catch (error) {
-      alert("Invalid JSON format. Please check your input.");
+      showToast("Invalid JSON format. Please check your input.", "error");
     }
   };
 
   const saveDraft = async () => {
     if (!postData.title.trim()) {
-      alert("Please enter a title before saving.");
+      showToast("Please enter a title before saving.", "info");
       return;
     }
 
@@ -713,14 +714,12 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         status: "draft" as const,
         category: postData.category || "",
         tags: postData.tags || [],
-        author: postData.author ? { name: postData.author } : undefined,
-        // Only include components that have _id (real components)
-        components: postData.components
-          .filter((comp) => comp._id)
-          .map((comp, index) => ({
-            ...comp,
-            order: index,
-          })),
+        authorName: postData.authorName || "",
+        // Include all components - API will create new ones and update existing
+        components: postData.components.map((comp, index) => ({
+          ...comp,
+          order: index,
+        })),
       };
 
       if (currentPostId) {
@@ -745,12 +744,10 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         });
       }
 
-      alert("Draft saved successfully!");
+      showToast("Draft saved successfully!", "success");
     } catch (error) {
       console.error("Error saving draft:", error);
-      alert(
-        `Failed to save draft: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      showToast(`Failed to save draft: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
     } finally {
       setIsSaving(false);
     }
@@ -758,12 +755,12 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
 
   const publishPost = async () => {
     if (!postData.title.trim()) {
-      alert("Please enter a title before publishing.");
+      showToast("Please enter a title before publishing.", "info");
       return;
     }
 
     if (!postData.description?.trim()) {
-      alert("Please enter a description before publishing.");
+      showToast("Please enter a description before publishing.", "info");
       return;
     }
 
@@ -780,14 +777,12 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         publishedAt: new Date(),
         category: postData.category || "",
         tags: postData.tags || [],
-        author: postData.author ? { name: postData.author } : undefined,
-        // Only include components that have _id (real components)
-        components: postData.components
-          .filter((comp) => comp._id)
-          .map((comp, index) => ({
-            ...comp,
-            order: index,
-          })),
+        authorName: postData.authorName || "",
+        // Include all components - API will create new ones and update existing
+        components: postData.components.map((comp, index) => ({
+          ...comp,
+          order: index,
+        })),
       };
 
       if (currentPostId) {
@@ -797,13 +792,11 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         setCurrentPostId(newPost._id);
       }
 
-      alert("Post published successfully!");
+      showToast("Post published successfully!", "success");
       router.push("/blog/admin");
     } catch (error) {
       console.error("Error publishing post:", error);
-      alert(
-        `Failed to publish post: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      showToast(`Failed to publish post: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
     } finally {
       setIsSaving(false);
     }
@@ -812,7 +805,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
   const exportJSON = () => {
     const jsonString = JSON.stringify(postData, null, 2);
     navigator.clipboard.writeText(jsonString);
-    alert("JSON copied to clipboard!");
+    showToast("JSON copied to clipboard!", "success");
   };
 
   const toggleMarkdownPreview = (componentId: string) => {
@@ -825,6 +818,45 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedItem(index);
     e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    // Auto-scroll when dragging near edges
+    const scrollThreshold = 100; // pixels from edge to start scrolling
+    const scrollSpeed = 15; // pixels per frame
+
+    // Clear any existing scroll interval
+    if (scrollIntervalRef.current) {
+      clearInterval(scrollIntervalRef.current);
+      scrollIntervalRef.current = null;
+    }
+
+    // e.clientY is 0 when drag ends or leaves window
+    if (e.clientY === 0) return;
+
+    const viewportHeight = window.innerHeight;
+
+    if (e.clientY < scrollThreshold) {
+      // Near top - scroll up
+      scrollIntervalRef.current = setInterval(() => {
+        window.scrollBy(0, -scrollSpeed);
+      }, 16);
+    } else if (e.clientY > viewportHeight - scrollThreshold) {
+      // Near bottom - scroll down
+      scrollIntervalRef.current = setInterval(() => {
+        window.scrollBy(0, scrollSpeed);
+      }, 16);
+    }
+  };
+
+  const handleDragEnd = () => {
+    // Clean up scroll interval
+    if (scrollIntervalRef.current) {
+      clearInterval(scrollIntervalRef.current);
+      scrollIntervalRef.current = null;
+    }
+    setDraggedItem(null);
+    setDragOverItem(null);
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
@@ -898,54 +930,59 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
     const IconComponent = componentType?.icon || Type;
 
     return (
-      <Card
+      <div
         key={component.id}
-        className={`mb-4 transition-all duration-200 ${
+        className={`bg-white rounded-xl border border-[#E0DED8] transition-all duration-200 ${
           draggedItem === index ? "opacity-50 scale-95" : ""
-        } ${dragOverItem === index ? "ring-2 ring-blue-400 bg-blue-50" : ""}`}
+        } ${dragOverItem === index ? "ring-2 ring-[#111111] bg-[#FAFAF8]" : ""}`}
         onDragOver={(e) => handleDragOver(e, index)}
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e, index)}
       >
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between p-4 border-b border-[#F0EEE8]">
+          <div className="flex items-center gap-3">
+            <div
+              draggable
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDrag={handleDrag}
+              onDragEnd={handleDragEnd}
+              className="cursor-move p-1.5 -m-1 rounded hover:bg-[#F5F4F0] transition-colors"
+              title="Drag to reorder"
+            >
+              <GripVertical className="h-4 w-4 text-[#888888]" />
+            </div>
             <div className="flex items-center gap-2">
-              <div
-                draggable
-                onDragStart={(e) => handleDragStart(e, index)}
-                className="cursor-move p-1 -m-1 rounded hover:bg-gray-100 transition-colors"
-                title="Drag to reorder"
-              >
-                <GripVertical className="h-4 w-4 text-gray-400" />
+              <div className="p-1.5 bg-[#F5F4F0] rounded">
+                <IconComponent className="h-4 w-4 text-[#444444]" />
               </div>
-              <IconComponent className="h-4 w-4 text-gray-600" />
-              <span className="font-medium text-sm">
+              <span className="font-medium text-[14px] text-[#111111]">
                 {componentType?.name || component.type}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => duplicateComponent(component.id)}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-red-600"
-                onClick={() => removeComponent(component.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => duplicateComponent(component.id)}
+              className="hover:bg-[#F5F4F0] text-[#666666] hover:text-[#111111]"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="hover:bg-red-50 text-[#666666] hover:text-red-600"
+              onClick={() => removeComponent(component.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div className="p-5">
           {component.type === "rich_text" && (
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
+              <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                 Content
               </label>
               <WysiwygEditor
@@ -985,7 +1022,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
               {/* Upload Area */}
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                     Image URL
                   </label>
                   <Input
@@ -1049,7 +1086,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
               )}
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Alt Text
                 </label>
                 <Input
@@ -1062,7 +1099,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Caption (Optional)
                 </label>
                 <Input
@@ -1081,7 +1118,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
             <div className="space-y-4">
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                     Title
                   </label>
                   <Input
@@ -1093,7 +1130,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                     Style
                   </label>
                   <select
@@ -1113,7 +1150,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Content
                 </label>
                 <Textarea
@@ -1130,7 +1167,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           {component.type === "quote" && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Quote Text
                 </label>
                 <Textarea
@@ -1143,7 +1180,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
               </div>
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                     Author
                   </label>
                   <Input
@@ -1155,7 +1192,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                     Citation
                   </label>
                   <Input
@@ -1176,7 +1213,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
             <div className="space-y-4">
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                     Button Text
                   </label>
                   <Input
@@ -1188,7 +1225,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                     Link URL
                   </label>
                   <Input
@@ -1200,7 +1237,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                     Style
                   </label>
                   <select
@@ -1222,7 +1259,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           {component.type === "video" && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Video Title
                 </label>
                 <Input
@@ -1237,7 +1274,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
               </div>
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                     Video URL or Filename
                   </label>
                   <Input
@@ -1259,9 +1296,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                       if (file) {
                         const fileName = `${Date.now()}-${file.name}`;
                         updateComponent(component.id, { videoUrl: fileName });
-                        alert(
-                          "Video uploaded successfully! Note: In production, this would upload to a cloud service."
-                        );
+                        showToast("Video uploaded successfully!", "success");
                       }
                     }}
                     style={{ display: "none" }}
@@ -1281,7 +1316,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Thumbnail Image
                 </label>
                 <Input
@@ -1300,7 +1335,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           {component.type === "table" && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Table Caption
                 </label>
                 <Input
@@ -1314,21 +1349,27 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
               
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700">Headers</label>
+                  <label className="text-[13px] font-medium text-[#444444]">Columns (Headers)</label>
                   <Button
                     size="sm"
                     variant="outline"
+                    className="border-[#E0DED8] hover:bg-[#F5F4F0]"
                     onClick={() => {
                       const headers = component.headers || [];
-                      updateComponent(component.id, { headers: [...headers, "New Header"] });
+                      // Also add an empty cell to each existing row
+                      const rows = (component.rows || []).map((row: any) => [...row, ""]);
+                      updateComponent(component.id, {
+                        headers: [...headers, `Column ${headers.length + 1}`],
+                        rows
+                      });
                     }}
                   >
-                    Add Header
+                    Add Column
                   </Button>
                 </div>
-                <div className="space-y-2">
+                <div className="flex gap-2 flex-wrap">
                   {(component.headers || []).map((header: string, index: number) => (
-                    <div key={index} className="flex gap-2">
+                    <div key={index} className="flex gap-1 items-center">
                       <Input
                         value={header}
                         onChange={(e) => {
@@ -1336,11 +1377,13 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                           headers[index] = e.target.value;
                           updateComponent(component.id, { headers });
                         }}
-                        placeholder={`Header ${index + 1}`}
+                        placeholder={`Column ${index + 1}`}
+                        className="w-32 border-[#E0DED8]"
                       />
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-[#888888] hover:text-red-600 hover:bg-red-50"
                         onClick={() => {
                           const headers = [...(component.headers || [])];
                           headers.splice(index, 1);
@@ -1352,22 +1395,30 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                           updateComponent(component.id, { headers, rows });
                         }}
                       >
-                        Remove
+                        ×
                       </Button>
                     </div>
                   ))}
+                  {(component.headers || []).length === 0 && (
+                    <p className="text-[13px] text-[#888888]">No columns yet. Add columns first, then add rows.</p>
+                  )}
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700">Rows</label>
+                  <label className="text-[13px] font-medium text-[#444444]">Rows</label>
                   <Button
                     size="sm"
                     variant="outline"
+                    className="border-[#E0DED8] hover:bg-[#F5F4F0]"
                     onClick={() => {
                       const rows = component.rows || [];
                       const headerCount = (component.headers || []).length;
+                      if (headerCount === 0) {
+                        showToast("Please add at least one column first.", "info");
+                        return;
+                      }
                       const newRow = new Array(headerCount).fill("");
                       updateComponent(component.id, { rows: [...rows, newRow] });
                     }}
@@ -1375,35 +1426,58 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                     Add Row
                   </Button>
                 </div>
-                <div className="space-y-2">
-                  {(component.rows || []).map((row: any, rowIndex: number) => (
-                    <div key={rowIndex} className="flex gap-2">
-                      {row.map((cell: any, cellIndex: number) => (
-                        <Input
-                          key={cellIndex}
-                          value={cell}
-                          onChange={(e) => {
-                            const rows = [...(component.rows || [])];
-                            rows[rowIndex][cellIndex] = e.target.value;
-                            updateComponent(component.id, { rows });
-                          }}
-                          placeholder={`Cell ${rowIndex + 1},${cellIndex + 1}`}
-                        />
+                {(component.headers || []).length > 0 && (component.rows || []).length > 0 && (
+                  <div className="border border-[#E0DED8] rounded-lg overflow-hidden">
+                    {/* Header row */}
+                    <div className="flex bg-[#F5F4F0] border-b border-[#E0DED8]">
+                      {(component.headers || []).map((header: string, index: number) => (
+                        <div key={index} className="flex-1 px-3 py-2 text-[13px] font-medium text-[#444444] border-r border-[#E0DED8] last:border-r-0">
+                          {header || `Column ${index + 1}`}
+                        </div>
                       ))}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          const rows = [...(component.rows || [])];
-                          rows.splice(rowIndex, 1);
-                          updateComponent(component.id, { rows });
-                        }}
-                      >
-                        Remove
-                      </Button>
+                      <div className="w-16"></div>
                     </div>
-                  ))}
-                </div>
+                    {/* Data rows */}
+                    {(component.rows || []).map((row: any, rowIndex: number) => (
+                      <div key={rowIndex} className="flex border-b border-[#E0DED8] last:border-b-0">
+                        {row.map((cell: any, cellIndex: number) => (
+                          <div key={cellIndex} className="flex-1 border-r border-[#E0DED8] last:border-r-0">
+                            <Input
+                              value={cell}
+                              onChange={(e) => {
+                                const rows = [...(component.rows || [])];
+                                rows[rowIndex][cellIndex] = e.target.value;
+                                updateComponent(component.id, { rows });
+                              }}
+                              placeholder={`Row ${rowIndex + 1}`}
+                              className="border-0 rounded-none focus:ring-0 focus:ring-offset-0"
+                            />
+                          </div>
+                        ))}
+                        <div className="w-16 flex items-center justify-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-[#888888] hover:text-red-600 hover:bg-red-50"
+                            onClick={() => {
+                              const rows = [...(component.rows || [])];
+                              rows.splice(rowIndex, 1);
+                              updateComponent(component.id, { rows });
+                            }}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {(component.headers || []).length === 0 && (
+                  <p className="text-[13px] text-[#888888]">Add columns first to create a table structure.</p>
+                )}
+                {(component.headers || []).length > 0 && (component.rows || []).length === 0 && (
+                  <p className="text-[13px] text-[#888888]">No rows yet. Click "Add Row" to add data.</p>
+                )}
               </div>
             </div>
           )}
@@ -1411,7 +1485,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           {(component.type === "bar_chart" || component.type === "line_chart") && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Chart Title
                 </label>
                 <Input
@@ -1425,7 +1499,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Description
                 </label>
                 <Input
@@ -1440,7 +1514,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
               </div>
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                     X-Axis Label
                   </label>
                   <Input
@@ -1454,7 +1528,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                     Y-Axis Label
                   </label>
                   <Input
@@ -1539,7 +1613,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           {component.type === "pie_chart" && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Chart Title
                 </label>
                 <Input
@@ -1553,7 +1627,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Description
                 </label>
                 <Input
@@ -1651,7 +1725,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           {component.type === "comparison_table" && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Table Title
                 </label>
                 <Input
@@ -1665,7 +1739,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Description
                 </label>
                 <Input
@@ -1791,7 +1865,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           {component.type === "pros_cons" && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Title
                 </label>
                 <Input
@@ -1805,7 +1879,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Description
                 </label>
                 <Input
@@ -1920,7 +1994,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           {component.type === "timeline" && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Timeline Title
                 </label>
                 <Input
@@ -1934,7 +2008,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Description
                 </label>
                 <Input
@@ -2033,7 +2107,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           {component.type === "flowchart" && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Flowchart Title
                 </label>
                 <Input
@@ -2047,7 +2121,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Description
                 </label>
                 <Input
@@ -2246,7 +2320,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           {component.type === "step_by_step" && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Guide Title
                 </label>
                 <Input
@@ -2260,7 +2334,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
                   Description
                 </label>
                 <Input
@@ -2363,30 +2437,32 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           )}
 
           {!["rich_text", "image", "callout", "quote", "cta", "video", "table", "bar_chart", "line_chart", "pie_chart", "comparison_table", "pros_cons", "timeline", "flowchart", "step_by_step"].includes(component.type) && (
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-2">
+            <div className="p-4 bg-[#F5F4F0] rounded-lg">
+              <p className="text-[13px] text-[#444444] mb-2">
                 {`Component type "${component.type}" is not supported for manual editing yet.`}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-[12px] text-[#888888]">
                 This component was likely created by AI. You can view its data below:
               </p>
-              <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto">
+              <pre className="mt-2 text-xs bg-[#F5F4F0] p-2 rounded overflow-x-auto">
                 {JSON.stringify(component, null, 2)}
               </pre>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading blog post...</p>
+      <div className="min-h-screen" style={{ background: '#FAFAF8' }}>
+        <div className="max-w-[900px] mx-auto px-6 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#111111] mx-auto mb-4"></div>
+              <p className="text-[#666666]">Loading blog post...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -2394,271 +2470,290 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <Button variant="ghost" onClick={onBack} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
-        </Button>
+    <div className="min-h-screen" style={{ background: '#FAFAF8' }}>
+      <div className="max-w-[900px] mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-[#666666] hover:text-[#111111] transition-colors mb-6"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-sm">Back to Dashboard</span>
+          </button>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Manual Blog Editor
-            </h1>
-            <p className="text-gray-600">
-              Build your blog post component by component with full control.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={saveDraft} disabled={isSaving}>
-              <Save className="h-4 w-4 mr-2" />
-              {isSaving ? "Saving..." : "Save Draft"}
-            </Button>
-            <Button
-              className="bg-green-600 hover:bg-green-700"
-              onClick={publishPost}
-              disabled={isSaving}
-            >
-              {isSaving ? "Publishing..." : "Publish"}
-            </Button>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-[28px] font-normal text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+                Post Editor
+              </h1>
+              <p className="text-[#666666] text-[15px] mt-1">
+                Create and edit your blog post
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={saveDraft}
+                disabled={isSaving}
+                className="border-[#E0DED8] hover:bg-[#F5F4F0]"
+              >
+                {isSaving ? "Saving..." : "Save Draft"}
+              </Button>
+              <Button
+                className="bg-[#111111] hover:bg-[#333333] text-white rounded-full px-6"
+                onClick={publishPost}
+                disabled={isSaving}
+              >
+                {isSaving ? "Publishing..." : "Publish"}
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Post Meta */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Post Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Title
-            </label>
-            <Input
-              value={postData.title}
-              onChange={(e) => setPostData({ ...postData, title: e.target.value })}
-              placeholder="Your blog post title"
-              className="text-lg font-medium"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Author
-            </label>
-            <Input
-              value={postData.author}
-              onChange={(e) => setPostData({ ...postData, author: e.target.value })}
-              placeholder="Author name"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Meta Description
-            </label>
-            <Textarea
-              value={postData.description}
-              onChange={(e) =>
-                setPostData({ ...postData, description: e.target.value })
-              }
-              placeholder="A brief description of your blog post for SEO and social sharing"
-              rows={3}
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              {postData.description.length}/160 characters
-            </p>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Featured Image
-            </label>
-            <div className="flex gap-2">
-              <Input
-                value={postData.featuredImage}
-                onChange={(e) =>
-                  setPostData({ ...postData, featuredImage: e.target.value })
-                }
-                placeholder="https://example.com/image.jpg or upload below"
-                className="flex-1"
-              />
-              <div className="relative">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFeaturedImageFileSelect}
-                  className="hidden"
-                  id="featured-image-upload"
-                  disabled={isUploadingFeaturedImage}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() =>
-                    document.getElementById("featured-image-upload")?.click()
-                  }
-                  disabled={isUploadingFeaturedImage}
-                  className="whitespace-nowrap"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {isUploadingFeaturedImage ? "Uploading..." : "Upload"}
-                </Button>
-              </div>
-            </div>
-
-            {/* Upload progress */}
-            {isUploadingFeaturedImage && (
-              <div className="mt-2">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${featuredImageUploadProgress}%` }}
-                    />
-                  </div>
-                  <span>{featuredImageUploadProgress}%</span>
-                </div>
-              </div>
-            )}
-
-            <p className="text-sm text-gray-500 mt-1">
-              This image will be displayed as the thumbnail in the blog list
-            </p>
-            {postData.featuredImage && !isUploadingFeaturedImage && (
-              <div className="mt-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={postData.featuredImage}
-                  alt="Featured image preview"
-                  className="w-32 h-20 object-cover rounded border"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              </div>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Post Meta */}
+        <div className="bg-white rounded-xl border border-[#E0DED8] p-6 mb-6">
+          <h2 className="text-[18px] font-semibold text-[#111111] mb-5">Post Details</h2>
+          <div className="space-y-5">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                URL Slug
+              <label className="text-[13px] font-medium text-[#444444] mb-2 block">
+                Title
               </label>
               <Input
-                value={postData.slug}
-                onChange={(e) =>
-                  setPostData({ ...postData, slug: e.target.value })
-                }
-                placeholder={
-                  postData.title
-                    ? generateSlug(postData.title)
-                    : "auto-generated-from-title"
-                }
+                value={postData.title}
+                onChange={(e) => setPostData({ ...postData, title: e.target.value })}
+                placeholder="Your blog post title"
+                className="border-[#E0DED8] focus:border-[#111111] focus:ring-[#111111]"
+                style={{ fontFamily: "'Lora', Georgia, serif", fontSize: '18px' }}
               />
-              <p className="text-sm text-gray-500 mt-1">
-                Leave empty to auto-generate from title
+            </div>
+            <div>
+              <label className="text-[13px] font-medium text-[#444444] mb-2 block">
+                Author
+              </label>
+              <Input
+                value={postData.authorName}
+                onChange={(e) => setPostData({ ...postData, authorName: e.target.value })}
+                placeholder="Author name (e.g., John Smith)"
+                className="border-[#E0DED8] focus:border-[#111111] focus:ring-[#111111]"
+              />
+              <p className="text-[12px] text-[#888888] mt-1">
+                The display name for who wrote this post
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Category
+              <label className="text-[13px] font-medium text-[#444444] mb-2 block">
+                Meta Description
+              </label>
+              <Textarea
+                value={postData.description}
+                onChange={(e) =>
+                  setPostData({ ...postData, description: e.target.value })
+                }
+                placeholder="A brief description for SEO and social sharing"
+                rows={3}
+                className="border-[#E0DED8] focus:border-[#111111] focus:ring-[#111111]"
+              />
+              <p className="text-[12px] text-[#888888] mt-1">
+                {postData.description.length}/160 characters
+              </p>
+            </div>
+            <div>
+              <label className="text-[13px] font-medium text-[#444444] mb-2 block">
+                Featured Image
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  value={postData.featuredImage}
+                  onChange={(e) =>
+                    setPostData({ ...postData, featuredImage: e.target.value })
+                  }
+                  placeholder="Image URL or upload"
+                  className="flex-1 border-[#E0DED8] focus:border-[#111111] focus:ring-[#111111]"
+                />
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFeaturedImageFileSelect}
+                    className="hidden"
+                    id="featured-image-upload"
+                    disabled={isUploadingFeaturedImage}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      document.getElementById("featured-image-upload")?.click()
+                    }
+                    disabled={isUploadingFeaturedImage}
+                    className="whitespace-nowrap border-[#E0DED8] hover:bg-[#F5F4F0]"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {isUploadingFeaturedImage ? "Uploading..." : "Upload"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Upload progress */}
+              {isUploadingFeaturedImage && (
+                <div className="mt-2">
+                  <div className="flex items-center gap-2 text-[12px] text-[#666666]">
+                    <div className="flex-1 bg-[#E0DED8] rounded-full h-1.5">
+                      <div
+                        className="bg-[#111111] h-1.5 rounded-full transition-all duration-300"
+                        style={{ width: `${featuredImageUploadProgress}%` }}
+                      />
+                    </div>
+                    <span>{featuredImageUploadProgress}%</span>
+                  </div>
+                </div>
+              )}
+
+              {postData.featuredImage && !isUploadingFeaturedImage && (
+                <div className="mt-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={postData.featuredImage}
+                    alt="Featured image preview"
+                    className="w-24 h-16 object-cover rounded-lg border border-[#E0DED8]"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
+                  URL Slug
+                </label>
+                <Input
+                  value={postData.slug}
+                  onChange={(e) =>
+                    setPostData({ ...postData, slug: e.target.value })
+                  }
+                  placeholder={
+                    postData.title
+                      ? generateSlug(postData.title)
+                      : "auto-generated-from-title"
+                  }
+                  className="border-[#E0DED8] focus:border-[#111111] focus:ring-[#111111]"
+                />
+                <p className="text-[12px] text-[#888888] mt-1">
+                  Leave empty to auto-generate
+                </p>
+              </div>
+              <div>
+                <label className="text-[13px] font-medium text-[#444444] mb-2 block">
+                  Category
+                </label>
+                <Input
+                  value={postData.category}
+                  onChange={(e) =>
+                    setPostData({ ...postData, category: e.target.value })
+                  }
+                  placeholder="e.g., Productivity"
+                  className="border-[#E0DED8] focus:border-[#111111] focus:ring-[#111111]"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[13px] font-medium text-[#444444] mb-2 block">
+                Tags
               </label>
               <Input
-                value={postData.category}
+                value={postData.tags.join(", ")}
                 onChange={(e) =>
-                  setPostData({ ...postData, category: e.target.value })
+                  setPostData({
+                    ...postData,
+                    tags: e.target.value
+                      .split(",")
+                      .map((tag) => tag.trim())
+                      .filter((tag) => tag.length > 0),
+                  })
                 }
-                placeholder="e.g., Productivity, Time Management"
+                placeholder="tag1, tag2, tag3"
+                className="border-[#E0DED8] focus:border-[#111111] focus:ring-[#111111]"
               />
+              <p className="text-[12px] text-[#888888] mt-1">
+                Separate tags with commas
+              </p>
             </div>
           </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Tags
-            </label>
-            <Input
-              value={postData.tags.join(", ")}
-              onChange={(e) =>
-                setPostData({
-                  ...postData,
-                  tags: e.target.value
-                    .split(",")
-                    .map((tag) => tag.trim())
-                    .filter((tag) => tag.length > 0),
-                })
-              }
-              placeholder="tag1, tag2, tag3"
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              Separate tags with commas
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Components */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Content Components
-          </h2>
-          <Dialog open={showAddComponent} onOpenChange={setShowAddComponent}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Component
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl">
-              <DialogHeader>
-                <DialogTitle>Add New Component</DialogTitle>
-              </DialogHeader>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-                {componentTypes.map((componentType) => (
-                  <Card
-                    key={componentType.type}
-                    className="cursor-pointer hover:bg-blue-50 border-2 hover:border-blue-200 transition-colors"
-                    onClick={() => addComponent(componentType.type)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <componentType.icon className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-gray-900">
-                            {componentType.name}
-                          </h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {componentType.description}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
 
-        {postData.components.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Type className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+        {/* Components */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[18px] font-semibold text-[#111111]">
+              Content
+            </h2>
+            <Dialog open={showAddComponent} onOpenChange={setShowAddComponent}>
+              <DialogTrigger asChild>
+                <Button className="bg-[#111111] hover:bg-[#333333] text-white rounded-full px-5">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Block
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col bg-white border border-[#E0DED8] rounded-xl shadow-xl">
+                <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#F0EEE8] flex-shrink-0">
+                  <DialogTitle className="text-[20px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+                    Add Content Block
+                  </DialogTitle>
+                  <p className="text-[14px] text-[#666666] mt-1">
+                    Choose a block type to add to your post
+                  </p>
+                </DialogHeader>
+                <div className="flex-1 overflow-y-auto px-6 py-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {componentTypes.map((componentType) => (
+                      <div
+                        key={componentType.type}
+                        className="cursor-pointer p-4 rounded-xl border border-[#E0DED8] hover:bg-[#F5F4F0] hover:border-[#111111] transition-all"
+                        onClick={() => addComponent(componentType.type)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="p-2.5 bg-[#F5F4F0] rounded-lg flex-shrink-0">
+                            <componentType.icon className="h-5 w-5 text-[#111111]" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-medium text-[#111111] text-[15px]">
+                              {componentType.name}
+                            </h3>
+                            <p className="text-[13px] text-[#666666] mt-0.5 leading-snug">
+                              {componentType.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {postData.components.length === 0 ? (
+            <div className="bg-white rounded-xl border border-[#E0DED8] p-12 text-center">
+              <Type className="h-12 w-12 text-[#CCCCCC] mx-auto mb-4" />
+              <h3 className="text-[18px] font-medium text-[#111111] mb-2">
                 Start Building Your Blog Post
               </h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-[15px] text-[#666666] mb-5">
                 Add components to build your blog post. Start with a rich text
                 component for your introduction.
               </p>
-              <Button onClick={() => setShowAddComponent(true)}>
+              <Button
+                onClick={() => setShowAddComponent(true)}
+                className="bg-[#111111] hover:bg-[#333333] text-white rounded-full px-5"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Your First Component
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
+            </div>
+          ) : (
           <div className="space-y-4">
             {postData.components.map((component, index) => (
               <div key={component.id}>
@@ -2666,7 +2761,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
                 <div
                   className={`h-2 transition-all duration-200 ${
                     dragOverItem === index && draggedItem !== index
-                      ? "bg-blue-400 rounded-full mb-2"
+                      ? "bg-[#111111] rounded-full mb-2"
                       : ""
                   }`}
                   onDragOver={(e) => handleDragOver(e, index)}
@@ -2677,10 +2772,10 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
             ))}
             {/* Drop zone at the end */}
             <div
-              className={`h-8 transition-all duration-200 ${
+              className={`h-10 transition-all duration-200 rounded-xl ${
                 dragOverItem === postData.components.length
-                  ? "bg-blue-400 rounded-full"
-                  : "border-2 border-dashed border-gray-200 rounded-lg hover:border-gray-300"
+                  ? "bg-[#111111]/10 border-2 border-[#111111]"
+                  : "border-2 border-dashed border-[#E0DED8] hover:border-[#CCCCCC]"
               }`}
               onDragOver={(e) => {
                 e.preventDefault();
@@ -2690,13 +2785,14 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
               onDrop={(e) => handleDrop(e, postData.components.length)}
             >
               {dragOverItem !== postData.components.length && (
-                <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                <div className="flex items-center justify-center h-full text-[#888888] text-[13px]">
                   Drop component here
                 </div>
               )}
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

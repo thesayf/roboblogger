@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import ManualBlogEditor from "../components/ManualBlogEditor";
 import AdminPasswordGate from "@/components/auth/AdminPasswordGate";
+import { ToastProvider } from "@/components/ui/toast";
 
 export default function ManualEditorPage() {
   const router = useRouter();
@@ -13,7 +14,9 @@ export default function ManualEditorPage() {
 
   return (
     <AdminPasswordGate>
-      <ManualBlogEditor onBack={handleBack} />
+      <ToastProvider>
+        <ManualBlogEditor onBack={handleBack} />
+      </ToastProvider>
     </AdminPasswordGate>
   );
 }

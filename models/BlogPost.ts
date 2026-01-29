@@ -13,6 +13,7 @@ export interface IBlogPost extends Document {
   views: number;
   owner: mongoose.Types.ObjectId; // User who owns this post (for multi-tenancy)
   author: mongoose.Types.ObjectId;
+  authorName?: string; // Display name for the author (can be different from owner)
   components: mongoose.Types.ObjectId[];
   tags: string[];
   seoTitle?: string;
@@ -45,6 +46,7 @@ const BlogPostSchema: Schema = new Schema(
     views: { type: Number, default: 0 },
     owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
     author: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    authorName: { type: String }, // Display name for the author
     components: [{ type: Schema.Types.ObjectId, ref: "BlogComponent" }],
     tags: [{ type: String }],
     seoTitle: { type: String },

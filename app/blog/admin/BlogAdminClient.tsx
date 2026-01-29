@@ -81,6 +81,7 @@ export default function BlogAdminClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [pipelineFilter, setPipelineFilter] = useState<"all" | "scheduled" | "pending" | "generating" | "failed">("all");
   const [showBulkTopicsDialog, setShowBulkTopicsDialog] = useState(false);
   const [bulkTopicsInput, setBulkTopicsInput] = useState("");
   const [images, setImages] = useState<any[]>([]);
@@ -1351,7 +1352,6 @@ export default function BlogAdminClient() {
           <TabsList className="inline-flex w-auto">
             <TabsTrigger value="posts">Posts</TabsTrigger>
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-            <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="media">Media</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
@@ -1525,25 +1525,17 @@ export default function BlogAdminClient() {
 
           {/* Pipeline Tab */}
           <TabsContent value="pipeline" className="space-y-6">
-            {/* Toolbar */}
+            {/* Header */}
             <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-[24px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+                  Content Pipeline
+                </h2>
+                <p className="text-[14px] text-[#666666] mt-1">
+                  Topics queued for AI generation
+                </p>
+              </div>
               <div className="flex items-center gap-3">
-                {selectedTopics.length > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-lg">
-                    <span className="text-sm text-blue-700">
-                      {selectedTopics.length} selected
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearSelection}
-                      className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
-                    >
-                      ×
-                    </Button>
-                  </div>
-                )}
-
                 {selectedTopics.length > 0 && (
                   <Button
                     onClick={handleBatchGeneration}
@@ -1563,32 +1555,12 @@ export default function BlogAdminClient() {
                     )}
                   </Button>
                 )}
-
-                {topics.filter((t) => t.status === "pending").length > 0 &&
-                  selectedTopics.length === 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={selectAllPendingTopics}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Select All Pending
-                    </Button>
-                  )}
-              </div>
-              <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
                   onClick={() => router.push("/blog/admin/bulk/generate")}
                 >
                   <Brain className="h-4 w-4 mr-2" />
                   AI Generate
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => router.push("/blog/admin/bulk/import")}
-                >
-                  <FileJson className="h-4 w-4 mr-2" />
-                  Import JSON
                 </Button>
 
                 <Dialog
@@ -3457,351 +3429,323 @@ export default function BlogAdminClient() {
               </div>
             </div>
 
-            {/* Topic list */}
-            {isLoadingTopics ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin mr-2" />
-                    <span>Loading topics...</span>
-                  </div>
-                ) : topics.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-2">No topics yet</p>
-                    <p className="text-sm text-gray-400 mb-4">
-                      Add topics to generate blog posts
-                    </p>
-                    <Button onClick={() => router.push("/blog/admin/bulk")}>
-                      <Zap className="h-4 w-4 mr-2" />
-                      Add Topics
-                    </Button>
-                  </div>
-            ) : (
-              <>
-              <div className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
-                {/* Inner tabs for pending/completed */}
-                <Tabs value={queueTab} onValueChange={(value) => setQueueTab(value as "pending" | "completed")}>
-                  <div className="px-5 pt-3">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="pending">
-                        Pending ({pendingPagination.total})
-                      </TabsTrigger>
-                      <TabsTrigger value="completed">
-                        Completed ({completedPagination.total})
-                      </TabsTrigger>
-                    </TabsList>
+            {/* Status Filter Pills */}
+            {(() => {
+              // Calculate status counts
+              const statusCounts = {
+                scheduled: topics.filter((t: any) => t.scheduledAt && t.status === "pending").length,
+                pending: topics.filter((t: any) => !t.scheduledAt && t.status === "pending").length,
+                generating: topics.filter((t: any) => t.status === "generating").length,
+                failed: topics.filter((t: any) => t.status === "failed").length,
+              };
+
+              // Filter topics based on selected filter
+              const getFilteredTopics = () => {
+                switch (pipelineFilter) {
+                  case "scheduled":
+                    return topics.filter((t: any) => t.scheduledAt && t.status === "pending");
+                  case "pending":
+                    return topics.filter((t: any) => !t.scheduledAt && t.status === "pending");
+                  case "generating":
+                    return topics.filter((t: any) => t.status === "generating");
+                  case "failed":
+                    return topics.filter((t: any) => t.status === "failed");
+                  default:
+                    return topics.filter((t: any) => t.status !== "completed");
+                }
+              };
+
+              const filteredTopics = getFilteredTopics();
+
+              // Get display status for a topic
+              const getDisplayStatus = (topic: any) => {
+                if (topic.status === "pending" && topic.scheduledAt) {
+                  return "scheduled";
+                }
+                return topic.status;
+              };
+
+              // Status badge component matching mockup
+              const getStatusBadgeElement = (status: string) => {
+                switch (status) {
+                  case "scheduled":
+                    return (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        <Calendar className="h-3 w-3" />
+                        Scheduled
+                      </span>
+                    );
+                  case "pending":
+                    return (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                        <Clock className="h-3 w-3" />
+                        Pending
+                      </span>
+                    );
+                  case "generating":
+                    return (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Generating
+                      </span>
+                    );
+                  case "failed":
+                    return (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                        <AlertTriangle className="h-3 w-3" />
+                        Failed
+                      </span>
+                    );
+                  default:
+                    return null;
+                }
+              };
+
+              const formatScheduledDate = (dateStr: string) => {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+              };
+
+              return (
+                <>
+                  {/* Filter Pills */}
+                  <div className="flex items-center gap-2 mb-6">
+                    <button
+                      onClick={() => setPipelineFilter("all")}
+                      className={`px-4 py-2 rounded-full text-[13px] font-medium transition-colors ${
+                        pipelineFilter === "all"
+                          ? "bg-[#111111] text-white"
+                          : "bg-white border border-[#E0DED8] text-[#666666] hover:bg-[#F5F4F0]"
+                      }`}
+                    >
+                      All ({statusCounts.scheduled + statusCounts.pending + statusCounts.generating + statusCounts.failed})
+                    </button>
+                    <button
+                      onClick={() => setPipelineFilter("scheduled")}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium transition-colors ${
+                        pipelineFilter === "scheduled"
+                          ? "bg-blue-600 text-white"
+                          : "bg-white border border-[#E0DED8] text-[#666666] hover:bg-[#F5F4F0]"
+                      }`}
+                    >
+                      <Calendar className="h-3.5 w-3.5" />
+                      Scheduled ({statusCounts.scheduled})
+                    </button>
+                    <button
+                      onClick={() => setPipelineFilter("pending")}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium transition-colors ${
+                        pipelineFilter === "pending"
+                          ? "bg-amber-500 text-white"
+                          : "bg-white border border-[#E0DED8] text-[#666666] hover:bg-[#F5F4F0]"
+                      }`}
+                    >
+                      <Clock className="h-3.5 w-3.5" />
+                      Pending ({statusCounts.pending})
+                    </button>
+                    <button
+                      onClick={() => setPipelineFilter("generating")}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium transition-colors ${
+                        pipelineFilter === "generating"
+                          ? "bg-purple-600 text-white"
+                          : "bg-white border border-[#E0DED8] text-[#666666] hover:bg-[#F5F4F0]"
+                      }`}
+                    >
+                      <Loader2 className="h-3.5 w-3.5" />
+                      Generating ({statusCounts.generating})
+                    </button>
+                    <button
+                      onClick={() => setPipelineFilter("failed")}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium transition-colors ${
+                        pipelineFilter === "failed"
+                          ? "bg-red-600 text-white"
+                          : "bg-white border border-[#E0DED8] text-[#666666] hover:bg-[#F5F4F0]"
+                      }`}
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Failed ({statusCounts.failed})
+                    </button>
                   </div>
 
-                  <TabsContent value="pending" className="mt-0">
-                    {/* Table header */}
-                    <div className="posts-table-header">
-                      <span>Topic</span>
-                      <span>Status</span>
-                      <span>Priority</span>
-                      <span className="text-right">Date</span>
-                      <span></span>
+                  {/* Topic list */}
+                  {isLoadingTopics ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin mr-2" />
+                      <span>Loading topics...</span>
                     </div>
-
-                    {/* Table rows */}
-                    {pendingTopics.map((topic) => (
-                      <div
-                        key={topic._id}
-                        className={`posts-table-row ${
-                          selectedTopics.includes(topic._id)
-                            ? "bg-blue-50"
-                            : ""
-                        }`}
-                      >
-                        {/* Topic cell */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          {(topic.status === "pending" ||
-                            topic.status === "failed") && (
-                            <Checkbox
-                              checked={selectedTopics.includes(topic._id)}
-                              onCheckedChange={() =>
-                                toggleTopicSelection(topic._id)
+                  ) : filteredTopics.length === 0 ? (
+                    <div className="text-center py-8 bg-white rounded-xl border border-[#E0DED8]">
+                      <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 mb-2">
+                        {pipelineFilter === "all" ? "No topics in pipeline" : `No ${pipelineFilter} topics`}
+                      </p>
+                      <p className="text-sm text-gray-400 mb-4">
+                        Add topics to generate blog posts
+                      </p>
+                      <Button onClick={() => router.push("/blog/admin/bulk")}>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Add Topics
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
+                      {/* Table Header */}
+                      <div className="grid grid-cols-[auto_1fr_120px_140px_100px_48px] gap-4 px-5 py-3 border-b border-[#F0EEE8] bg-[#FAFAF8]">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-[#E0DED8]"
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                const selectableIds = filteredTopics
+                                  .filter((t: any) => t.status === "pending" || t.status === "failed")
+                                  .map((t: any) => t._id);
+                                setSelectedTopics(selectableIds);
+                              } else {
+                                setSelectedTopics([]);
                               }
-                              className="flex-shrink-0"
-                            />
-                          )}
-                          <div className="min-w-0">
-                            <h3 className="text-[16px] text-gray-900 truncate" style={{ fontFamily: "'Lora', Georgia, serif" }}>
-                              {topic.topic}
-                            </h3>
-                            <p className="text-[13px] text-gray-500 truncate">
-                              {topic.audience || "No audience specified"}
-                            </p>
-                          </div>
+                            }}
+                            checked={
+                              filteredTopics.filter((t: any) => t.status === "pending" || t.status === "failed").length > 0 &&
+                              filteredTopics
+                                .filter((t: any) => t.status === "pending" || t.status === "failed")
+                                .every((t: any) => selectedTopics.includes(t._id))
+                            }
+                          />
                         </div>
+                        <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Topic</span>
+                        <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Status</span>
+                        <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Scheduled</span>
+                        <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Audience</span>
+                        <span></span>
+                      </div>
 
-                        {/* Status cell */}
-                        <div>
-                          <Badge
-                            variant="secondary"
-                            className={getStatusBadge(topic.status)}
+                      {/* Table Rows */}
+                      {filteredTopics.map((topic: any) => {
+                        const displayStatus = getDisplayStatus(topic);
+                        return (
+                          <div
+                            key={topic._id}
+                            className={`grid grid-cols-[auto_1fr_120px_140px_100px_48px] gap-4 px-5 py-4 border-b border-[#F0EEE8] hover:bg-[#FAFAF8] transition-colors items-center ${
+                              selectedTopics.includes(topic._id) ? "bg-blue-50" : ""
+                            }`}
                           >
-                            {topic.status}
-                          </Badge>
-                        </div>
+                            {/* Checkbox */}
+                            <div className="flex items-center">
+                              {(topic.status === "pending" || topic.status === "failed") ? (
+                                <input
+                                  type="checkbox"
+                                  className="w-4 h-4 rounded border-[#E0DED8]"
+                                  checked={selectedTopics.includes(topic._id)}
+                                  onChange={() => toggleTopicSelection(topic._id)}
+                                />
+                              ) : (
+                                <div className="w-4 h-4" />
+                              )}
+                            </div>
 
-                        {/* Priority cell */}
-                        <div className="text-[13px] text-[#444444] capitalize">
-                          {topic.priority}
-                        </div>
+                            {/* Topic cell */}
+                            <div>
+                              <p className="text-[15px] text-[#111111] font-medium truncate" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+                                {topic.topic}
+                              </p>
+                              {topic.status === "generating" && topic.progress && (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <div className="flex-1 h-1.5 bg-[#F0EEE8] rounded-full overflow-hidden max-w-[200px]">
+                                    <div
+                                      className="h-full bg-purple-500 rounded-full transition-all duration-300"
+                                      style={{ width: `${topic.progress}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[12px] text-[#888888]">{topic.progress}%</span>
+                                </div>
+                              )}
+                              {topic.status === "failed" && topic.error && (
+                                <p className="text-[12px] text-red-600 mt-1 truncate">{topic.error}</p>
+                              )}
+                            </div>
 
-                        {/* Date cell */}
-                        <div className="text-[13px] text-[#888888] text-right">
-                          {new Date(topic.createdAt).toLocaleDateString()}
-                        </div>
+                            {/* Status cell */}
+                            <div>{getStatusBadgeElement(displayStatus)}</div>
 
-                        {/* Actions cell */}
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {(topic.status === "pending" || topic.status === "failed") && (
-                                <DropdownMenuItem
+                            {/* Scheduled date cell */}
+                            <div className="text-[13px] text-[#666666]">
+                              {topic.scheduledAt ? formatScheduledDate(topic.scheduledAt) : "—"}
+                            </div>
+
+                            {/* Audience cell */}
+                            <div className="text-[13px] text-[#666666] truncate">
+                              {topic.audience || "—"}
+                            </div>
+
+                            {/* Actions cell */}
+                            <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+                              {topic.status === "failed" ? (
+                                <button
+                                  className="p-2 hover:bg-[#F5F4F0] rounded-lg transition-colors text-amber-600"
+                                  title="Retry"
                                   onClick={() => handleGenerateTopic(topic._id)}
                                 >
-                                  <PlayCircle className="h-4 w-4 mr-2" />
-                                  Generate
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem
-                                onClick={() => handleEditTopic(topic)}
-                              >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteTopic(topic._id)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    ))}
-                  </TabsContent>
-
-                  <TabsContent value="completed" className="mt-0">
-                    {/* Table header */}
-                    <div className="posts-table-header">
-                      <span>Topic</span>
-                      <span>Status</span>
-                      <span>Priority</span>
-                      <span className="text-right">Date</span>
-                      <span></span>
-                    </div>
-
-                    {/* Table rows */}
-                    {completedTopics.map((topic) => (
-                      <div
-                        key={topic._id}
-                        className="posts-table-row"
-                      >
-                        {/* Topic cell */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="min-w-0">
-                            <h3 className="text-[16px] text-gray-900 truncate" style={{ fontFamily: "'Lora', Georgia, serif" }}>
-                              {topic.topic}
-                            </h3>
-                            <p className="text-[13px] text-gray-500 truncate">
-                              {topic.audience || "No audience specified"}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Status cell */}
-                        <div>
-                          <Badge
-                            variant="secondary"
-                            className={getStatusBadge(topic.status)}
-                          >
-                            {topic.status}
-                          </Badge>
-                        </div>
-
-                        {/* Priority cell */}
-                        <div className="text-[13px] text-[#444444] capitalize">
-                          {topic.priority}
-                        </div>
-
-                        {/* Date cell */}
-                        <div className="text-[13px] text-[#888888] text-right">
-                          {new Date(topic.createdAt).toLocaleDateString()}
-                        </div>
-
-                        {/* Actions cell */}
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {topic.status === "completed" &&
-                                topic.generatedPostId && (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handleEditPost(topic.generatedPostId)
-                                    }
-                                  >
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    View Post
-                                  </DropdownMenuItem>
-                                )}
-                              <DropdownMenuItem
-                                onClick={() => handleEditTopic(topic)}
-                              >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteTopic(topic._id)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    ))}
-                  </TabsContent>
-                </Tabs>
-              </div>
-
-              {/* Pagination Controls */}
-                      {(() => {
-                        const currentPagination = queueTab === "pending" ? pendingPagination : completedPagination;
-                        const currentPage = queueTab === "pending" ? pendingPage : completedPage;
-                        const setCurrentPage = queueTab === "pending" ? setPendingPage : setCompletedPage;
-                        
-                        if (currentPagination.pages <= 1) return null;
-                        
-                        return (
-                          <div className="flex items-center justify-between mt-6">
-                            <div className="text-sm text-gray-600">
-                              Showing {((currentPage - 1) * currentPagination.limit) + 1} to {Math.min(currentPage * currentPagination.limit, currentPagination.total)} of {currentPagination.total} topics
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}
-                              >
-                                <ChevronLeft className="h-4 w-4" />
-                                Previous
-                              </Button>
-                              
-                              <div className="flex items-center gap-1">
-                                {Array.from({ length: Math.min(5, currentPagination.pages) }, (_, i) => {
-                                  let pageNum;
-                                  if (currentPagination.pages <= 5) {
-                                    pageNum = i + 1;
-                                  } else if (currentPage <= 3) {
-                                    pageNum = i + 1;
-                                  } else if (currentPage >= currentPagination.pages - 2) {
-                                    pageNum = currentPagination.pages - 4 + i;
-                                  } else {
-                                    pageNum = currentPage - 2 + i;
-                                  }
-                                  
-                                  return (
-                                    <Button
-                                      key={pageNum}
-                                      variant={pageNum === currentPage ? "default" : "outline"}
-                                      size="sm"
-                                      onClick={() => setCurrentPage(pageNum)}
-                                      className="w-8 h-8 p-0"
+                                  <RefreshCw className="h-4 w-4" />
+                                </button>
+                              ) : topic.status === "pending" ? (
+                                <button
+                                  className="p-2 hover:bg-[#F5F4F0] rounded-lg transition-colors text-purple-600"
+                                  title="Generate Now"
+                                  onClick={() => handleGenerateTopic(topic._id)}
+                                >
+                                  <PlayCircle className="h-4 w-4" />
+                                </button>
+                              ) : (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button className="p-2 hover:bg-[#F5F4F0] rounded-lg transition-colors text-[#888888]">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleEditTopic(topic)}>
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleDeleteTopic(topic._id)}
+                                      className="text-red-600"
                                     >
-                                      {pageNum}
-                                    </Button>
-                                  );
-                                })}
-                              </div>
-                              
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(prev => Math.min(currentPagination.pages, prev + 1))}
-                                disabled={currentPage === currentPagination.pages}
-                              >
-                                Next
-                                <ChevronRight className="h-4 w-4" />
-                              </Button>
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
                             </div>
                           </div>
                         );
-                      })()}
-              </>
-            )}
+                      })}
+                    </div>
+                  )}
 
-            {/* Queue Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {topicStats.pending || 0}
-                      </p>
-                      <p className="text-sm text-gray-600">Pending</p>
+                  {/* Info Note */}
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                      <div>
+                        <p className="text-[14px] text-blue-900 font-medium">How it works</p>
+                        <p className="text-[13px] text-blue-700 mt-1">
+                          When a topic is successfully generated, it automatically moves to the <strong>Posts</strong> tab as a draft.
+                          Failed topics stay here so you can retry them. The system checks for scheduled topics every 5 minutes.
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-5 w-5 text-purple-600" />
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {topicStats.generating || 0}
-                      </p>
-                      <p className="text-sm text-gray-600">Generating</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {topicStats.completed || 0}
-                      </p>
-                      <p className="text-sm text-gray-600">Completed</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-red-600" />
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {topicStats.failed || 0}
-                      </p>
-                      <p className="text-sm text-gray-600">Failed</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                </>
+              );
+            })()}
+
           </TabsContent>
 
           {/* Media Tab */}
@@ -4019,15 +3963,6 @@ export default function BlogAdminClient() {
                 </Card>
               </div>
             )}
-          </TabsContent>
-
-          {/* Jobs Tab */}
-          <TabsContent value="jobs" className="space-y-6">
-            <SchedulerTab
-              topics={topics}
-              isLoadingTopics={isLoadingTopics}
-              onRefresh={fetchTopics}
-            />
           </TabsContent>
 
           {/* Settings Tab */}
