@@ -38,6 +38,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Dialog,
   DialogContent,
@@ -764,14 +765,14 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
                     </div>
 
                     <div>
-                      <Label>Start Date</Label>
-                      <Input 
-                        type="date" 
+                      <Label>Start Date & Time</Label>
+                      <DateTimePicker
                         value={formData.scheduling.startDate}
-                        onChange={(e) => setFormData(prev => ({ 
-                          ...prev, 
-                          scheduling: { ...prev.scheduling, startDate: e.target.value }
+                        onChange={(value) => setFormData(prev => ({
+                          ...prev,
+                          scheduling: { ...prev.scheduling, startDate: value }
                         }))}
+                        placeholder="Pick start date"
                       />
                     </div>
                   </div>

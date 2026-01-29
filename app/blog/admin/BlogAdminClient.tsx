@@ -67,6 +67,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SchedulerTab } from "./components/SchedulerTabNew";
 import { BrandTab } from "./components/BrandTab";
 import { localDateTimeToUTC, utcToLocalDateTime } from "@/lib/timezone-utils";
@@ -1675,16 +1676,15 @@ export default function BlogAdminClient() {
                               <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                 Schedule <span className="text-[#888888] font-normal">(Optional)</span>
                               </label>
-                              <Input
-                                type="datetime-local"
+                              <DateTimePicker
                                 value={topicForm.scheduledAt}
-                                onChange={(e) =>
+                                onChange={(value) =>
                                   setTopicForm((prev) => ({
                                     ...prev,
-                                    scheduledAt: e.target.value,
+                                    scheduledAt: value,
                                   }))
                                 }
-                                className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
+                                placeholder="Pick a date and time"
                               />
                             </div>
                           </div>
@@ -2172,21 +2172,19 @@ export default function BlogAdminClient() {
                               </Select>
                             </div>
 
-                            <div>
+                            <div className={editingTopic?.status === 'completed' || editingTopic?.generatedPostId ? "opacity-50 pointer-events-none" : ""}>
                               <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                 Schedule <span className="text-[#888888] font-normal">(Optional)</span>
                               </label>
-                              <Input
-                                type="datetime-local"
+                              <DateTimePicker
                                 value={topicForm.scheduledAt}
-                                disabled={editingTopic?.status === 'completed' || editingTopic?.generatedPostId ? true : false}
-                                onChange={(e) =>
+                                onChange={(value) =>
                                   setTopicForm((prev) => ({
                                     ...prev,
-                                    scheduledAt: e.target.value,
+                                    scheduledAt: value,
                                   }))
                                 }
-                                className={`h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px] ${editingTopic?.status === 'completed' || editingTopic?.generatedPostId ? "opacity-50" : ""}`}
+                                placeholder="Pick a date and time"
                               />
                             </div>
                           </div>
