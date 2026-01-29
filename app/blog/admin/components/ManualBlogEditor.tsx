@@ -176,6 +176,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
     category: "",
     tags: [] as string[],
     components: [] as any[],
+    author: "",
   });
 
   // Check for imported data or edit mode on component mount
@@ -214,6 +215,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         status: post.status,
         category: post.category || "",
         tags: post.tags || [],
+        author: post.author?.name || "",
         components: post.components.map((comp) => ({
           ...comp,
           id: comp._id, // Use _id as id for local state
@@ -711,6 +713,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         status: "draft" as const,
         category: postData.category || "",
         tags: postData.tags || [],
+        author: postData.author ? { name: postData.author } : undefined,
         // Only include components that have _id (real components)
         components: postData.components
           .filter((comp) => comp._id)
@@ -777,6 +780,7 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
         publishedAt: new Date(),
         category: postData.category || "",
         tags: postData.tags || [],
+        author: postData.author ? { name: postData.author } : undefined,
         // Only include components that have _id (real components)
         components: postData.components
           .filter((comp) => comp._id)
@@ -2437,6 +2441,16 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
               onChange={(e) => setPostData({ ...postData, title: e.target.value })}
               placeholder="Your blog post title"
               className="text-lg font-medium"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              Author
+            </label>
+            <Input
+              value={postData.author}
+              onChange={(e) => setPostData({ ...postData, author: e.target.value })}
+              placeholder="Author name"
             />
           </div>
           <div>
