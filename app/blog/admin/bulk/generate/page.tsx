@@ -83,16 +83,17 @@ export default function AIGeneratePage() {
     contentGoals: [] as string[],
     enableSeoResearch: true,
     scheduling: {
-      type: "manual",
-      frequency: "daily-1",
-      preferredTimes: [] as string[],
+      enabled: false,
       startDate: "",
+      interval: "1", // days between posts
+      defaultTime: "09:00",
     }
   });
   const [brandImages, setBrandImages] = useState<File[]>([]);
   const [libraryImages, setLibraryImages] = useState<any[]>([]);
   const [selectedLibraryImages, setSelectedLibraryImages] = useState<string[]>([]);
   const [showImagePicker, setShowImagePicker] = useState(false);
+  const [scheduledSlots, setScheduledSlots] = useState<string[]>([]);
 
   // Fetch images from media library
   useEffect(() => {
@@ -109,6 +110,36 @@ export default function AIGeneratePage() {
     };
     fetchImages();
   }, []);
+
+  // Generate schedule slots when settings change
+  useEffect(() => {
+    if (!formData.scheduling.enabled || !formData.scheduling.startDate) {
+      setScheduledSlots([]);
+      return;
+    }
+
+    const numTopics = parseInt(formData.numberOfTopics);
+    const intervalDays = parseInt(formData.scheduling.interval);
+    const startDate = new Date(formData.scheduling.startDate);
+    const [hours, minutes] = formData.scheduling.defaultTime.split(':').map(Number);
+
+    const slots: string[] = [];
+    for (let i = 0; i < numTopics; i++) {
+      const slotDate = new Date(startDate);
+      slotDate.setDate(slotDate.getDate() + (i * intervalDays));
+      slotDate.setHours(hours, minutes, 0, 0);
+
+      // Format as datetime-local
+      const year = slotDate.getFullYear();
+      const month = (slotDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = slotDate.getDate().toString().padStart(2, '0');
+      const h = slotDate.getHours().toString().padStart(2, '0');
+      const m = slotDate.getMinutes().toString().padStart(2, '0');
+      slots.push(`${year}-${month}-${day}T${h}:${m}`);
+    }
+
+    setScheduledSlots(slots);
+  }, [formData.scheduling.enabled, formData.scheduling.startDate, formData.scheduling.interval, formData.scheduling.defaultTime, formData.numberOfTopics]);
 
   // Effect to cycle through phases when generating with SEO research
   useEffect(() => {
@@ -234,10 +265,16 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
         const result = await response.json();
         const topics = result.interpretedData.topics;
 
-        // Save each topic to the database with content defaults
+        // Save each topic to the database with content defaults and scheduling
         let savedCount = 0;
-        for (const topic of topics) {
+        for (let i = 0; i < topics.length; i++) {
+          const topic = topics[i];
           try {
+            // Get scheduled time for this topic if scheduling is enabled
+            const scheduledAt = formData.scheduling.enabled && scheduledSlots[i]
+              ? new Date(scheduledSlots[i]).toISOString()
+              : undefined;
+
             const saveResponse = await fetch("/api/blog/topics", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -249,6 +286,7 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
                 includeCTA: formData.includeCTA,
                 imageContext: formData.imageStyle,
                 referenceImages: allReferenceImages,
+                scheduledAt,
               })
             });
             if (saveResponse.ok) {
@@ -273,17 +311,6 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
     }
   };
 
-  const handleTimeToggle = (time: string) => {
-    setFormData(prev => ({
-      ...prev,
-      scheduling: {
-        ...prev.scheduling,
-        preferredTimes: prev.scheduling.preferredTimes.includes(time)
-          ? prev.scheduling.preferredTimes.filter(t => t !== time)
-          : [...prev.scheduling.preferredTimes, time]
-      }
-    }));
-  };
 
   const handleSearchIntentToggle = (intent: string) => {
     setFormData(prev => ({
@@ -703,78 +730,130 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <RadioGroup 
-                  value={formData.scheduling.type}
-                  onValueChange={(value) => setFormData(prev => ({ 
-                    ...prev, 
-                    scheduling: { ...prev.scheduling, type: value }
-                  }))}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="manual" id="manual" />
-                    <Label htmlFor="manual">Manual (I&apos;ll schedule them myself)</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="auto" id="auto" />
-                    <Label htmlFor="auto">Automatic scheduling</Label>
-                  </div>
-                </RadioGroup>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="enableScheduling"
+                    checked={formData.scheduling.enabled}
+                    onCheckedChange={(checked) => setFormData(prev => ({
+                      ...prev,
+                      scheduling: { ...prev.scheduling, enabled: checked as boolean }
+                    }))}
+                  />
+                  <Label htmlFor="enableScheduling" className="cursor-pointer">
+                    Pre-schedule all {formData.numberOfTopics} topics
+                  </Label>
+                </div>
 
-                {formData.scheduling.type === "auto" && (
-                  <div className="ml-6 space-y-4 border-l-2 pl-4">
-                    <div>
-                      <Label>Frequency</Label>
-                      <Select 
-                        value={formData.scheduling.frequency}
-                        onValueChange={(value) => setFormData(prev => ({ 
-                          ...prev, 
-                          scheduling: { ...prev.scheduling, frequency: value }
-                        }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily-1">1 per day</SelectItem>
-                          <SelectItem value="daily-2">2 per day</SelectItem>
-                          <SelectItem value="weekly-3">3 per week</SelectItem>
-                          <SelectItem value="weekly-5">5 per week</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label>Preferred Publishing Times</Label>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        {[
-                          { value: "morning", label: "Morning (6 AM - 12 PM)" },
-                          { value: "afternoon", label: "Afternoon (12 PM - 5 PM)" },
-                          { value: "evening", label: "Evening (5 PM - 9 PM)" },
-                          { value: "night", label: "Night (9 PM - 6 AM)" }
-                        ].map((time) => (
-                          <div key={time.value} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={time.value}
-                              checked={formData.scheduling.preferredTimes.includes(time.value)}
-                              onCheckedChange={() => handleTimeToggle(time.value)}
-                            />
-                            <Label htmlFor={time.value} className="text-sm">{time.label}</Label>
-                          </div>
-                        ))}
+                {formData.scheduling.enabled && (
+                  <div className="space-y-4 border-l-2 border-blue-200 pl-4 ml-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Start Date</Label>
+                        <Input
+                          type="date"
+                          value={formData.scheduling.startDate.split('T')[0] || ''}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            scheduling: { ...prev.scheduling, startDate: e.target.value }
+                          }))}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label>Default Time</Label>
+                        <Select
+                          value={formData.scheduling.defaultTime}
+                          onValueChange={(value) => setFormData(prev => ({
+                            ...prev,
+                            scheduling: { ...prev.scheduling, defaultTime: value }
+                          }))}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="06:00">6:00 AM</SelectItem>
+                            <SelectItem value="09:00">9:00 AM</SelectItem>
+                            <SelectItem value="12:00">12:00 PM</SelectItem>
+                            <SelectItem value="15:00">3:00 PM</SelectItem>
+                            <SelectItem value="18:00">6:00 PM</SelectItem>
+                            <SelectItem value="21:00">9:00 PM</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
                     <div>
-                      <Label>Start Date & Time</Label>
-                      <DateTimePicker
-                        value={formData.scheduling.startDate}
-                        onChange={(value) => setFormData(prev => ({
-                          ...prev,
-                          scheduling: { ...prev.scheduling, startDate: value }
-                        }))}
-                        placeholder="Pick start date"
-                      />
+                      <Label>Publish Every</Label>
+                      <div className="flex gap-2 mt-1">
+                        {[
+                          { value: "1", label: "Daily" },
+                          { value: "2", label: "Every 2 days" },
+                          { value: "3", label: "Every 3 days" },
+                          { value: "7", label: "Weekly" },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setFormData(prev => ({
+                              ...prev,
+                              scheduling: { ...prev.scheduling, interval: option.value }
+                            }))}
+                            className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                              formData.scheduling.interval === option.value
+                                ? "bg-blue-600 text-white border-blue-600"
+                                : "bg-white border-gray-300 hover:border-gray-400"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
+
+                    {/* Generated Schedule Preview */}
+                    {scheduledSlots.length > 0 && (
+                      <div>
+                        <Label className="mb-2 block">Schedule Preview</Label>
+                        <div className="bg-gray-50 rounded-lg border p-3 space-y-2 max-h-[200px] overflow-y-auto">
+                          {scheduledSlots.map((slot, index) => {
+                            const date = new Date(slot);
+                            const formattedDate = date.toLocaleDateString('en-GB', {
+                              weekday: 'short',
+                              day: 'numeric',
+                              month: 'short'
+                            });
+                            const formattedTime = date.toLocaleTimeString('en-GB', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            });
+                            return (
+                              <div key={index} className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600">Topic {index + 1}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{formattedDate}</span>
+                                  <span className="text-gray-400">at</span>
+                                  <input
+                                    type="time"
+                                    value={slot.split('T')[1] || '09:00'}
+                                    onChange={(e) => {
+                                      const newSlots = [...scheduledSlots];
+                                      const datePart = slot.split('T')[0];
+                                      newSlots[index] = `${datePart}T${e.target.value}`;
+                                      setScheduledSlots(newSlots);
+                                    }}
+                                    className="w-20 text-sm border rounded px-2 py-0.5"
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          You can adjust individual times above
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
