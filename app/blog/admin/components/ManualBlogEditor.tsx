@@ -2407,44 +2407,6 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
             </p>
           </div>
           <div className="flex gap-2">
-            <Dialog open={showJSONImport} onOpenChange={setShowJSONImport}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Code className="h-4 w-4 mr-2" />
-                  Import JSON
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Import Blog Post from JSON</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Textarea
-                    value={jsonInput}
-                    onChange={(e) => setJsonInput(e.target.value)}
-                    placeholder="Paste your JSON structure here..."
-                    className="min-h-[300px] font-mono text-sm"
-                  />
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowJSONImport(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button onClick={handleJSONImport}>Import</Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Button variant="outline" onClick={exportJSON}>
-              <Code className="h-4 w-4 mr-2" />
-              Export JSON
-            </Button>
-            <Button variant="outline">
-              <Eye className="h-4 w-4 mr-2" />
-              Preview
-            </Button>
             <Button variant="outline" onClick={saveDraft} disabled={isSaving}>
               <Save className="h-4 w-4 mr-2" />
               {isSaving ? "Saving..." : "Save Draft"}
@@ -2472,22 +2434,10 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
             </label>
             <Input
               value={postData.title}
-              onChange={(e) => {
-                console.log(
-                  "Title changing from:",
-                  postData.title,
-                  "to:",
-                  e.target.value
-                );
-                setPostData({ ...postData, title: e.target.value });
-              }}
+              onChange={(e) => setPostData({ ...postData, title: e.target.value })}
               placeholder="Your blog post title"
               className="text-lg font-medium"
             />
-            <div className="text-xs text-gray-500 mt-1">
-              Debug: Current title = &quot;{postData.title}&quot; (length:{" "}
-              {postData.title.length})
-            </div>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">
