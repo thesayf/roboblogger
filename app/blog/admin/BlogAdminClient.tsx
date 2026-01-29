@@ -1573,34 +1573,35 @@ export default function BlogAdminClient() {
                       Add Topic
                     </Button>
                   </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Create New Topic</DialogTitle>
                           <DialogDescription>
-                            Add a new topic for AI blog generation
+                            Add a topic for AI blog generation
                           </DialogDescription>
                         </DialogHeader>
 
-                        <div className="space-y-6 py-4">
-                          {/* Basic Topic Info */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="md:col-span-2">
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Topic Title *
-                              </label>
-                              <Input
-                                value={topicForm.topic}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    topic: e.target.value,
-                                  }))
-                                }
-                                placeholder="e.g., The Future of Remote Work in 2025"
-                                className="w-full"
-                              />
-                            </div>
+                        <div className="space-y-5 py-4">
+                          {/* Topic Title */}
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Topic Title *
+                            </label>
+                            <Input
+                              value={topicForm.topic}
+                              onChange={(e) =>
+                                setTopicForm((prev) => ({
+                                  ...prev,
+                                  topic: e.target.value,
+                                }))
+                              }
+                              placeholder="e.g., The Future of Remote Work in 2025"
+                              className="w-full"
+                            />
+                          </div>
 
+                          {/* Two column layout */}
+                          <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label className="text-sm font-medium text-gray-700 mb-2 block">
                                 Target Audience
@@ -1613,7 +1614,7 @@ export default function BlogAdminClient() {
                                     audience: e.target.value,
                                   }))
                                 }
-                                placeholder="e.g., Working professionals and entrepreneurs"
+                                placeholder="e.g., Marketing professionals"
                               />
                             </div>
 
@@ -1634,21 +1635,10 @@ export default function BlogAdminClient() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Professional but approachable">
-                                    Professional but approachable
-                                  </SelectItem>
-                                  <SelectItem value="Casual and friendly">
-                                    Casual and friendly
-                                  </SelectItem>
-                                  <SelectItem value="Technical and authoritative">
-                                    Technical and authoritative
-                                  </SelectItem>
-                                  <SelectItem value="Conversational">
-                                    Conversational
-                                  </SelectItem>
-                                  <SelectItem value="Formal and academic">
-                                    Formal and academic
-                                  </SelectItem>
+                                  <SelectItem value="Professional but approachable">Professional</SelectItem>
+                                  <SelectItem value="Casual and friendly">Casual</SelectItem>
+                                  <SelectItem value="Technical and authoritative">Technical</SelectItem>
+                                  <SelectItem value="Conversational">Conversational</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -1670,159 +1660,78 @@ export default function BlogAdminClient() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Short (400-600 words)">
-                                    Short (400-600 words)
-                                  </SelectItem>
-                                  <SelectItem value="Medium (800-1200 words)">
-                                    Medium (800-1200 words)
-                                  </SelectItem>
-                                  <SelectItem value="Long (1200-1500 words)">
-                                    Long (1200-1500 words)
-                                  </SelectItem>
+                                  <SelectItem value="Short (400-600 words)">Short (400-600 words)</SelectItem>
+                                  <SelectItem value="Medium (800-1200 words)">Medium (800-1200 words)</SelectItem>
+                                  <SelectItem value="Long (1200-1500 words)">Long (1200-1500 words)</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
 
                             <div>
                               <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Priority
+                                Schedule (Optional)
                               </label>
-                              <Select
-                                value={topicForm.priority}
-                                onValueChange={(value) =>
+                              <Input
+                                type="datetime-local"
+                                value={topicForm.scheduledAt}
+                                onChange={(e) =>
                                   setTopicForm((prev) => ({
                                     ...prev,
-                                    priority: value,
+                                    scheduledAt: e.target.value,
                                   }))
                                 }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="low">Low</SelectItem>
-                                  <SelectItem value="medium">Medium</SelectItem>
-                                  <SelectItem value="high">High</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                className="w-full"
+                              />
                             </div>
                           </div>
 
                           {/* Content Options */}
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 mb-3 block">
-                              Content Options
-                            </label>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div className="flex items-center space-x-2">
-                                <Checkbox
-                                  id="includeImages"
-                                  checked={topicForm.includeImages}
-                                  onCheckedChange={(checked) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      includeImages: !!checked,
-                                    }))
-                                  }
-                                />
-                                <label
-                                  htmlFor="includeImages"
-                                  className="text-sm text-gray-700"
-                                >
-                                  Include Images
-                                </label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Checkbox
-                                  id="includeCallouts"
-                                  checked={topicForm.includeCallouts}
-                                  onCheckedChange={(checked) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      includeCallouts: !!checked,
-                                    }))
-                                  }
-                                />
-                                <label
-                                  htmlFor="includeCallouts"
-                                  className="text-sm text-gray-700"
-                                >
-                                  Include Callouts
-                                </label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Checkbox
-                                  id="includeCTA"
-                                  checked={topicForm.includeCTA}
-                                  onCheckedChange={(checked) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      includeCTA: !!checked,
-                                    }))
-                                  }
-                                />
-                                <label
-                                  htmlFor="includeCTA"
-                                  className="text-sm text-gray-700"
-                                >
-                                  Include CTA
-                                </label>
-                              </div>
+                          <div className="flex items-center gap-6">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="includeImages"
+                                checked={topicForm.includeImages}
+                                onCheckedChange={(checked) =>
+                                  setTopicForm((prev) => ({
+                                    ...prev,
+                                    includeImages: !!checked,
+                                  }))
+                                }
+                              />
+                              <label htmlFor="includeImages" className="text-sm text-gray-700">
+                                Include Images
+                              </label>
                             </div>
-                          </div>
-
-                          {/* Additional Requirements */}
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                              Additional Requirements
-                            </label>
-                            <Textarea
-                              value={topicForm.additionalRequirements}
-                              onChange={(e) =>
-                                setTopicForm((prev) => ({
-                                  ...prev,
-                                  additionalRequirements: e.target.value,
-                                }))
-                              }
-                              placeholder="Any specific requirements, keywords, or focus areas..."
-                              rows={3}
-                            />
-                          </div>
-
-                          {/* Brand Context */}
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                              Brand Context & Style Guide
-                            </label>
-                            <Textarea
-                              value={topicForm.brandContext}
-                              onChange={(e) =>
-                                setTopicForm((prev) => ({
-                                  ...prev,
-                                  brandContext: e.target.value,
-                                }))
-                              }
-                              placeholder="Brand voice, tone, style guidelines specific to this topic..."
-                              rows={3}
-                            />
-                          </div>
-
-                          {/* Image Context */}
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                              Image Style Preferences
-                            </label>
-                            <Textarea
-                              value={topicForm.imageContext}
-                              onChange={(e) =>
-                                setTopicForm((prev) => ({
-                                  ...prev,
-                                  imageContext: e.target.value,
-                                }))
-                              }
-                              placeholder="Describe desired image style: colors, design philosophy, inspiration, art style, mood and composition preferences..."
-                              rows={3}
-                            />
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="includeCallouts"
+                                checked={topicForm.includeCallouts}
+                                onCheckedChange={(checked) =>
+                                  setTopicForm((prev) => ({
+                                    ...prev,
+                                    includeCallouts: !!checked,
+                                  }))
+                                }
+                              />
+                              <label htmlFor="includeCallouts" className="text-sm text-gray-700">
+                                Include Callouts
+                              </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="includeCTA"
+                                checked={topicForm.includeCTA}
+                                onCheckedChange={(checked) =>
+                                  setTopicForm((prev) => ({
+                                    ...prev,
+                                    includeCTA: !!checked,
+                                  }))
+                                }
+                              />
+                              <label htmlFor="includeCTA" className="text-sm text-gray-700">
+                                Include CTA
+                              </label>
+                            </div>
                           </div>
 
                           {/* Tags */}
@@ -1834,10 +1743,8 @@ export default function BlogAdminClient() {
                               <Input
                                 value={newTagInput}
                                 onChange={(e) => setNewTagInput(e.target.value)}
-                                placeholder="Add a tag..."
-                                onKeyPress={(e) =>
-                                  e.key === "Enter" && addTag()
-                                }
+                                placeholder="Add a tag and press Enter..."
+                                onKeyPress={(e) => e.key === "Enter" && addTag()}
                                 className="flex-1"
                               />
                               <Button
@@ -1865,56 +1772,79 @@ export default function BlogAdminClient() {
                             )}
                           </div>
 
-                          {/* SEO Section */}
-                          <div className="border-t pt-6">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                              <Search className="h-4 w-4" />
-                              SEO Settings
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                  Primary Keyword
-                                </label>
-                                <Input
-                                  value={topicForm.seo.primaryKeyword}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      seo: {
-                                        ...prev.seo,
-                                        primaryKeyword: e.target.value,
-                                      },
-                                    }))
-                                  }
-                                  placeholder="e.g., better sleep tips"
-                                />
+                          {/* Additional Instructions */}
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Additional Instructions (Optional)
+                            </label>
+                            <Textarea
+                              value={topicForm.additionalRequirements}
+                              onChange={(e) =>
+                                setTopicForm((prev) => ({
+                                  ...prev,
+                                  additionalRequirements: e.target.value,
+                                }))
+                              }
+                              placeholder="Any specific requirements, keywords to include, topics to cover, or style notes..."
+                              rows={3}
+                            />
+                          </div>
+
+                          {/* Advanced SEO - Collapsible */}
+                          <details className="border rounded-lg">
+                            <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:bg-gray-50">
+                              Advanced SEO Options
+                            </summary>
+                            <div className="px-4 pb-4 pt-2 space-y-4 border-t">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                    Primary Keyword
+                                  </label>
+                                  <Input
+                                    value={topicForm.seo.primaryKeyword}
+                                    onChange={(e) =>
+                                      setTopicForm((prev) => ({
+                                        ...prev,
+                                        seo: { ...prev.seo, primaryKeyword: e.target.value },
+                                      }))
+                                    }
+                                    placeholder="e.g., remote work tips"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                    URL Slug
+                                  </label>
+                                  <div className="flex gap-2">
+                                    <Input
+                                      value={topicForm.seo.slug}
+                                      onChange={(e) =>
+                                        setTopicForm((prev) => ({
+                                          ...prev,
+                                          seo: { ...prev.seo, slug: generateSlug(e.target.value) },
+                                        }))
+                                      }
+                                      placeholder="auto-generated"
+                                      className="flex-1 font-mono text-sm"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={updateSlug}
+                                      disabled={!topicForm.seo.primaryKeyword && !topicForm.topic}
+                                    >
+                                      Auto
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
 
                               <div>
-                                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                  URL Slug
-                                </label>
-                                <Input
-                                  value={topicForm.seo.slug || ""}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      seo: {
-                                        ...prev.seo,
-                                        slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
-                                      },
-                                    }))
-                                  }
-                                  placeholder="e.g., better-sleep-tips"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Leave empty to auto-generate</p>
-                              </div>
-
-                              <div className="md:col-span-2">
                                 <label className="text-sm font-medium text-gray-700 mb-2 block">
                                   Meta Title
-                                  <span className={`ml-2 text-xs ${topicForm.seo.metaTitle.length > 60 ? 'text-red-500' : 'text-gray-400'}`}>
+                                  <span className={`ml-2 text-xs ${topicForm.seo.metaTitle.length > 50 ? 'text-red-500' : 'text-gray-400'}`}>
                                     {topicForm.seo.metaTitle.length}/60
                                   </span>
                                 </label>
@@ -1923,21 +1853,18 @@ export default function BlogAdminClient() {
                                   onChange={(e) =>
                                     setTopicForm((prev) => ({
                                       ...prev,
-                                      seo: {
-                                        ...prev.seo,
-                                        metaTitle: e.target.value,
-                                      },
+                                      seo: { ...prev.seo, metaTitle: e.target.value.slice(0, 60) },
                                     }))
                                   }
-                                  placeholder="e.g., 10 Tips for Better Sleep Tonight | Your Blog"
+                                  placeholder="Leave blank to auto-generate"
                                   maxLength={60}
                                 />
                               </div>
 
-                              <div className="md:col-span-2">
+                              <div>
                                 <label className="text-sm font-medium text-gray-700 mb-2 block">
                                   Meta Description
-                                  <span className={`ml-2 text-xs ${topicForm.seo.metaDescription.length > 155 ? 'text-red-500' : 'text-gray-400'}`}>
+                                  <span className={`ml-2 text-xs ${topicForm.seo.metaDescription.length > 140 ? 'text-red-500' : 'text-gray-400'}`}>
                                     {topicForm.seo.metaDescription.length}/155
                                   </span>
                                 </label>
@@ -1946,537 +1873,16 @@ export default function BlogAdminClient() {
                                   onChange={(e) =>
                                     setTopicForm((prev) => ({
                                       ...prev,
-                                      seo: {
-                                        ...prev.seo,
-                                        metaDescription: e.target.value,
-                                      },
+                                      seo: { ...prev.seo, metaDescription: e.target.value.slice(0, 155) },
                                     }))
                                   }
-                                  placeholder="e.g., Discover proven strategies to improve your sleep quality and wake up refreshed every morning."
+                                  placeholder="Leave blank to auto-generate"
                                   rows={2}
                                   maxLength={155}
                                 />
                               </div>
                             </div>
-                          </div>
-
-                          {/* Reference Images Section */}
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 mb-3 block">
-                              Reference Images (Optional)
-                            </label>
-
-                            {/* Existing Images */}
-                            {images.length > 0 && (
-                              <div className="mb-4">
-                                <h4 className="text-sm font-medium text-gray-600 mb-2">
-                                  Select from existing images:
-                                </h4>
-                                <div className="grid grid-cols-4 md:grid-cols-6 gap-2 max-h-40 overflow-y-auto border rounded p-2">
-                                  {images.slice(0, 20).map((image) => (
-                                    <div
-                                      key={image.fileId}
-                                      className={`relative cursor-pointer rounded border-2 ${
-                                        selectedExistingImages.includes(
-                                          image.url
-                                        )
-                                          ? "border-blue-500 bg-blue-50"
-                                          : "border-gray-200 hover:border-gray-300"
-                                      }`}
-                                      onClick={() =>
-                                        handleImageSelect(image.url)
-                                      }
-                                    >
-                                      <img
-                                        src={image.thumbnailUrl}
-                                        alt={image.name}
-                                        className="w-full h-16 object-cover rounded"
-                                      />
-                                      {selectedExistingImages.includes(
-                                        image.url
-                                      ) && (
-                                        <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
-                                          ✓
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Upload New Images */}
-                            <div>
-                              <h4 className="text-sm font-medium text-gray-600 mb-2">
-                                Or upload new reference images:
-                              </h4>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={(e) =>
-                                  handleReferenceImageUpload(e.target.files)
-                                }
-                                className="hidden"
-                                id="reference-images"
-                              />
-                              <label htmlFor="reference-images">
-                                <Button type="button" variant="outline" asChild>
-                                  <span className="cursor-pointer">
-                                    <Upload className="h-4 w-4 mr-2" />
-                                    Upload Images
-                                  </span>
-                                </Button>
-                              </label>
-
-                              {newReferenceImages.length > 0 && (
-                                <div className="mt-2 grid grid-cols-4 gap-2">
-                                  {newReferenceImages.map((file, index) => (
-                                    <div key={index} className="relative">
-                                      <img
-                                        src={URL.createObjectURL(file)}
-                                        alt={file.name}
-                                        className="w-full h-16 object-cover rounded border"
-                                      />
-                                      <Button
-                                        type="button"
-                                        variant="destructive"
-                                        size="sm"
-                                        className="absolute top-1 right-1 w-4 h-4 p-0"
-                                        onClick={() =>
-                                          removeReferenceImage(index)
-                                        }
-                                      >
-                                        ×
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              <p className="text-xs text-gray-500 mt-1">
-                                Upload up to 5 images to guide the AI&apos;s style
-                                and aesthetic
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Scheduled Date */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Scheduled Generation Date (Optional)
-                              </label>
-                              <div className="text-xs text-gray-500 mb-1">
-                                Your local time (UTC{new Date().getTimezoneOffset() > 0 ? '-' : '+'}{Math.abs(new Date().getTimezoneOffset() / 60)})
-                              </div>
-                              <Input
-                                type="datetime-local"
-                                value={topicForm.scheduledAt}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    scheduledAt: e.target.value,
-                                  }))
-                                }
-                                className="w-full"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                When specified, the blog will be automatically
-                                generated at this date/time
-                              </p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Estimated Duration (minutes)
-                              </label>
-                              <Input
-                                type="number"
-                                min="1"
-                                max="60"
-                                value={topicForm.estimatedDuration}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    estimatedDuration:
-                                      parseInt(e.target.value) || 5,
-                                  }))
-                                }
-                                placeholder="5"
-                                className="w-full"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Notes */}
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                              Notes (Optional)
-                            </label>
-                            <Textarea
-                              value={topicForm.notes}
-                              onChange={(e) =>
-                                setTopicForm((prev) => ({
-                                  ...prev,
-                                  notes: e.target.value,
-                                }))
-                              }
-                              placeholder="Any additional notes or context..."
-                              rows={2}
-                            />
-                          </div>
-
-                          {/* SEO Section */}
-                          <div className="space-y-4 border-t pt-4">
-                            <h3 className="text-lg font-semibold text-gray-900">SEO Keywords</h3>
-                            
-                            {/* Primary Keyword */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Primary Keyword *
-                              </label>
-                              <Input
-                                value={topicForm.seo.primaryKeyword}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { ...prev.seo, primaryKeyword: e.target.value },
-                                  }))
-                                }
-                                placeholder="e.g., remote work productivity"
-                                className="w-full"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                The main keyword you want to rank for
-                              </p>
-                            </div>
-
-                            {/* Secondary Keywords */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Secondary Keywords (max 3)
-                              </label>
-                              <div className="flex gap-2 mb-2">
-                                <Input
-                                  value={newSecondaryKeyword}
-                                  onChange={(e) => setNewSecondaryKeyword(e.target.value)}
-                                  placeholder="Add secondary keyword..."
-                                  onKeyPress={(e) =>
-                                    e.key === "Enter" && addSecondaryKeyword()
-                                  }
-                                  className="flex-1"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={addSecondaryKeyword}
-                                  disabled={!newSecondaryKeyword.trim() || topicForm.seo.secondaryKeywords.length >= 3}
-                                >
-                                  Add
-                                </Button>
-                              </div>
-                              {topicForm.seo.secondaryKeywords.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {topicForm.seo.secondaryKeywords.map((keyword, index) => (
-                                    <Badge
-                                      key={index}
-                                      variant="secondary"
-                                      className="cursor-pointer hover:bg-red-100"
-                                      onClick={() => removeSecondaryKeyword(keyword)}
-                                    >
-                                      {keyword} ×
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Long-tail Keywords */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Long-tail Keywords (max 3)
-                              </label>
-                              <div className="flex gap-2 mb-2">
-                                <Input
-                                  value={newLongTailKeyword}
-                                  onChange={(e) => setNewLongTailKeyword(e.target.value)}
-                                  placeholder="e.g., how to improve remote work productivity 2025"
-                                  onKeyPress={(e) =>
-                                    e.key === "Enter" && addLongTailKeyword()
-                                  }
-                                  className="flex-1"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={addLongTailKeyword}
-                                  disabled={!newLongTailKeyword.trim() || topicForm.seo.longTailKeywords.length >= 3}
-                                >
-                                  Add
-                                </Button>
-                              </div>
-                              {topicForm.seo.longTailKeywords.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {topicForm.seo.longTailKeywords.map((keyword, index) => (
-                                    <Badge
-                                      key={index}
-                                      variant="secondary"
-                                      className="cursor-pointer hover:bg-red-100"
-                                      onClick={() => removeLongTailKeyword(keyword)}
-                                    >
-                                      {keyword} ×
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Search Intent */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Search Intent
-                              </label>
-                              <Select
-                                value={topicForm.seo.searchIntent}
-                                onValueChange={(value) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { ...prev.seo, searchIntent: value as any },
-                                  }))
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="informational">
-                                    Informational (How-to, guides, definitions)
-                                  </SelectItem>
-                                  <SelectItem value="commercial">
-                                    Commercial (Reviews, comparisons, best of)
-                                  </SelectItem>
-                                  <SelectItem value="transactional">
-                                    Transactional (Product pages, services)
-                                  </SelectItem>
-                                  <SelectItem value="navigational">
-                                    Navigational (Brand/company specific)
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          {/* Meta Data Section */}
-                          <div className="space-y-4 border-t pt-4">
-                            <h3 className="text-lg font-semibold text-gray-900">Meta Data</h3>
-                            
-                            {/* Meta Title */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Meta Title (max 60 characters)
-                              </label>
-                              <div className="relative">
-                                <Input
-                                  value={topicForm.seo.metaTitle}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      seo: { ...prev.seo, metaTitle: e.target.value.slice(0, 60) },
-                                    }))
-                                  }
-                                  placeholder="Leave blank to auto-generate from topic"
-                                  className="w-full pr-12"
-                                  maxLength={60}
-                                />
-                                <span className={`absolute right-2 top-2.5 text-xs ${
-                                  topicForm.seo.metaTitle.length > 50 ? 'text-red-500' : 'text-gray-400'
-                                }`}>
-                                  {topicForm.seo.metaTitle.length}/60
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Appears in browser tabs and search results
-                              </p>
-                            </div>
-
-                            {/* Meta Description */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Meta Description (max 155 characters)
-                              </label>
-                              <div className="relative">
-                                <Textarea
-                                  value={topicForm.seo.metaDescription}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      seo: { ...prev.seo, metaDescription: e.target.value.slice(0, 155) },
-                                    }))
-                                  }
-                                  placeholder="Leave blank to auto-generate a compelling description"
-                                  className="w-full pr-12"
-                                  rows={3}
-                                  maxLength={155}
-                                />
-                                <span className={`absolute right-2 top-2 text-xs ${
-                                  topicForm.seo.metaDescription.length > 140 ? 'text-red-500' : 'text-gray-400'
-                                }`}>
-                                  {topicForm.seo.metaDescription.length}/155
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Appears in search result snippets
-                              </p>
-                            </div>
-
-                            {/* Open Graph Title */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Social Media Title (Open Graph)
-                              </label>
-                              <Input
-                                value={topicForm.seo.openGraph.title}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { 
-                                      ...prev.seo, 
-                                      openGraph: { ...prev.seo.openGraph, title: e.target.value }
-                                    },
-                                  }))
-                                }
-                                placeholder="Leave blank to use meta title"
-                                className="w-full"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                Title shown when shared on social media
-                              </p>
-                            </div>
-
-                            {/* Open Graph Description */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Social Media Description
-                              </label>
-                              <Textarea
-                                value={topicForm.seo.openGraph.description}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { 
-                                      ...prev.seo, 
-                                      openGraph: { ...prev.seo.openGraph, description: e.target.value }
-                                    },
-                                  }))
-                                }
-                                placeholder="Leave blank to use meta description"
-                                className="w-full"
-                                rows={2}
-                              />
-                            </div>
-
-                            {/* Schema Type */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Schema Type
-                              </label>
-                              <Select
-                                value={topicForm.seo.schemaType}
-                                onValueChange={(value) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { ...prev.seo, schemaType: value as any },
-                                  }))
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Article">
-                                    Article (General articles)
-                                  </SelectItem>
-                                  <SelectItem value="BlogPosting">
-                                    Blog Posting (Blog posts)
-                                  </SelectItem>
-                                  <SelectItem value="NewsArticle">
-                                    News Article (News content)
-                                  </SelectItem>
-                                  <SelectItem value="HowToArticle">
-                                    How-To Article (Tutorials)
-                                  </SelectItem>
-                                  <SelectItem value="FAQPage">
-                                    FAQ Page (Q&A format)
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Helps search engines understand content type
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* URL Optimization Section */}
-                          <div className="space-y-4 border-t pt-4">
-                            <h3 className="text-lg font-semibold text-gray-900">URL Optimization</h3>
-                            
-                            {/* URL Slug */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                URL Slug
-                              </label>
-                              <div className="flex gap-2">
-                                <Input
-                                  value={topicForm.seo.slug}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      seo: { ...prev.seo, slug: generateSlug(e.target.value) },
-                                    }))
-                                  }
-                                  placeholder="auto-generated-from-keyword"
-                                  className="flex-1 font-mono text-sm"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={updateSlug}
-                                  disabled={!topicForm.seo.primaryKeyword && !topicForm.topic}
-                                >
-                                  Auto Generate
-                                </Button>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1">
-                                SEO-friendly URL: /blog/{topicForm.seo.slug || 'your-slug-here'}
-                              </p>
-                              {topicForm.seo.slug && (
-                                <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
-                                  <strong>Preview:</strong> https://yourdomain.com/blog/{topicForm.seo.slug}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Canonical URL */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Canonical URL (Optional)
-                              </label>
-                              <Input
-                                value={topicForm.seo.canonicalUrl}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { ...prev.seo, canonicalUrl: e.target.value },
-                                  }))
-                                }
-                                placeholder="Leave blank to use the generated URL"
-                                className="w-full"
-                                type="url"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                Only set if this content exists elsewhere (prevents duplicate content issues)
-                              </p>
-                            </div>
-                          </div>
+                          </details>
                         </div>
 
                         <div className="flex gap-2 justify-end border-t pt-4">
@@ -2492,9 +1898,7 @@ export default function BlogAdminClient() {
                           </Button>
                           <Button
                             onClick={handleCreateTopic}
-                            disabled={
-                              isCreatingTopic || !topicForm.topic.trim()
-                            }
+                            disabled={isCreatingTopic || !topicForm.topic.trim()}
                           >
                             {isCreatingTopic ? (
                               <>
@@ -2517,39 +1921,40 @@ export default function BlogAdminClient() {
                       open={showEditTopicDialog}
                       onOpenChange={setShowEditTopicDialog}
                     >
-                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Edit Topic</DialogTitle>
                           <DialogDescription>
-                            Update the topic details for AI blog generation
+                            Update topic details
                           </DialogDescription>
                         </DialogHeader>
 
-                        <div className="space-y-6 py-4">
-                          {/* Basic Topic Info */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="edit-topic">Topic Title *</Label>
-                              <Input
-                                id="edit-topic"
-                                placeholder="Enter your blog topic..."
-                                value={topicForm.topic}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    topic: e.target.value,
-                                  }))
-                                }
-                              />
-                            </div>
+                        <div className="space-y-5 py-4">
+                          {/* Topic Title */}
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Topic Title *
+                            </label>
+                            <Input
+                              value={topicForm.topic}
+                              onChange={(e) =>
+                                setTopicForm((prev) => ({
+                                  ...prev,
+                                  topic: e.target.value,
+                                }))
+                              }
+                              placeholder="e.g., The Future of Remote Work in 2025"
+                              className="w-full"
+                            />
+                          </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="edit-audience">
+                          {/* Two column layout */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-2 block">
                                 Target Audience
-                              </Label>
+                              </label>
                               <Input
-                                id="edit-audience"
-                                placeholder="e.g., Working professionals, entrepreneurs..."
                                 value={topicForm.audience}
                                 onChange={(e) =>
                                   setTopicForm((prev) => ({
@@ -2557,11 +1962,14 @@ export default function BlogAdminClient() {
                                     audience: e.target.value,
                                   }))
                                 }
+                                placeholder="e.g., Marketing professionals"
                               />
                             </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="edit-tone">Tone</Label>
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                Tone
+                              </label>
                               <Select
                                 value={topicForm.tone}
                                 onValueChange={(value) =>
@@ -2575,30 +1983,18 @@ export default function BlogAdminClient() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Professional">
-                                    Professional
-                                  </SelectItem>
-                                  <SelectItem value="Professional but approachable">
-                                    Professional but approachable
-                                  </SelectItem>
-                                  <SelectItem value="Casual">Casual</SelectItem>
-                                  <SelectItem value="Technical">
-                                    Technical
-                                  </SelectItem>
-                                  <SelectItem value="Friendly">
-                                    Friendly
-                                  </SelectItem>
-                                  <SelectItem value="Authoritative">
-                                    Authoritative
-                                  </SelectItem>
+                                  <SelectItem value="Professional but approachable">Professional</SelectItem>
+                                  <SelectItem value="Casual and friendly">Casual</SelectItem>
+                                  <SelectItem value="Technical and authoritative">Technical</SelectItem>
+                                  <SelectItem value="Conversational">Conversational</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="edit-length">
-                                Article Length
-                              </Label>
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                Length
+                              </label>
                               <Select
                                 value={topicForm.length}
                                 onValueChange={(value) =>
@@ -2612,53 +2008,20 @@ export default function BlogAdminClient() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Short (400-600 words)">
-                                    Short (400-600 words)
-                                  </SelectItem>
-                                  <SelectItem value="Medium (800-1200 words)">
-                                    Medium (800-1200 words)
-                                  </SelectItem>
-                                  <SelectItem value="Long (1200-1500 words)">
-                                    Long (1200-1500 words)
-                                  </SelectItem>
+                                  <SelectItem value="Short (400-600 words)">Short (400-600 words)</SelectItem>
+                                  <SelectItem value="Medium (800-1200 words)">Medium (800-1200 words)</SelectItem>
+                                  <SelectItem value="Long (1200-1500 words)">Long (1200-1500 words)</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="edit-priority">Priority</Label>
-                              <Select
-                                value={topicForm.priority}
-                                onValueChange={(value) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    priority: value,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="low">Low</SelectItem>
-                                  <SelectItem value="medium">Medium</SelectItem>
-                                  <SelectItem value="high">High</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="edit-scheduled">
-                                Scheduled Date/Time
-                              </Label>
-                              <div className="text-xs text-gray-500 mb-1">
-                                Your local time (UTC{new Date().getTimezoneOffset() > 0 ? '-' : '+'}{Math.abs(new Date().getTimezoneOffset() / 60)})
-                              </div>
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                Schedule (Optional)
+                              </label>
                               <Input
-                                id="edit-scheduled"
                                 type="datetime-local"
                                 value={topicForm.scheduledAt}
-                                min={new Date().toISOString().slice(0, 16)}
                                 disabled={editingTopic?.status === 'completed' || editingTopic?.generatedPostId ? true : false}
                                 onChange={(e) =>
                                   setTopicForm((prev) => ({
@@ -2668,89 +2031,102 @@ export default function BlogAdminClient() {
                                 }
                                 className={editingTopic?.status === 'completed' || editingTopic?.generatedPostId ? "bg-gray-100 text-gray-500" : ""}
                               />
-                              <p className="text-xs text-gray-500 mt-1">
-                                {editingTopic?.status === 'completed' || editingTopic?.generatedPostId
-                                  ? "Cannot reschedule published topics"
-                                  : "When changed, the topic will be rescheduled with the new date/time"
-                                }
-                              </p>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="edit-duration">
-                                Estimated Duration (minutes)
-                              </Label>
-                              <Input
-                                id="edit-duration"
-                                type="number"
-                                min="1"
-                                max="60"
-                                value={topicForm.estimatedDuration}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    estimatedDuration:
-                                      parseInt(e.target.value) || 5,
-                                  }))
-                                }
-                              />
                             </div>
                           </div>
 
                           {/* Content Options */}
-                          <div className="space-y-4">
-                            <Label>Content Options</Label>
-                            <div className="flex flex-wrap gap-4">
-                              <label className="flex items-center space-x-2">
-                                <input
-                                  type="checkbox"
-                                  checked={topicForm.includeImages}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      includeImages: e.target.checked,
-                                    }))
-                                  }
-                                />
-                                <span>Include Images</span>
+                          <div className="flex items-center gap-6">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="edit-includeImages"
+                                checked={topicForm.includeImages}
+                                onCheckedChange={(checked) =>
+                                  setTopicForm((prev) => ({
+                                    ...prev,
+                                    includeImages: !!checked,
+                                  }))
+                                }
+                              />
+                              <label htmlFor="edit-includeImages" className="text-sm text-gray-700">
+                                Include Images
                               </label>
-                              <label className="flex items-center space-x-2">
-                                <input
-                                  type="checkbox"
-                                  checked={topicForm.includeCallouts}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      includeCallouts: e.target.checked,
-                                    }))
-                                  }
-                                />
-                                <span>Include Callouts</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="edit-includeCallouts"
+                                checked={topicForm.includeCallouts}
+                                onCheckedChange={(checked) =>
+                                  setTopicForm((prev) => ({
+                                    ...prev,
+                                    includeCallouts: !!checked,
+                                  }))
+                                }
+                              />
+                              <label htmlFor="edit-includeCallouts" className="text-sm text-gray-700">
+                                Include Callouts
                               </label>
-                              <label className="flex items-center space-x-2">
-                                <input
-                                  type="checkbox"
-                                  checked={topicForm.includeCTA}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      includeCTA: e.target.checked,
-                                    }))
-                                  }
-                                />
-                                <span>Include Call-to-Action</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="edit-includeCTA"
+                                checked={topicForm.includeCTA}
+                                onCheckedChange={(checked) =>
+                                  setTopicForm((prev) => ({
+                                    ...prev,
+                                    includeCTA: !!checked,
+                                  }))
+                                }
+                              />
+                              <label htmlFor="edit-includeCTA" className="text-sm text-gray-700">
+                                Include CTA
                               </label>
                             </div>
                           </div>
 
-                          {/* Additional Requirements */}
-                          <div className="space-y-2">
-                            <Label htmlFor="edit-requirements">
-                              Additional Requirements
-                            </Label>
+                          {/* Tags */}
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Tags
+                            </label>
+                            <div className="flex gap-2 mb-2">
+                              <Input
+                                value={newTagInput}
+                                onChange={(e) => setNewTagInput(e.target.value)}
+                                placeholder="Add a tag and press Enter..."
+                                onKeyPress={(e) => e.key === "Enter" && addTag()}
+                                className="flex-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={addTag}
+                                disabled={!newTagInput.trim()}
+                              >
+                                Add
+                              </Button>
+                            </div>
+                            {topicForm.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {topicForm.tags.map((tag, index) => (
+                                  <Badge
+                                    key={index}
+                                    variant="secondary"
+                                    className="cursor-pointer hover:bg-red-100"
+                                    onClick={() => removeTag(tag)}
+                                  >
+                                    {tag} ×
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Additional Instructions */}
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Additional Instructions (Optional)
+                            </label>
                             <Textarea
-                              id="edit-requirements"
-                              placeholder="Any specific requirements, key points to cover, or style preferences..."
                               value={topicForm.additionalRequirements}
                               onChange={(e) =>
                                 setTopicForm((prev) => ({
@@ -2758,365 +2134,69 @@ export default function BlogAdminClient() {
                                   additionalRequirements: e.target.value,
                                 }))
                               }
-                            />
-                          </div>
-
-                          {/* Brand Context */}
-                          <div className="space-y-2">
-                            <Label htmlFor="edit-brand-context">
-                              Brand Context & Style Guide
-                            </Label>
-                            <Textarea
-                              id="edit-brand-context"
-                              placeholder="Brand voice, tone, style guidelines specific to this topic..."
-                              value={topicForm.brandContext}
-                              onChange={(e) =>
-                                setTopicForm((prev) => ({
-                                  ...prev,
-                                  brandContext: e.target.value,
-                                }))
-                              }
+                              placeholder="Any specific requirements, keywords to include, topics to cover, or style notes..."
                               rows={3}
                             />
                           </div>
 
-                          {/* Image Context */}
-                          <div className="space-y-2">
-                            <Label htmlFor="edit-image-context">
-                              Image Context
-                            </Label>
-                            <Textarea
-                              id="edit-image-context"
-                              placeholder="Context for image generation (style, mood, specific requirements)..."
-                              value={topicForm.imageContext}
-                              onChange={(e) =>
-                                setTopicForm((prev) => ({
-                                  ...prev,
-                                  imageContext: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-
-                          {/* Reference Images */}
-                          <div className="space-y-2">
-                            <Label>Reference Images</Label>
-                            {selectedExistingImages.length > 0 ? (
-                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {selectedExistingImages.map(
-                                  (imageRef, index) => {
-                                    // Handle both URL and ID references
-                                    const image = images.find(
-                                      (img) => img._id === imageRef || img.url === imageRef
-                                    );
-                                    return (
-                                      <div
-                                        key={index}
-                                        className="relative group"
-                                      >
-                                        <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                                          {image ? (
-                                            <img
-                                              src={image.url}
-                                              alt={
-                                                image.alt || "Reference image"
-                                              }
-                                              className="w-full h-full object-cover"
-                                            />
-                                          ) : imageRef.startsWith('http') ? (
-                                            // Handle external URLs not in library
-                                            <img
-                                              src={imageRef}
-                                              alt="External reference image"
-                                              className="w-full h-full object-cover"
-                                            />
-                                          ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                              <ImageIcon className="h-8 w-8 text-gray-400" />
-                                            </div>
-                                          )}
-                                        </div>
-                                        <Button
-                                          size="sm"
-                                          variant="destructive"
-                                          className="absolute top-2 right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                          onClick={() => {
-                                            setSelectedExistingImages((prev) =>
-                                              prev.filter(
-                                                (ref) => ref !== imageRef
-                                              )
-                                            );
-                                          }}
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                        {(image || imageRef.startsWith('http')) && (
-                                          <p className="text-xs text-gray-500 mt-1 truncate">
-                                            {image ? (image.alt || "No description") : "External image"}
-                                          </p>
-                                        )}
-                                      </div>
-                                    );
-                                  }
-                                )}
-                              </div>
-                            ) : (
-                              <p className="text-sm text-gray-500">
-                                No reference images selected
-                              </p>
-                            )}
-
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setShowImagePicker(true)}
-                              className="mt-2"
-                            >
-                              <ImageIcon className="h-4 w-4 mr-2" />
-                              Browse Images
-                            </Button>
-                          </div>
-
-                          {/* Tags */}
-                          <div className="space-y-2">
-                            <Label htmlFor="edit-tags">Tags</Label>
-                            <div className="flex flex-wrap gap-2 mb-2">
-                              {topicForm.tags.map((tag, index) => (
-                                <Badge
-                                  key={index}
-                                  variant="secondary"
-                                  className="flex items-center gap-1"
-                                >
-                                  {tag}
-                                  <button
-                                    type="button"
-                                    onClick={() =>
+                          {/* Advanced SEO - Collapsible */}
+                          <details className="border rounded-lg">
+                            <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:bg-gray-50">
+                              Advanced SEO Options
+                            </summary>
+                            <div className="px-4 pb-4 pt-2 space-y-4 border-t">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                    Primary Keyword
+                                  </label>
+                                  <Input
+                                    value={topicForm.seo.primaryKeyword}
+                                    onChange={(e) =>
                                       setTopicForm((prev) => ({
                                         ...prev,
-                                        tags: prev.tags.filter(
-                                          (_, i) => i !== index
-                                        ),
+                                        seo: { ...prev.seo, primaryKeyword: e.target.value },
                                       }))
                                     }
-                                    className="ml-1 text-xs hover:text-red-500"
-                                  >
-                                    ×
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                            <div className="flex gap-2">
-                              <Input
-                                placeholder="Add tag..."
-                                value={newTagInput}
-                                onChange={(e) => setNewTagInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && newTagInput.trim()) {
-                                    e.preventDefault();
-                                    if (
-                                      !topicForm.tags.includes(
-                                        newTagInput.trim()
-                                      )
-                                    ) {
-                                      setTopicForm((prev) => ({
-                                        ...prev,
-                                        tags: [
-                                          ...prev.tags,
-                                          newTagInput.trim(),
-                                        ],
-                                      }));
-                                    }
-                                    setNewTagInput("");
-                                  }
-                                }}
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                  if (
-                                    newTagInput.trim() &&
-                                    !topicForm.tags.includes(newTagInput.trim())
-                                  ) {
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      tags: [...prev.tags, newTagInput.trim()],
-                                    }));
-                                    setNewTagInput("");
-                                  }
-                                }}
-                              >
-                                Add
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* Notes */}
-                          <div className="space-y-2">
-                            <Label htmlFor="edit-notes">Notes</Label>
-                            <Textarea
-                              id="edit-notes"
-                              placeholder="Internal notes about this topic..."
-                              value={topicForm.notes}
-                              onChange={(e) =>
-                                setTopicForm((prev) => ({
-                                  ...prev,
-                                  notes: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-
-                          {/* SEO Section */}
-                          <div className="space-y-4 border-t pt-4">
-                            <h3 className="text-lg font-semibold text-gray-900">SEO Keywords</h3>
-                            
-                            {/* Primary Keyword */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Primary Keyword *
-                              </label>
-                              <Input
-                                value={topicForm.seo.primaryKeyword}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { ...prev.seo, primaryKeyword: e.target.value },
-                                  }))
-                                }
-                                placeholder="e.g., remote work productivity"
-                                className="w-full"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                The main keyword you want to rank for
-                              </p>
-                            </div>
-
-                            {/* Secondary Keywords */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Secondary Keywords (max 3)
-                              </label>
-                              <div className="flex gap-2 mb-2">
-                                <Input
-                                  value={newSecondaryKeyword}
-                                  onChange={(e) => setNewSecondaryKeyword(e.target.value)}
-                                  placeholder="Add secondary keyword..."
-                                  onKeyPress={(e) =>
-                                    e.key === "Enter" && addSecondaryKeyword()
-                                  }
-                                  className="flex-1"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={addSecondaryKeyword}
-                                  disabled={!newSecondaryKeyword.trim() || topicForm.seo.secondaryKeywords.length >= 3}
-                                >
-                                  Add
-                                </Button>
-                              </div>
-                              {topicForm.seo.secondaryKeywords.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {topicForm.seo.secondaryKeywords.map((keyword, index) => (
-                                    <Badge
-                                      key={index}
-                                      variant="secondary"
-                                      className="cursor-pointer hover:bg-red-100"
-                                      onClick={() => removeSecondaryKeyword(keyword)}
-                                    >
-                                      {keyword} ×
-                                    </Badge>
-                                  ))}
+                                    placeholder="e.g., remote work tips"
+                                  />
                                 </div>
-                              )}
-                            </div>
-
-                            {/* Long-tail Keywords */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Long-tail Keywords (max 3)
-                              </label>
-                              <div className="flex gap-2 mb-2">
-                                <Input
-                                  value={newLongTailKeyword}
-                                  onChange={(e) => setNewLongTailKeyword(e.target.value)}
-                                  placeholder="e.g., how to improve remote work productivity 2025"
-                                  onKeyPress={(e) =>
-                                    e.key === "Enter" && addLongTailKeyword()
-                                  }
-                                  className="flex-1"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={addLongTailKeyword}
-                                  disabled={!newLongTailKeyword.trim() || topicForm.seo.longTailKeywords.length >= 3}
-                                >
-                                  Add
-                                </Button>
-                              </div>
-                              {topicForm.seo.longTailKeywords.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {topicForm.seo.longTailKeywords.map((keyword, index) => (
-                                    <Badge
-                                      key={index}
-                                      variant="secondary"
-                                      className="cursor-pointer hover:bg-red-100"
-                                      onClick={() => removeLongTailKeyword(keyword)}
+                                <div>
+                                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                    URL Slug
+                                  </label>
+                                  <div className="flex gap-2">
+                                    <Input
+                                      value={topicForm.seo.slug}
+                                      onChange={(e) =>
+                                        setTopicForm((prev) => ({
+                                          ...prev,
+                                          seo: { ...prev.seo, slug: generateSlug(e.target.value) },
+                                        }))
+                                      }
+                                      placeholder="auto-generated"
+                                      className="flex-1 font-mono text-sm"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={updateSlug}
+                                      disabled={!topicForm.seo.primaryKeyword && !topicForm.topic}
                                     >
-                                      {keyword} ×
-                                    </Badge>
-                                  ))}
+                                      Auto
+                                    </Button>
+                                  </div>
                                 </div>
-                              )}
-                            </div>
+                              </div>
 
-                            {/* Search Intent */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Search Intent
-                              </label>
-                              <Select
-                                value={topicForm.seo.searchIntent}
-                                onValueChange={(value) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { ...prev.seo, searchIntent: value as any },
-                                  }))
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="informational">
-                                    Informational (How-to, guides, definitions)
-                                  </SelectItem>
-                                  <SelectItem value="commercial">
-                                    Commercial (Reviews, comparisons, best of)
-                                  </SelectItem>
-                                  <SelectItem value="transactional">
-                                    Transactional (Product pages, services)
-                                  </SelectItem>
-                                  <SelectItem value="navigational">
-                                    Navigational (Brand/company specific)
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          {/* Meta Data Section */}
-                          <div className="space-y-4 border-t pt-4">
-                            <h3 className="text-lg font-semibold text-gray-900">Meta Data</h3>
-                            
-                            {/* Meta Title */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Meta Title (max 60 characters)
-                              </label>
-                              <div className="relative">
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                  Meta Title
+                                  <span className={`ml-2 text-xs ${topicForm.seo.metaTitle.length > 50 ? 'text-red-500' : 'text-gray-400'}`}>
+                                    {topicForm.seo.metaTitle.length}/60
+                                  </span>
+                                </label>
                                 <Input
                                   value={topicForm.seo.metaTitle}
                                   onChange={(e) =>
@@ -3125,27 +2205,18 @@ export default function BlogAdminClient() {
                                       seo: { ...prev.seo, metaTitle: e.target.value.slice(0, 60) },
                                     }))
                                   }
-                                  placeholder="Leave blank to auto-generate from topic"
-                                  className="w-full pr-12"
+                                  placeholder="Leave blank to auto-generate"
                                   maxLength={60}
                                 />
-                                <span className={`absolute right-2 top-2.5 text-xs ${
-                                  topicForm.seo.metaTitle.length > 50 ? 'text-red-500' : 'text-gray-400'
-                                }`}>
-                                  {topicForm.seo.metaTitle.length}/60
-                                </span>
                               </div>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Appears in browser tabs and search results
-                              </p>
-                            </div>
 
-                            {/* Meta Description */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Meta Description (max 155 characters)
-                              </label>
-                              <div className="relative">
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                  Meta Description
+                                  <span className={`ml-2 text-xs ${topicForm.seo.metaDescription.length > 140 ? 'text-red-500' : 'text-gray-400'}`}>
+                                    {topicForm.seo.metaDescription.length}/155
+                                  </span>
+                                </label>
                                 <Textarea
                                   value={topicForm.seo.metaDescription}
                                   onChange={(e) =>
@@ -3154,171 +2225,13 @@ export default function BlogAdminClient() {
                                       seo: { ...prev.seo, metaDescription: e.target.value.slice(0, 155) },
                                     }))
                                   }
-                                  placeholder="Leave blank to auto-generate a compelling description"
-                                  className="w-full pr-12"
-                                  rows={3}
+                                  placeholder="Leave blank to auto-generate"
+                                  rows={2}
                                   maxLength={155}
                                 />
-                                <span className={`absolute right-2 top-2 text-xs ${
-                                  topicForm.seo.metaDescription.length > 140 ? 'text-red-500' : 'text-gray-400'
-                                }`}>
-                                  {topicForm.seo.metaDescription.length}/155
-                                </span>
                               </div>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Appears in search result snippets
-                              </p>
                             </div>
-
-                            {/* Open Graph Title */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Social Media Title (Open Graph)
-                              </label>
-                              <Input
-                                value={topicForm.seo.openGraph.title}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { 
-                                      ...prev.seo, 
-                                      openGraph: { ...prev.seo.openGraph, title: e.target.value }
-                                    },
-                                  }))
-                                }
-                                placeholder="Leave blank to use meta title"
-                                className="w-full"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                Title shown when shared on social media
-                              </p>
-                            </div>
-
-                            {/* Open Graph Description */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Social Media Description
-                              </label>
-                              <Textarea
-                                value={topicForm.seo.openGraph.description}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { 
-                                      ...prev.seo, 
-                                      openGraph: { ...prev.seo.openGraph, description: e.target.value }
-                                    },
-                                  }))
-                                }
-                                placeholder="Leave blank to use meta description"
-                                className="w-full"
-                                rows={2}
-                              />
-                            </div>
-
-                            {/* Schema Type */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Schema Type
-                              </label>
-                              <Select
-                                value={topicForm.seo.schemaType}
-                                onValueChange={(value) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { ...prev.seo, schemaType: value as any },
-                                  }))
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Article">
-                                    Article (General articles)
-                                  </SelectItem>
-                                  <SelectItem value="BlogPosting">
-                                    Blog Posting (Blog posts)
-                                  </SelectItem>
-                                  <SelectItem value="NewsArticle">
-                                    News Article (News content)
-                                  </SelectItem>
-                                  <SelectItem value="HowToArticle">
-                                    How-To Article (Tutorials)
-                                  </SelectItem>
-                                  <SelectItem value="FAQPage">
-                                    FAQ Page (Q&A format)
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Helps search engines understand content type
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* URL Optimization Section */}
-                          <div className="space-y-4 border-t pt-4">
-                            <h3 className="text-lg font-semibold text-gray-900">URL Optimization</h3>
-                            
-                            {/* URL Slug */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                URL Slug
-                              </label>
-                              <div className="flex gap-2">
-                                <Input
-                                  value={topicForm.seo.slug}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      seo: { ...prev.seo, slug: generateSlug(e.target.value) },
-                                    }))
-                                  }
-                                  placeholder="auto-generated-from-keyword"
-                                  className="flex-1 font-mono text-sm"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={updateSlug}
-                                  disabled={!topicForm.seo.primaryKeyword && !topicForm.topic}
-                                >
-                                  Auto Generate
-                                </Button>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1">
-                                SEO-friendly URL: /blog/{topicForm.seo.slug || 'your-slug-here'}
-                              </p>
-                              {topicForm.seo.slug && (
-                                <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
-                                  <strong>Preview:</strong> https://yourdomain.com/blog/{topicForm.seo.slug}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Canonical URL */}
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Canonical URL (Optional)
-                              </label>
-                              <Input
-                                value={topicForm.seo.canonicalUrl}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    seo: { ...prev.seo, canonicalUrl: e.target.value },
-                                  }))
-                                }
-                                placeholder="Leave blank to use the generated URL"
-                                className="w-full"
-                                type="url"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                Only set if this content exists elsewhere (prevents duplicate content issues)
-                              </p>
-                            </div>
-                          </div>
+                          </details>
                         </div>
 
                         <div className="flex gap-2 justify-end border-t pt-4">
