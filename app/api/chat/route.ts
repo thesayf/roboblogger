@@ -103,7 +103,7 @@ export async function POST(req: Request) {
         const tools = buildTools(toolCtx);
 
         try {
-          const client = new Anthropic();
+          const client = new Anthropic({ maxRetries: 5 });
           const runner = client.beta.messages.toolRunner({
             model: 'claude-sonnet-4-6',
             max_tokens: 8192,
@@ -224,7 +224,11 @@ export async function POST(req: Request) {
 
         } catch (error: any) {
           console.error('[Chat] Agent error:', error);
-          send('error', { message: error.message || 'An error occurred' });
+          const isOverloaded = error?.status === 529 || error?.error?.type === 'overloaded_error';
+          const message = isOverloaded
+            ? 'Claude is currently overloaded. Please try again in a few seconds.'
+            : error.message || 'An error occurred';
+          send('error', { message, code: isOverloaded ? 'OVERLOADED' : undefined });
         } finally {
           controller.close();
         }
