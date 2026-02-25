@@ -3,6 +3,7 @@ import { Inter, Lora } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "sonner";
+import { CreditsProvider } from "@/lib/contexts/CreditsContext";
 
 const inter = Inter({ subsets: ["latin"] });
 const lora = Lora({
@@ -128,7 +129,9 @@ export default function RootLayout({
     >
       <html lang="en">
         <body className={`${inter.className} ${lora.variable}`}>
-          {children}
+          <CreditsProvider>
+            {children}
+          </CreditsProvider>
           <Toaster richColors position="top-center" />
         </body>
       </html>

@@ -38,7 +38,6 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Dialog,
   DialogContent,
@@ -84,9 +83,8 @@ export default function AIGeneratePage() {
     enableSeoResearch: true,
     scheduling: {
       enabled: false,
-      startDate: "",
-      interval: "1", // days between posts
-      defaultTime: "09:00",
+      startDate: "", // YYYY-MM-DD format
+      interval: "1", // days between posts, or "custom" for manual entry
     }
   });
   const [brandImages, setBrandImages] = useState<File[]>([]);
@@ -113,33 +111,59 @@ export default function AIGeneratePage() {
 
   // Generate schedule slots when settings change
   useEffect(() => {
-    if (!formData.scheduling.enabled || !formData.scheduling.startDate) {
+    if (!formData.scheduling.enabled) {
       setScheduledSlots([]);
       return;
     }
 
     const numTopics = parseInt(formData.numberOfTopics);
-    const intervalDays = parseInt(formData.scheduling.interval);
-    const startDate = new Date(formData.scheduling.startDate);
-    const [hours, minutes] = formData.scheduling.defaultTime.split(':').map(Number);
-
     const slots: string[] = [];
-    for (let i = 0; i < numTopics; i++) {
-      const slotDate = new Date(startDate);
-      slotDate.setDate(slotDate.getDate() + (i * intervalDays));
-      slotDate.setHours(hours, minutes, 0, 0);
 
-      // Format as datetime-local
-      const year = slotDate.getFullYear();
-      const month = (slotDate.getMonth() + 1).toString().padStart(2, '0');
-      const day = slotDate.getDate().toString().padStart(2, '0');
-      const h = slotDate.getHours().toString().padStart(2, '0');
-      const m = slotDate.getMinutes().toString().padStart(2, '0');
-      slots.push(`${year}-${month}-${day}T${h}:${m}`);
+    if (formData.scheduling.interval === "custom") {
+      // Custom mode: create empty slots for user to fill in
+      for (let i = 0; i < numTopics; i++) {
+        slots.push(""); // Empty string = no date set
+      }
+    } else {
+      // Preset interval: auto-generate dates
+      const intervalDays = parseInt(formData.scheduling.interval);
+      const now = new Date();
+
+      // Use selected start date or today
+      let startDate: Date;
+      if (formData.scheduling.startDate) {
+        startDate = new Date(formData.scheduling.startDate);
+        startDate.setHours(9, 0, 0, 0); // Default to 9am
+      } else {
+        startDate = new Date();
+        startDate.setHours(9, 0, 0, 0);
+      }
+
+      for (let i = 0; i < numTopics; i++) {
+        const slotDate = new Date(startDate);
+        slotDate.setDate(slotDate.getDate() + (i * intervalDays));
+
+        // If this slot is today, ensure it's at least 1 hour in the future
+        const isToday = slotDate.toDateString() === now.toDateString();
+        if (isToday && slotDate <= now) {
+          // Set to next hour + 1 hour buffer
+          const nextHour = new Date(now);
+          nextHour.setHours(now.getHours() + 2, 0, 0, 0); // Round up to next hour + 1 hour buffer
+          slotDate.setHours(nextHour.getHours(), 0, 0, 0);
+        }
+
+        // Format as datetime-local
+        const year = slotDate.getFullYear();
+        const month = (slotDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = slotDate.getDate().toString().padStart(2, '0');
+        const h = slotDate.getHours().toString().padStart(2, '0');
+        const m = slotDate.getMinutes().toString().padStart(2, '0');
+        slots.push(`${year}-${month}-${day}T${h}:${m}`);
+      }
     }
 
     setScheduledSlots(slots);
-  }, [formData.scheduling.enabled, formData.scheduling.startDate, formData.scheduling.interval, formData.scheduling.defaultTime, formData.numberOfTopics]);
+  }, [formData.scheduling.enabled, formData.scheduling.startDate, formData.scheduling.interval, formData.numberOfTopics]);
 
   // Effect to cycle through phases when generating with SEO research
   useEffect(() => {
@@ -239,7 +263,7 @@ Focus type: ${formData.topicFocus === 'variety' ? 'Mix of different topics' : fo
 ${seoContext}
 ${formData.imageStyle ? `Image style preference: ${formData.imageStyle}` : ''}
 
-${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.scheduling.frequency} starting from ${formData.scheduling.startDate || 'today'}` : ''}`;
+${formData.scheduling.enabled ? `The user wants to pre-schedule these topics for publishing` : ''}`;
 
       const response = await fetch("/api/blog/topics/interpret", {
         method: "POST",
@@ -366,7 +390,210 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
           </div>
 
           <div className="space-y-6">
-            {/* Main Settings */}
+            {/* Topics & Schedule - Combined Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Topics & Schedule
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Number of topics + Schedule toggle row */}
+                <div className="flex items-start gap-6">
+                  <div className="flex-1">
+                    <Label>How many topics?</Label>
+                    <Select
+                      value={formData.numberOfTopics}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, numberOfTopics: value }))}
+                    >
+                      <SelectTrigger className="w-full mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 topics</SelectItem>
+                        <SelectItem value="5">5 topics</SelectItem>
+                        <SelectItem value="7">7 topics</SelectItem>
+                        <SelectItem value="10">10 topics</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex-1">
+                    <Label>Schedule publishing?</Label>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({
+                          ...prev,
+                          scheduling: { ...prev.scheduling, enabled: false }
+                        }))}
+                        className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                          !formData.scheduling.enabled
+                            ? "bg-gray-900 text-white border-gray-900"
+                            : "bg-white border-gray-300 hover:border-gray-400"
+                        }`}
+                      >
+                        No schedule
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({
+                          ...prev,
+                          scheduling: { ...prev.scheduling, enabled: true }
+                        }))}
+                        className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                          formData.scheduling.enabled
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white border-gray-300 hover:border-gray-400"
+                        }`}
+                      >
+                        Pre-schedule
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Scheduling Options - shown inline when enabled */}
+                {formData.scheduling.enabled && (
+                  <div className="border rounded-lg p-4 bg-blue-50/50 space-y-4">
+                    {/* Start Date + Interval Row */}
+                    <div className="flex items-end gap-4">
+                      <div className="w-[180px]">
+                        <Label className="mb-1 block">Start date</Label>
+                        <Input
+                          type="date"
+                          value={formData.scheduling.startDate}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            scheduling: { ...prev.scheduling, startDate: e.target.value }
+                          }))}
+                          className="bg-white"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="mb-1 block">Publish frequency</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { value: "1", label: "Daily" },
+                            { value: "2", label: "Every 2 days" },
+                            { value: "3", label: "Every 3 days" },
+                            { value: "7", label: "Weekly" },
+                            { value: "custom", label: "Custom" },
+                          ].map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => setFormData(prev => ({
+                                ...prev,
+                                scheduling: { ...prev.scheduling, interval: option.value }
+                              }))}
+                              className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                                formData.scheduling.interval === option.value
+                                  ? "bg-blue-600 text-white border-blue-600"
+                                  : "bg-white border-gray-300 hover:border-gray-400"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    {formData.scheduling.interval !== "custom" && (
+                      <p className="text-xs text-gray-500">
+                        {formData.scheduling.startDate
+                          ? "Dates will be auto-filled starting from your selected date at 9:00 AM"
+                          : "Dates will be auto-filled starting from today at 9:00 AM"
+                        }
+                        {" "}(adjusted if in the past)
+                      </p>
+                    )}
+
+                    {/* Schedule List */}
+                    {scheduledSlots.length > 0 && (
+                      <div>
+                        <Label className="mb-2 block">
+                          {formData.scheduling.interval === "custom" ? "Set publish dates" : "Schedule preview"}
+                        </Label>
+                        <div className="bg-white rounded-lg border divide-y divide-gray-100 max-h-[280px] overflow-y-auto">
+                          {scheduledSlots.map((slot, index) => {
+                            const [datePart, timePart] = slot ? slot.split('T') : ['', ''];
+                            const today = new Date().toISOString().split('T')[0];
+                            const isToday = datePart === today;
+
+                            // Calculate minimum time if today is selected
+                            const now = new Date();
+                            const minHour = now.getHours() + 1;
+                            const minTime = isToday ? `${minHour.toString().padStart(2, '0')}:00` : undefined;
+
+                            return (
+                              <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50">
+                                <span className="text-sm text-gray-600 font-medium min-w-[80px]">Topic {index + 1}</span>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="date"
+                                    value={datePart}
+                                    min={today}
+                                    onChange={(e) => {
+                                      const newSlots = [...scheduledSlots];
+                                      const newDate = e.target.value;
+                                      const currentTime = timePart || '09:00';
+
+                                      // If selecting today and current time is in the past, adjust
+                                      if (newDate === today) {
+                                        const [h] = currentTime.split(':').map(Number);
+                                        if (h <= now.getHours()) {
+                                          const adjustedHour = (now.getHours() + 1).toString().padStart(2, '0');
+                                          newSlots[index] = `${newDate}T${adjustedHour}:00`;
+                                          setScheduledSlots(newSlots);
+                                          return;
+                                        }
+                                      }
+                                      newSlots[index] = `${newDate}T${currentTime}`;
+                                      setScheduledSlots(newSlots);
+                                    }}
+                                    className="px-2 py-1.5 text-sm border rounded-md bg-white w-[140px]"
+                                  />
+                                  <input
+                                    type="time"
+                                    value={timePart}
+                                    min={minTime}
+                                    onChange={(e) => {
+                                      const newSlots = [...scheduledSlots];
+                                      const newTime = e.target.value;
+
+                                      // Validate time isn't in the past for today
+                                      if (isToday) {
+                                        const [h] = newTime.split(':').map(Number);
+                                        if (h <= now.getHours()) {
+                                          return; // Don't allow past times
+                                        }
+                                      }
+                                      newSlots[index] = `${datePart}T${newTime}`;
+                                      setScheduledSlots(newSlots);
+                                    }}
+                                    className="px-2 py-1.5 text-sm border rounded-md bg-white w-[100px]"
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {formData.scheduling.interval === "custom" && (
+                          <p className="text-xs text-gray-500 mt-2">
+                            Enter the date and time for each topic
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Generation Settings */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -375,31 +602,13 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Number of topics */}
-                <div>
-                  <Label>How many topics do you want to generate?</Label>
-                  <Select 
-                    value={formData.numberOfTopics}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, numberOfTopics: value }))}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="3">3 topics</SelectItem>
-                      <SelectItem value="5">5 topics</SelectItem>
-                      <SelectItem value="7">7 topics</SelectItem>
-                      <SelectItem value="10">10 topics</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 {/* Topic Focus */}
                 <div>
                   <Label>Topic Generation Approach</Label>
-                  <RadioGroup 
+                  <RadioGroup
                     value={formData.topicFocus}
                     onValueChange={(value) => setFormData(prev => ({ ...prev, topicFocus: value }))}
+                    className="mt-2"
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="variety" id="variety" />
@@ -721,143 +930,6 @@ ${formData.scheduling.type !== 'manual' ? `The user wants to publish ${formData.
               </CardContent>
             </Card>
 
-            {/* Scheduling Options */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Publishing Schedule (Optional)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enableScheduling"
-                    checked={formData.scheduling.enabled}
-                    onCheckedChange={(checked) => setFormData(prev => ({
-                      ...prev,
-                      scheduling: { ...prev.scheduling, enabled: checked as boolean }
-                    }))}
-                  />
-                  <Label htmlFor="enableScheduling" className="cursor-pointer">
-                    Pre-schedule all {formData.numberOfTopics} topics
-                  </Label>
-                </div>
-
-                {formData.scheduling.enabled && (
-                  <div className="space-y-4 border-l-2 border-blue-200 pl-4 ml-2">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Start Date</Label>
-                        <Input
-                          type="date"
-                          value={formData.scheduling.startDate.split('T')[0] || ''}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            scheduling: { ...prev.scheduling, startDate: e.target.value }
-                          }))}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label>Default Time</Label>
-                        <Select
-                          value={formData.scheduling.defaultTime}
-                          onValueChange={(value) => setFormData(prev => ({
-                            ...prev,
-                            scheduling: { ...prev.scheduling, defaultTime: value }
-                          }))}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="06:00">6:00 AM</SelectItem>
-                            <SelectItem value="09:00">9:00 AM</SelectItem>
-                            <SelectItem value="12:00">12:00 PM</SelectItem>
-                            <SelectItem value="15:00">3:00 PM</SelectItem>
-                            <SelectItem value="18:00">6:00 PM</SelectItem>
-                            <SelectItem value="21:00">9:00 PM</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label>Publish Every</Label>
-                      <div className="flex gap-2 mt-1">
-                        {[
-                          { value: "1", label: "Daily" },
-                          { value: "2", label: "Every 2 days" },
-                          { value: "3", label: "Every 3 days" },
-                          { value: "7", label: "Weekly" },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setFormData(prev => ({
-                              ...prev,
-                              scheduling: { ...prev.scheduling, interval: option.value }
-                            }))}
-                            className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
-                              formData.scheduling.interval === option.value
-                                ? "bg-blue-600 text-white border-blue-600"
-                                : "bg-white border-gray-300 hover:border-gray-400"
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Generated Schedule Preview */}
-                    {scheduledSlots.length > 0 && (
-                      <div>
-                        <Label className="mb-2 block">Schedule Preview</Label>
-                        <div className="bg-gray-50 rounded-lg border p-3 space-y-2 max-h-[200px] overflow-y-auto">
-                          {scheduledSlots.map((slot, index) => {
-                            const date = new Date(slot);
-                            const formattedDate = date.toLocaleDateString('en-GB', {
-                              weekday: 'short',
-                              day: 'numeric',
-                              month: 'short'
-                            });
-                            const formattedTime = date.toLocaleTimeString('en-GB', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            });
-                            return (
-                              <div key={index} className="flex items-center justify-between text-sm">
-                                <span className="text-gray-600">Topic {index + 1}</span>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">{formattedDate}</span>
-                                  <span className="text-gray-400">at</span>
-                                  <input
-                                    type="time"
-                                    value={slot.split('T')[1] || '09:00'}
-                                    onChange={(e) => {
-                                      const newSlots = [...scheduledSlots];
-                                      const datePart = slot.split('T')[0];
-                                      newSlots[index] = `${datePart}T${e.target.value}`;
-                                      setScheduledSlots(newSlots);
-                                    }}
-                                    className="w-20 text-sm border rounded px-2 py-0.5"
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          You can adjust individual times above
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
 
             {/* Action Buttons */}
             <div className="flex justify-end space-x-2">

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +22,7 @@ import {
   Loader2,
   CheckCircle,
   Target,
+  Sparkles,
 } from "lucide-react";
 
 interface BrandSettings {
@@ -52,13 +52,13 @@ const defaultSettings: BrandSettings = {
 };
 
 const toneOptions = [
-  { value: 'professional', label: 'Professional', description: 'Formal, business-appropriate tone' },
-  { value: 'casual', label: 'Casual', description: 'Relaxed, friendly, conversational' },
-  { value: 'technical', label: 'Technical', description: 'Detailed, precise, expert-level' },
+  { value: 'professional', label: 'Professional', description: 'Formal, business-appropriate' },
+  { value: 'casual', label: 'Casual', description: 'Relaxed, friendly' },
+  { value: 'technical', label: 'Technical', description: 'Detailed, expert-level' },
   { value: 'conversational', label: 'Conversational', description: 'Like talking to a friend' },
-  { value: 'authoritative', label: 'Authoritative', description: 'Expert, confident, trustworthy' },
-  { value: 'friendly', label: 'Friendly', description: 'Warm, approachable, helpful' },
-  { value: 'custom', label: 'Custom', description: 'Define your own tone' },
+  { value: 'authoritative', label: 'Authoritative', description: 'Expert, confident' },
+  { value: 'friendly', label: 'Friendly', description: 'Warm, approachable' },
+  { value: 'custom', label: 'Custom', description: 'Define your own' },
 ];
 
 export function BrandTab() {
@@ -68,7 +68,6 @@ export function BrandTab() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch settings on mount
   useEffect(() => {
     fetchSettings();
   }, []);
@@ -131,30 +130,34 @@ export function BrandTab() {
 
   const updateField = (field: keyof BrandSettings, value: string) => {
     setSettings(prev => ({ ...prev, [field]: value }));
-    setSaveStatus('idle'); // Reset save status when editing
+    setSaveStatus('idle');
   };
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-[#888888]" />
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with Save Button */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Brand Settings</h2>
-          <p className="text-gray-600 mt-1">
-            Configure your brand context to ensure consistent content generation
+          <h2 className="text-[24px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+            Brand Settings
+          </h2>
+          <p className="text-[14px] text-[#666666] mt-1">
+            Configure your brand context for consistent AI-generated content
           </p>
         </div>
-        <Button onClick={handleSave} disabled={isSaving}>
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="bg-[#111111] hover:bg-[#333333] text-white rounded-full px-5"
+        >
           {isSaving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -163,7 +166,7 @@ export function BrandTab() {
           ) : saveStatus === 'success' ? (
             <>
               <CheckCircle className="h-4 w-4 mr-2" />
-              Saved!
+              Saved
             </>
           ) : (
             <>
@@ -176,239 +179,236 @@ export function BrandTab() {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2 text-red-700">
-          <AlertCircle className="h-5 w-5" />
-          {error}
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 text-red-700">
+          <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          <span className="text-[14px]">{error}</span>
         </div>
       )}
 
       {/* Blog Identity */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Blog Identity
-          </CardTitle>
-          <CardDescription>
-            Basic information about your blog that helps AI understand your brand
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <section className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#F0EEE8]">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-[#666666]" />
+            <h3 className="text-[16px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+              Blog Identity
+            </h3>
+          </div>
+          <p className="text-[13px] text-[#888888] mt-1">
+            Basic information that helps AI understand your brand
+          </p>
+        </div>
+        <div className="p-6 space-y-5">
           <div>
-            <Label htmlFor="blogName">Blog / Brand Name</Label>
+            <Label className="text-[13px] text-[#444444] font-medium">Blog / Brand Name</Label>
             <Input
-              id="blogName"
               value={settings.blogName}
               onChange={(e) => updateField('blogName', e.target.value)}
               placeholder="e.g., TechStartup Blog, Marketing Insights"
-              className="mt-1"
+              className="mt-1.5 h-10 border-[#E0DED8] focus:border-[#111111] focus:ring-0"
             />
           </div>
           <div>
-            <Label htmlFor="blogDescription">Blog Description</Label>
+            <Label className="text-[13px] text-[#444444] font-medium">Blog Description</Label>
             <Textarea
-              id="blogDescription"
               value={settings.blogDescription}
               onChange={(e) => updateField('blogDescription', e.target.value)}
-              placeholder="Describe what your blog is about, its mission, and the value it provides to readers..."
+              placeholder="Describe what your blog is about, its mission, and the value it provides..."
               rows={3}
-              className="mt-1"
+              className="mt-1.5 border-[#E0DED8] focus:border-[#111111] focus:ring-0 resize-none"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              This helps AI understand the purpose and focus of your content
+            <p className="text-[12px] text-[#888888] mt-1.5">
+              Helps AI understand the purpose and focus of your content
             </p>
           </div>
           <div>
-            <Label htmlFor="industryNiche" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
+            <Label className="text-[13px] text-[#444444] font-medium flex items-center gap-1.5">
+              <Target className="h-3.5 w-3.5" />
               Industry / Niche
             </Label>
             <Input
-              id="industryNiche"
               value={settings.industryNiche}
               onChange={(e) => updateField('industryNiche', e.target.value)}
               placeholder="e.g., SaaS, E-commerce, Health & Wellness, B2B Marketing"
-              className="mt-1"
+              className="mt-1.5 h-10 border-[#E0DED8] focus:border-[#111111] focus:ring-0"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-[12px] text-[#888888] mt-1.5">
               Used for SEO research and topic generation
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Target Audience */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Target Audience
-          </CardTitle>
-          <CardDescription>
+      <section className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#F0EEE8]">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-[#666666]" />
+            <h3 className="text-[16px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+              Target Audience
+            </h3>
+          </div>
+          <p className="text-[13px] text-[#888888] mt-1">
             Who are you writing for? This helps tailor content to your readers
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-6">
           <Textarea
             value={settings.targetAudience}
             onChange={(e) => updateField('targetAudience', e.target.value)}
-            placeholder="Describe your target audience: demographics, pain points, expertise level, what they're looking for...
-
-Example: Small business owners and marketing managers at companies with 10-50 employees. They're looking for practical, actionable marketing advice that doesn't require a big budget or dedicated marketing team. Most have basic digital marketing knowledge but want to improve their skills."
-            rows={5}
+            placeholder="Describe your target audience: demographics, pain points, expertise level, what they're looking for..."
+            rows={4}
+            className="border-[#E0DED8] focus:border-[#111111] focus:ring-0 resize-none"
           />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Voice & Style */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Voice & Style
-          </CardTitle>
-          <CardDescription>
+      <section className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#F0EEE8]">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-[#666666]" />
+            <h3 className="text-[16px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+              Voice & Style
+            </h3>
+          </div>
+          <p className="text-[13px] text-[#888888] mt-1">
             Define how your content should sound and feel
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </p>
+        </div>
+        <div className="p-6 space-y-5">
           <div>
-            <Label>Tone</Label>
-            <Select
-              value={settings.tone}
-              onValueChange={(value) => updateField('tone', value)}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {toneOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div>
-                      <span className="font-medium">{option.label}</span>
-                      <span className="text-gray-500 ml-2">- {option.description}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-[13px] text-[#444444] font-medium">Tone</Label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {toneOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => updateField('tone', option.value)}
+                  className={`px-4 py-2 text-[13px] rounded-full border transition-colors ${
+                    settings.tone === option.value
+                      ? "bg-[#111111] text-white border-[#111111]"
+                      : "bg-white text-[#444444] border-[#E0DED8] hover:border-[#CCCCCC]"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            {settings.tone !== 'custom' && (
+              <p className="text-[12px] text-[#888888] mt-2">
+                {toneOptions.find(t => t.value === settings.tone)?.description}
+              </p>
+            )}
           </div>
 
           {settings.tone === 'custom' && (
             <div>
-              <Label htmlFor="customTone">Custom Tone Description</Label>
+              <Label className="text-[13px] text-[#444444] font-medium">Custom Tone Description</Label>
               <Textarea
-                id="customTone"
                 value={settings.customTone}
                 onChange={(e) => updateField('customTone', e.target.value)}
                 placeholder="Describe your unique tone in detail..."
                 rows={2}
-                className="mt-1"
+                className="mt-1.5 border-[#E0DED8] focus:border-[#111111] focus:ring-0 resize-none"
               />
             </div>
           )}
 
           <div>
-            <Label htmlFor="styleGuidelines">Style Guidelines</Label>
+            <Label className="text-[13px] text-[#444444] font-medium">Style Guidelines</Label>
             <Textarea
-              id="styleGuidelines"
               value={settings.styleGuidelines}
               onChange={(e) => updateField('styleGuidelines', e.target.value)}
               placeholder="Any specific style rules or preferences...
 
 Example:
-- Use short paragraphs (2-3 sentences max)
-- Include practical examples and case studies
+- Use short paragraphs (2-3 sentences)
+- Include practical examples
 - Avoid jargon unless explained
-- Use bullet points for lists
 - Address the reader directly using 'you'"
               rows={5}
-              className="mt-1"
+              className="mt-1.5 border-[#E0DED8] focus:border-[#111111] focus:ring-0 resize-none"
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Content Guidelines */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Content Guidelines
-          </CardTitle>
-          <CardDescription>
+      <section className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#F0EEE8]">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-[#666666]" />
+            <h3 className="text-[16px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+              Content Guidelines
+            </h3>
+          </div>
+          <p className="text-[13px] text-[#888888] mt-1">
             Define what topics to focus on and what to avoid
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </p>
+        </div>
+        <div className="p-6 space-y-5">
           <div>
-            <Label htmlFor="topicsWeCover">Topics We Cover</Label>
+            <Label className="text-[13px] text-[#444444] font-medium">Topics We Cover</Label>
             <Textarea
-              id="topicsWeCover"
               value={settings.topicsWeCover}
               onChange={(e) => updateField('topicsWeCover', e.target.value)}
-              placeholder="List the main topics and themes your blog covers...
-
-Example:
-- Email marketing strategies
-- Social media marketing
-- Content marketing and SEO
-- Marketing automation
-- Small business growth tips"
+              placeholder="List the main topics and themes your blog covers..."
               rows={4}
-              className="mt-1"
+              className="mt-1.5 border-[#E0DED8] focus:border-[#111111] focus:ring-0 resize-none"
             />
           </div>
           <div>
-            <Label htmlFor="thingsToAvoid" className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-orange-500" />
+            <Label className="text-[13px] text-[#444444] font-medium flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
               Things to Avoid
             </Label>
             <Textarea
-              id="thingsToAvoid"
               value={settings.thingsToAvoid}
               onChange={(e) => updateField('thingsToAvoid', e.target.value)}
-              placeholder="Topics, words, competitors, or approaches to avoid...
-
-Example:
-- Don't mention competitor X by name
-- Avoid political topics
-- Don't use overly salesy language
-- Avoid making income claims or guarantees"
+              placeholder="Topics, words, competitors, or approaches to avoid..."
               rows={4}
-              className="mt-1"
+              className="mt-1.5 border-[#E0DED8] focus:border-[#111111] focus:ring-0 resize-none"
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Example Content */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Example Content (Optional)
-          </CardTitle>
-          <CardDescription>
+      <section className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#F0EEE8]">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-[#666666]" />
+            <h3 className="text-[16px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+              Example Content
+            </h3>
+            <span className="text-[12px] text-[#888888] bg-[#F5F4F0] px-2 py-0.5 rounded-full">Optional</span>
+          </div>
+          <p className="text-[13px] text-[#888888] mt-1">
             Paste samples of your best content to help AI match your style
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-6">
           <Textarea
             value={settings.exampleContent}
             onChange={(e) => updateField('exampleContent', e.target.value)}
             placeholder="Paste 2-3 paragraphs from your best blog posts that exemplify your writing style..."
-            rows={8}
+            rows={6}
+            className="border-[#E0DED8] focus:border-[#111111] focus:ring-0 resize-none"
           />
-          <p className="text-xs text-gray-500 mt-2">
-            This is used as a reference for style matching during content generation
+          <p className="text-[12px] text-[#888888] mt-2">
+            Used as a reference for style matching during content generation
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      {/* Bottom Save Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={isSaving} size="lg">
+      {/* Bottom Save */}
+      <div className="flex justify-end pb-8">
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="bg-[#111111] hover:bg-[#333333] text-white rounded-full px-6 h-11"
+        >
           {isSaving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -417,7 +417,7 @@ Example:
           ) : saveStatus === 'success' ? (
             <>
               <CheckCircle className="h-4 w-4 mr-2" />
-              Saved!
+              Changes Saved
             </>
           ) : (
             <>

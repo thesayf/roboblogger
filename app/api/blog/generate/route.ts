@@ -1,4 +1,7 @@
 import { NextRequest } from "next/server";
+import { getCurrentUser } from '@/lib/auth/getCurrentUser';
+import dbConnect from '@/lib/mongo';
+import User from '@/models/User';
 
 export const maxDuration = 300;
 
@@ -340,6 +343,48 @@ export async function POST(request: NextRequest) {
       JSON.stringify({ message: "Missing Anthropic API key" }),
       { status: 500 }
     );
+  }
+
+  // Check credits before generation
+  const currentUser = await getCurrentUser();
+  let userForCredits: any = null;
+
+  if (currentUser) {
+    await dbConnect();
+    userForCredits = await User.findOne({ clerkId: currentUser.clerkId });
+
+    if (userForCredits) {
+      // Check if user has active subscription
+      const hasActiveSubscription = userForCredits.subscriptionStatus === 'active' ||
+                                    userForCredits.subscriptionStatus === 'trialing';
+
+      if (!hasActiveSubscription) {
+        console.log('[blog/generate] User does not have active subscription');
+        return new Response(
+          JSON.stringify({
+            message: "Subscription required",
+            error: "SUBSCRIPTION_REQUIRED",
+            subscriptionStatus: userForCredits.subscriptionStatus
+          }),
+          { status: 402 }
+        );
+      }
+
+      // Check if user has credits
+      if (userForCredits.credits < 1) {
+        console.log('[blog/generate] User has insufficient credits:', userForCredits.credits);
+        return new Response(
+          JSON.stringify({
+            message: "Insufficient credits",
+            error: "INSUFFICIENT_CREDITS",
+            credits: userForCredits.credits
+          }),
+          { status: 402 }
+        );
+      }
+
+      console.log('[blog/generate] User credits check passed:', userForCredits.credits);
+    }
   }
 
   const blogGenerationPrompt = `You are an expert content creator and blog writer. Create a comprehensive, engaging blog post based on the user's requirements. Your goal is to produce high-quality, well-structured content that provides real value to readers.
@@ -1027,6 +1072,14 @@ ${outputJsonFormat}`;
     console.log('[blog/generate] Components:', blogData.components?.length || 0);
     console.log('[blog/generate] Will generate images:', includeImages);
     console.log('[blog/generate] Return only mode:', returnOnly);
+
+    // Deduct credit on successful generation
+    if (userForCredits) {
+      userForCredits.credits -= 1;
+      userForCredits.lifetimeCreditsUsed += 1;
+      await userForCredits.save();
+      console.log('[blog/generate] Deducted 1 credit. Remaining:', userForCredits.credits);
+    }
 
     // If returnOnly is true, just return the generated content without saving
     if (returnOnly) {

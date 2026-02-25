@@ -12,6 +12,18 @@ export interface IUser extends Document {
   commuteTime?: string;
   sleepSchedule?: string;
   idealSchedule?: string;
+  // Stripe & Billing
+  stripeCustomerId?: string;
+  subscriptionStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid';
+  subscriptionId?: string;
+  subscriptionPriceId?: string;
+  subscriptionCurrentPeriodEnd?: Date;
+  trialEndsAt?: Date;
+  // Credits/Wallet
+  credits: number;
+  freeCreditsUsed: boolean;
+  lifetimeCreditsUsed: number;
+  lifetimeCreditsPurchased: number;
 }
 
 const UserSchema: Schema = new Schema(
@@ -27,6 +39,22 @@ const UserSchema: Schema = new Schema(
     commuteTime: { type: String },
     sleepSchedule: { type: String },
     idealSchedule: { type: String },
+    // Stripe & Billing
+    stripeCustomerId: { type: String },
+    subscriptionStatus: {
+      type: String,
+      enum: ['none', 'trialing', 'active', 'past_due', 'canceled', 'unpaid'],
+      default: 'none'
+    },
+    subscriptionId: { type: String },
+    subscriptionPriceId: { type: String },
+    subscriptionCurrentPeriodEnd: { type: Date },
+    trialEndsAt: { type: Date },
+    // Credits/Wallet
+    credits: { type: Number, default: 0 },
+    freeCreditsUsed: { type: Boolean, default: false },
+    lifetimeCreditsUsed: { type: Number, default: 0 },
+    lifetimeCreditsPurchased: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

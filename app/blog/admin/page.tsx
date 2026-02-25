@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import BlogAdminClient from "./BlogAdminClient";
 import AdminPasswordGate from "@/components/auth/AdminPasswordGate";
+import { SubscriptionGate } from "./components/SubscriptionGate";
 
 export const metadata: Metadata = {
   title: "Dashboard - Vibeblogger",
@@ -9,8 +10,10 @@ export const metadata: Metadata = {
 
 export default function BlogAdminPage() {
   return (
-    <AdminPasswordGate>
-      <BlogAdminClient />
-    </AdminPasswordGate>
+    <SubscriptionGate>
+      <AdminPasswordGate>
+        <BlogAdminClient />
+      </AdminPasswordGate>
+    </SubscriptionGate>
   );
 }

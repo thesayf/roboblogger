@@ -70,6 +70,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SchedulerTab } from "./components/SchedulerTabNew";
 import { BrandTab } from "./components/BrandTab";
+import { SubscriptionBanner } from "./components/SubscriptionBanner";
 import { localDateTimeToUTC, utcToLocalDateTime } from "@/lib/timezone-utils";
 
 export default function BlogAdminClient() {
@@ -209,10 +210,22 @@ export default function BlogAdminClient() {
     }
   }, [selectedTab, pendingPage, completedPage]);
 
+  // Listen for chat agent data mutations
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.collections?.includes('topics')) fetchTopics();
+      if (detail?.collections?.includes('posts')) fetchBlogPosts();
+    };
+    window.addEventListener('chat-data-changed', handler);
+    return () => window.removeEventListener('chat-data-changed', handler);
+  }, []);
+
   const fetchBlogPosts = async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams();
+      params.append("ownerOnly", "true"); // Only show posts owned by current user
       if (searchTerm) params.append("search", searchTerm);
       if (statusFilter !== "all") params.append("status", statusFilter);
 
@@ -238,7 +251,7 @@ export default function BlogAdminClient() {
       setIsLoadingTopics(true);
       
       // Fetch all topics without pagination to get accurate counts and stats
-      const allResponse = await fetch(`/api/blog/topics?limit=1000`);
+      const allResponse = await fetch(`/api/blog/topics?limit=1000&ownerOnly=true`);
       const allData = await allResponse.json();
       
       if (allResponse.ok) {
@@ -1344,6 +1357,9 @@ export default function BlogAdminClient() {
   return (
     <div className="min-h-screen" style={{ background: '#FAFAF8' }}>
       <div className="max-w-[1080px] mx-auto px-8 py-8 pb-16">
+        {/* Subscription Banner */}
+        <SubscriptionBanner />
+
         {/* Main Content */}
         <Tabs
           value={selectedTab}
@@ -2965,219 +2981,173 @@ export default function BlogAdminClient() {
 
           {/* Media Tab */}
           <TabsContent value="media" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <ImageIcon className="h-5 w-5" />
-                    Image Library
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      id="image-upload"
-                      disabled={isUploading}
-                    />
-                    <label htmlFor="image-upload">
-                      <Button asChild disabled={isUploading}>
-                        <span className="cursor-pointer">
-                          {isUploading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Upload Images
-                            </>
-                          )}
-                        </span>
-                      </Button>
-                    </label>
-                  </div>
-                </div>
-                {isUploading && (
-                  <div className="mt-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                      <span>Uploading to ImageKit...</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </CardHeader>
-              <CardContent>
-                {isLoadingImages ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin mr-2" />
-                    <span>Loading images...</span>
-                  </div>
-                ) : images.length === 0 ? (
-                  <div className="text-center py-12">
-                    <ImageIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-2">No images uploaded yet</p>
-                    <p className="text-sm text-gray-400 mb-4">
-                      Upload images to your ImageKit library
-                    </p>
-                    <label htmlFor="image-upload">
-                      <Button asChild>
-                        <span className="cursor-pointer">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-[24px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+                  Media Library
+                </h2>
+                <p className="text-[14px] text-[#666666] mt-1">
+                  Manage images for your blog posts
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="image-upload"
+                  disabled={isUploading}
+                />
+                <label htmlFor="image-upload">
+                  <Button asChild disabled={isUploading} className="bg-[#111111] hover:bg-[#333333] text-white rounded-full px-5">
+                    <span className="cursor-pointer">
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
                           <Upload className="h-4 w-4 mr-2" />
-                          Upload Your First Image
-                        </span>
-                      </Button>
-                    </label>
+                          Upload Images
+                        </>
+                      )}
+                    </span>
+                  </Button>
+                </label>
+              </div>
+            </div>
+
+            {/* Upload Progress */}
+            {isUploading && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-center justify-between text-[14px] text-blue-700 mb-2">
+                  <span>Uploading to ImageKit...</span>
+                  <span className="font-medium">{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-blue-100 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Stats Row */}
+            {images.length > 0 && (
+              <div className="grid grid-cols-4 gap-4">
+                <div className="bg-white rounded-xl border border-[#E0DED8] p-4">
+                  <p className="text-[24px] font-semibold text-[#111111]">{images.length}</p>
+                  <p className="text-[13px] text-[#888888]">Total Images</p>
+                </div>
+                <div className="bg-white rounded-xl border border-[#E0DED8] p-4">
+                  <p className="text-[24px] font-semibold text-[#111111]">
+                    {formatFileSize(images.reduce((total, img) => total + img.size, 0))}
+                  </p>
+                  <p className="text-[13px] text-[#888888]">Total Size</p>
+                </div>
+                <div className="bg-white rounded-xl border border-[#E0DED8] p-4">
+                  <p className="text-[24px] font-semibold text-[#111111]">
+                    {images.filter((img) => img.format === "jpg" || img.format === "jpeg").length}
+                  </p>
+                  <p className="text-[13px] text-[#888888]">JPG Images</p>
+                </div>
+                <div className="bg-white rounded-xl border border-[#E0DED8] p-4">
+                  <p className="text-[24px] font-semibold text-[#111111]">
+                    {images.filter((img) => img.format === "png").length}
+                  </p>
+                  <p className="text-[13px] text-[#888888]">PNG Images</p>
+                </div>
+              </div>
+            )}
+
+            {/* Image Grid */}
+            <div className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
+              {isLoadingImages ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#888888]" />
+                </div>
+              ) : images.length === 0 ? (
+                <div className="text-center py-20">
+                  <div className="w-16 h-16 bg-[#F5F4F0] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <ImageIcon className="h-8 w-8 text-[#888888]" />
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <p className="text-[16px] text-[#444444] font-medium mb-1">No images uploaded yet</p>
+                  <p className="text-[14px] text-[#888888] mb-6">
+                    Upload images to use in your blog posts
+                  </p>
+                  <label htmlFor="image-upload">
+                    <Button asChild className="bg-[#111111] hover:bg-[#333333] text-white rounded-full px-5">
+                      <span className="cursor-pointer">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Your First Image
+                      </span>
+                    </Button>
+                  </label>
+                </div>
+              ) : (
+                <div className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {images.map((image: any) => (
-                      <Card
+                      <div
                         key={image.fileId}
-                        className="hover:shadow-md transition-shadow"
+                        className="group relative bg-[#F5F4F0] rounded-lg overflow-hidden border border-[#E0DED8] hover:border-[#CCCCCC] transition-all"
                       >
-                        <div className="aspect-square bg-gray-100 rounded-t-lg relative overflow-hidden">
+                        <div className="aspect-square relative overflow-hidden">
                           <img
                             src={image.thumbnailUrl}
                             alt={image.name}
                             className="w-full h-full object-cover"
                             loading="lazy"
                           />
-                          <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                          {/* Hover overlay */}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => window.open(image.url, "_blank")}
+                                className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                                title="View full size"
+                              >
+                                <Eye className="h-4 w-4 text-[#111111]" />
+                              </button>
+                              <button
+                                onClick={() => copyImageUrl(image.url)}
+                                className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                                title="Copy URL"
+                              >
+                                <Copy className="h-4 w-4 text-[#111111]" />
+                              </button>
+                              <button
+                                onClick={() => deleteImage(image.fileId)}
+                                className="p-2 bg-white rounded-full hover:bg-red-50 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </button>
+                            </div>
+                          </div>
+                          {/* Format badge */}
+                          <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">
                             {image.format.toUpperCase()}
                           </div>
                         </div>
-                        <CardContent className="p-3">
-                          <p className="font-medium text-sm text-gray-900 mb-1 truncate">
+                        <div className="p-2.5">
+                          <p className="text-[13px] text-[#111111] font-medium truncate">
                             {image.name}
                           </p>
-                          <p className="text-xs text-gray-600 mb-1">
-                            {formatFileSize(image.size)}
+                          <p className="text-[11px] text-[#888888]">
+                            {formatFileSize(image.size)} · {image.width}×{image.height}
                           </p>
-                          <p className="text-xs text-gray-500 mb-2">
-                            {image.width} × {image.height}
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <Badge variant="outline" className="text-xs">
-                              ImageKit
-                            </Badge>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button size="sm" variant="ghost">
-                                  <ChevronDown className="h-3 w-3" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    window.open(image.url, "_blank")
-                                  }
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View Full Size
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => copyImageUrl(image.url)}
-                                >
-                                  <Copy className="h-4 w-4 mr-2" />
-                                  Copy URL
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    copyImageUrl(image.thumbnailUrl)
-                                  }
-                                >
-                                  <Copy className="h-4 w-4 mr-2" />
-                                  Copy Thumbnail URL
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-red-600"
-                                  onClick={() => deleteImage(image.fileId)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Image Statistics */}
-            {images.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <ImageIcon className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="text-2xl font-bold">{images.length}</p>
-                        <p className="text-sm text-gray-600">Total Images</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Upload className="h-5 w-5 text-green-600" />
-                      <div>
-                        <p className="text-2xl font-bold">
-                          {formatFileSize(
-                            images.reduce((total, img) => total + img.size, 0)
-                          )}
-                        </p>
-                        <p className="text-sm text-gray-600">Total Size</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-purple-600" />
-                      <div>
-                        <p className="text-2xl font-bold">
-                          {
-                            images.filter(
-                              (img) =>
-                                img.format === "jpg" || img.format === "jpeg"
-                            ).length
-                          }
-                        </p>
-                        <p className="text-sm text-gray-600">JPG Images</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-5 w-5 text-orange-600" />
-                      <div>
-                        <p className="text-2xl font-bold">
-                          {images.filter((img) => img.format === "png").length}
-                        </p>
-                        <p className="text-sm text-gray-600">PNG Images</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* Settings Tab */}

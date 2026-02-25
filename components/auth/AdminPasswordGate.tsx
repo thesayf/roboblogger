@@ -1,16 +1,25 @@
 "use client";
 
-import React from 'react';
-import { Key } from 'lucide-react';
+import React, { useState } from 'react';
+import { Key, MessageSquare } from 'lucide-react';
 import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
+import { CreditsDisplay } from '@/app/blog/admin/components/CreditsDisplay';
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import ChatPanel from '@/app/blog/admin/components/ChatPanel';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 
 interface AdminPasswordGateProps {
   children: React.ReactNode;
 }
 
 export default function AdminPasswordGate({ children }: AdminPasswordGateProps) {
-  // Clerk handles authentication - this component just provides the admin header wrapper
+  const [chatOpen, setChatOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Admin Header */}
@@ -48,6 +57,9 @@ export default function AdminPasswordGate({ children }: AdminPasswordGateProps) 
                 View Blog
               </Link>
 
+              {/* Credits display and top-up */}
+              <CreditsDisplay />
+
               {/* Clerk User Button - handles auth state and logout */}
               <UserButton
                 afterSignOutUrl="/"
@@ -66,6 +78,25 @@ export default function AdminPasswordGate({ children }: AdminPasswordGateProps) 
       <div className="admin-content">
         {children}
       </div>
+
+      {/* Chat FAB */}
+      <button
+        onClick={() => setChatOpen(true)}
+        className="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-[#111111] text-white shadow-lg hover:bg-[#333333] flex items-center justify-center transition-all hover:scale-105 z-40"
+        aria-label="Open chat"
+      >
+        <MessageSquare className="w-5 h-5" />
+      </button>
+
+      {/* Chat Sheet */}
+      <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-[440px] p-0 flex flex-col">
+          <VisuallyHidden.Root>
+            <SheetTitle>Blog Strategy Chat</SheetTitle>
+          </VisuallyHidden.Root>
+          <ChatPanel />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

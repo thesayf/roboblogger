@@ -7,6 +7,8 @@ import Event from "@/models/Event";
 import BlogPost from "@/models/BlogPost";
 import BlogComponent from "@/models/BlogComponent";
 import Topic from "@/models/Topic";
+import Conversation from "@/models/Conversation";
+import ChatMessage from "@/models/ChatMessage";
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Invalid/Missing environment variable: "MONGODB_URI"');

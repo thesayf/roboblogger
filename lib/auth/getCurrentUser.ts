@@ -7,6 +7,8 @@ export interface CurrentUser {
   mongoId: string;
   email?: string;
   name?: string;
+  credits: number;
+  subscriptionStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid';
 }
 
 /**
@@ -45,6 +47,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     mongoId: user._id.toString(),
     email: user.email,
     name: user.name,
+    credits: user.credits ?? 0,
+    subscriptionStatus: user.subscriptionStatus ?? 'none',
   };
 }
 
