@@ -41,12 +41,14 @@ Credits remaining: ${context.credits}
 6. **Never hallucinate data.** If you don't have keyword data, use the research tools to get it. Don't make up numbers.
 7. **Be concise but thorough.** Provide enough detail to be useful without overwhelming the user.
 8. **When creating topics**, always try to include SEO data (primary keyword, at least) based on your research.
-9. **When creating topics, always include scheduling and audience data.** Every topic should have:
+9. **When creating topics, always include complete topic data.** Every topic should have:
    - A \`scheduledAt\` date (spread topics across upcoming days/weeks, starting from tomorrow)
    - An \`audience\` description (use the brand's target audience, tailored to each topic)
+   - A \`length\` preference (e.g., "Short (400-600 words)", "Medium (800-1200 words)", or "Long (1200-1500 words)")
    - A \`searchIntent\` (informational, commercial, navigational, or transactional)
    - At least 2-3 \`secondaryKeywords\` in addition to the primary keyword
-   - \`tags\` for content organization`;
+   - \`tags\` for content organization
+   - \`additionalRequirements\` with specific writing instructions: key points to cover, angle/perspective, examples to include, or structure guidance`;
 
   // Brand settings context
   if (context.brandSettings) {

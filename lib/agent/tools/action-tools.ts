@@ -80,14 +80,16 @@ export function buildActionTools(ctx: ToolContext) {
       inputSchema: z.object({
         topics: z.array(z.object({
           topic: z.string().describe('The blog topic/title'),
-          audience: z.string().optional(),
-          tone: z.string().optional(),
+          audience: z.string().optional().describe('Target audience for this post'),
+          tone: z.string().optional().describe('Writing tone (e.g., professional, casual, technical)'),
+          length: z.string().optional().describe('Post length (e.g., short, medium, long)'),
           priority: z.enum(['low', 'medium', 'high']).optional(),
           primaryKeyword: z.string().optional(),
           secondaryKeywords: z.array(z.string()).optional().describe('Secondary SEO keywords'),
           searchIntent: z.enum(['informational', 'commercial', 'navigational', 'transactional']).optional().describe('Search intent for SEO'),
           tags: z.array(z.string()).optional(),
-          scheduledAt: z.string().optional(),
+          scheduledAt: z.string().optional().describe('ISO date string for scheduled generation'),
+          additionalRequirements: z.string().optional().describe('Additional instructions for content generation'),
         })).max(20).describe('Array of topics to add (max 20)'),
       }),
       run: wrapTool(ctx, 'create_topics_bulk', async (input) => {
@@ -97,11 +99,13 @@ export function buildActionTools(ctx: ToolContext) {
           topic: t.topic,
           audience: t.audience,
           tone: t.tone,
+          length: t.length,
           priority: t.priority || 'medium',
           source: 'bulk' as const,
           owner: ctx.userId,
           tags: t.tags,
           scheduledAt: t.scheduledAt ? new Date(t.scheduledAt) : undefined,
+          additionalRequirements: t.additionalRequirements,
           seo: (t.primaryKeyword || t.secondaryKeywords || t.searchIntent) ? {
             primaryKeyword: t.primaryKeyword,
             secondaryKeywords: t.secondaryKeywords,
