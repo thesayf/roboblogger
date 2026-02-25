@@ -302,6 +302,14 @@ export default function BlogAdminClient() {
           pages: Math.ceil(completedTopicsAll.length / 10)
         });
         
+        // Sort all topics by scheduledAt for pipeline table display
+        allTopics.sort((a: any, b: any) => {
+          if (!a.scheduledAt && !b.scheduledAt) return 0;
+          if (!a.scheduledAt) return 1;
+          if (!b.scheduledAt) return -1;
+          return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+        });
+
         // Set all topics for other parts of the app
         setTopics(allTopics);
         setTopicStats(allData.stats || {});
@@ -2216,7 +2224,7 @@ export default function BlogAdminClient() {
                   ) : (
                     <div className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
                       {/* Table Header */}
-                      <div className="grid grid-cols-[auto_1fr_120px_140px_100px_48px] gap-4 px-5 py-3 border-b border-[#F0EEE8] bg-[#FAFAF8]">
+                      <div className="grid grid-cols-[auto_1fr_120px_140px_48px] gap-4 px-5 py-3 border-b border-[#F0EEE8] bg-[#FAFAF8]">
                         <div className="flex items-center">
                           <input
                             type="checkbox"
@@ -2242,7 +2250,6 @@ export default function BlogAdminClient() {
                         <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Topic</span>
                         <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Status</span>
                         <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Scheduled</span>
-                        <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Audience</span>
                         <span></span>
                       </div>
 
@@ -2252,7 +2259,7 @@ export default function BlogAdminClient() {
                         return (
                           <div
                             key={topic._id}
-                            className={`grid grid-cols-[auto_1fr_120px_140px_100px_48px] gap-4 px-5 py-4 border-b border-[#F0EEE8] hover:bg-[#FAFAF8] transition-colors items-center cursor-pointer ${
+                            className={`grid grid-cols-[auto_1fr_120px_140px_48px] gap-4 px-5 py-4 border-b border-[#F0EEE8] hover:bg-[#FAFAF8] transition-colors items-center cursor-pointer ${
                               selectedTopics.includes(topic._id) ? "bg-blue-50" : ""
                             }`}
                             onClick={() => { setDetailTopic(topic); setShowDetailSheet(true); }}
@@ -2298,11 +2305,6 @@ export default function BlogAdminClient() {
                             {/* Scheduled date cell */}
                             <div className="text-[13px] text-[#666666]">
                               {topic.scheduledAt ? formatScheduledDate(topic.scheduledAt) : "—"}
-                            </div>
-
-                            {/* Audience cell */}
-                            <div className="text-[13px] text-[#666666] truncate">
-                              {topic.audience || "—"}
                             </div>
 
                             {/* Actions cell */}
