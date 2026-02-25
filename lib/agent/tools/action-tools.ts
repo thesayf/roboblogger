@@ -130,24 +130,32 @@ export function buildActionTools(ctx: ToolContext) {
       description: 'Update an existing topic in the queue. Can change priority, schedule, SEO data, or other properties.',
       inputSchema: z.object({
         topicId: z.string().describe('The topic ID to update'),
+        audience: z.string().optional().describe('Target audience for this post'),
+        tone: z.string().optional().describe('Writing tone (e.g., professional, casual, technical)'),
+        length: z.string().optional().describe('Post length (e.g., short, medium, long)'),
         priority: z.enum(['low', 'medium', 'high']).optional(),
         scheduledAt: z.string().optional().describe('New scheduled date (ISO string)'),
         primaryKeyword: z.string().optional(),
         secondaryKeywords: z.array(z.string()).optional(),
+        searchIntent: z.enum(['informational', 'commercial', 'navigational', 'transactional']).optional(),
         tags: z.array(z.string()).optional(),
-        additionalRequirements: z.string().optional(),
+        additionalRequirements: z.string().optional().describe('Specific writing instructions: key points, angle, structure'),
       }),
       run: wrapTool(ctx, 'update_topic', async (input) => {
         await dbConnect();
 
         const update: any = {};
+        if (input.audience) update.audience = input.audience;
+        if (input.tone) update.tone = input.tone;
+        if (input.length) update.length = input.length;
         if (input.priority) update.priority = input.priority;
         if (input.scheduledAt) update.scheduledAt = new Date(input.scheduledAt);
         if (input.tags) update.tags = input.tags;
         if (input.additionalRequirements) update.additionalRequirements = input.additionalRequirements;
-        if (input.primaryKeyword || input.secondaryKeywords) {
-          update['seo.primaryKeyword'] = input.primaryKeyword;
+        if (input.primaryKeyword || input.secondaryKeywords || input.searchIntent) {
+          if (input.primaryKeyword) update['seo.primaryKeyword'] = input.primaryKeyword;
           if (input.secondaryKeywords) update['seo.secondaryKeywords'] = input.secondaryKeywords;
+          if (input.searchIntent) update['seo.searchIntent'] = input.searchIntent;
         }
 
         const topic = await Topic.findOneAndUpdate(
