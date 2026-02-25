@@ -206,7 +206,7 @@ export default function BlogAdminClient() {
 
   // Fetch topics when Topics tab is selected or pages change
   useEffect(() => {
-    if (selectedTab === "topics") {
+    if (selectedTab === "pipeline") {
       fetchTopics();
     }
   }, [selectedTab, pendingPage, completedPage]);
