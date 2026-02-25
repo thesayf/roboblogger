@@ -40,7 +40,13 @@ Credits remaining: ${context.credits}
 5. **Explain your reasoning.** When you recommend a strategy, explain why - what data supports it, what the expected outcome is.
 6. **Never hallucinate data.** If you don't have keyword data, use the research tools to get it. Don't make up numbers.
 7. **Be concise but thorough.** Provide enough detail to be useful without overwhelming the user.
-8. **When creating topics**, always try to include SEO data (primary keyword, at least) based on your research.`;
+8. **When creating topics**, always try to include SEO data (primary keyword, at least) based on your research.
+9. **When creating topics, always include scheduling and audience data.** Every topic should have:
+   - A \`scheduledAt\` date (spread topics across upcoming days/weeks, starting from tomorrow)
+   - An \`audience\` description (use the brand's target audience, tailored to each topic)
+   - A \`searchIntent\` (informational, commercial, navigational, or transactional)
+   - At least 2-3 \`secondaryKeywords\` in addition to the primary keyword
+   - \`tags\` for content organization`;
 
   // Brand settings context
   if (context.brandSettings) {

@@ -71,6 +71,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SchedulerTab } from "./components/SchedulerTabNew";
 import { BrandTab } from "./components/BrandTab";
 import { SubscriptionBanner } from "./components/SubscriptionBanner";
+import { TopicDetailSheet } from "./components/TopicDetailSheet";
 import { localDateTimeToUTC, utcToLocalDateTime } from "@/lib/timezone-utils";
 
 export default function BlogAdminClient() {
@@ -96,8 +97,8 @@ export default function BlogAdminClient() {
   const [topicStats, setTopicStats] = useState<any>({});
   const [showAddTopicDialog, setShowAddTopicDialog] = useState(false);
   const [isCreatingTopic, setIsCreatingTopic] = useState(false);
-  const [showEditTopicDialog, setShowEditTopicDialog] = useState(false);
-  const [editingTopic, setEditingTopic] = useState<any>(null);
+  const [detailTopic, setDetailTopic] = useState<any>(null);
+  const [showDetailSheet, setShowDetailSheet] = useState(false);
   const [isUpdatingTopic, setIsUpdatingTopic] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState(false);
 
@@ -550,112 +551,20 @@ export default function BlogAdminClient() {
     }
   };
 
-  const handleEditTopic = (topic: any) => {
-    setEditingTopic(topic);
-    setTopicForm({
-      topic: topic.topic || "",
-      audience: topic.audience || "",
-      tone: topic.tone || "Professional but approachable",
-      length: topic.length || "Medium (800-1200 words)",
-      includeImages:
-        topic.includeImages !== undefined ? topic.includeImages : true,
-      includeCallouts:
-        topic.includeCallouts !== undefined ? topic.includeCallouts : true,
-      includeCTA: topic.includeCTA !== undefined ? topic.includeCTA : true,
-      additionalRequirements: topic.additionalRequirements || "",
-      brandContext: topic.brandContext || "",
-      imageContext: topic.imageContext || "",
-      referenceImages: topic.referenceImages || [],
-      priority: topic.priority || "medium",
-      tags: topic.tags || [],
-      notes: topic.notes || "",
-      estimatedDuration: topic.estimatedDuration || 5,
-      scheduledAt: topic.scheduledAt
-        ? utcToLocalDateTime(topic.scheduledAt)
-        : "",
-      seo: {
-        primaryKeyword: topic.seo?.primaryKeyword || "",
-        secondaryKeywords: topic.seo?.secondaryKeywords || [],
-        longTailKeywords: topic.seo?.longTailKeywords || [],
-        lsiKeywords: topic.seo?.lsiKeywords || [],
-        searchIntent: topic.seo?.searchIntent || "informational",
-        metaTitle: topic.seo?.metaTitle || "",
-        metaDescription: topic.seo?.metaDescription || "",
-        openGraph: {
-          title: topic.seo?.openGraph?.title || "",
-          description: topic.seo?.openGraph?.description || "",
-          image: topic.seo?.openGraph?.image || "",
-          type: topic.seo?.openGraph?.type || "article",
-        },
-        schemaType: topic.seo?.schemaType || "BlogPosting",
-        slug: topic.seo?.slug || "",
-        canonicalUrl: topic.seo?.canonicalUrl || "",
-      }
-    });
-    setSelectedExistingImages(topic.referenceImages || []);
-    setShowEditTopicDialog(true);
-  };
-
-  const handleRescheduleTopic = async () => {
-    if (!editingTopic || !topicForm.scheduledAt) return;
-    
-    // Prevent rescheduling published topics
-    if (editingTopic.status === 'completed' || editingTopic.generatedPostId) {
-      alert("Cannot reschedule published topics");
-      return;
-    }
-
-    try {
-      setIsUpdatingTopic(true);
-      const response = await fetch(`/api/blog/topics/${editingTopic._id}/reschedule`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          scheduledAt: topicForm.scheduledAt ? localDateTimeToUTC(topicForm.scheduledAt) : undefined
-        }),
-      });
-
-      if (response.ok) {
-        await fetchTopics();
-        setShowEditTopicDialog(false);
-        setEditingTopic(null);
-        alert("Topic rescheduled successfully!");
-      } else {
-        const data = await response.json();
-        alert(`Error rescheduling topic: ${data.error}`);
-      }
-    } catch (error) {
-      console.error("Reschedule error:", error);
-      alert("Error rescheduling topic");
-    } finally {
-      setIsUpdatingTopic(false);
-    }
-  };
-
-  const handleUpdateTopic = async () => {
-    if (!editingTopic) return;
-
+  const handleUpdateTopic = async (topicId: string, data: any) => {
     setIsUpdatingTopic(true);
     try {
-      const topicData = {
-        ...topicForm,
-        referenceImages: selectedExistingImages,
-        tags: Array.isArray(topicForm.tags) ? topicForm.tags : [],
-      };
-
-      const response = await fetch(`/api/blog/topics/${editingTopic._id}`, {
+      const response = await fetch(`/api/blog/topics/${topicId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(topicData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
 
       if (response.ok) {
-        setShowEditTopicDialog(false);
-        setEditingTopic(null);
-        fetchTopics(); // Refresh the list
-        alert("Topic updated successfully!");
+        fetchTopics();
+        // Update detailTopic in place so sheet reflects changes
+        const updated = await response.json();
+        if (updated.topic) setDetailTopic(updated.topic);
       } else {
         const error = await response.json();
         alert(`Failed to update topic: ${error.message}`);
@@ -2085,524 +1994,6 @@ export default function BlogAdminClient() {
                       </DialogContent>
                     </Dialog>
 
-                    {/* Edit Topic Dialog */}
-                    <Dialog
-                      open={showEditTopicDialog}
-                      onOpenChange={setShowEditTopicDialog}
-                    >
-                      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0 bg-[#FAFAF8]">
-                        {/* Header */}
-                        <div className="px-6 py-5 border-b border-[#E0DED8] bg-white">
-                          <DialogTitle className="text-[20px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
-                            Edit Topic
-                          </DialogTitle>
-                          <DialogDescription className="text-[14px] text-[#666666] mt-1">
-                            Update topic details
-                          </DialogDescription>
-                        </div>
-
-                        <div className="px-6 py-5 space-y-5">
-                          {/* Topic Title */}
-                          <div>
-                            <label className="text-[13px] font-medium text-[#111111] mb-2 block">
-                              Topic Title <span className="text-red-500">*</span>
-                            </label>
-                            <Input
-                              value={topicForm.topic}
-                              onChange={(e) =>
-                                setTopicForm((prev) => ({
-                                  ...prev,
-                                  topic: e.target.value,
-                                }))
-                              }
-                              placeholder="e.g., The Future of Remote Work in 2025"
-                              className="w-full h-11 bg-white border-[#E0DED8] focus:border-[#111111] focus:ring-[#111111] text-[15px]"
-                            />
-                          </div>
-
-                          {/* Two column layout */}
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
-                                Target Audience
-                              </label>
-                              <Input
-                                value={topicForm.audience}
-                                onChange={(e) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    audience: e.target.value,
-                                  }))
-                                }
-                                placeholder="e.g., Marketing professionals"
-                                className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
-                                Tone
-                              </label>
-                              <Select
-                                value={topicForm.tone}
-                                onValueChange={(value) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    tone: value,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Professional but approachable">Professional</SelectItem>
-                                  <SelectItem value="Casual and friendly">Casual</SelectItem>
-                                  <SelectItem value="Technical and authoritative">Technical</SelectItem>
-                                  <SelectItem value="Conversational">Conversational</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div>
-                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
-                                Length
-                              </label>
-                              <Select
-                                value={topicForm.length}
-                                onValueChange={(value) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    length: value,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Short (400-600 words)">Short (400-600)</SelectItem>
-                                  <SelectItem value="Medium (800-1200 words)">Medium (800-1200)</SelectItem>
-                                  <SelectItem value="Long (1200-1500 words)">Long (1200-1500)</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className={editingTopic?.status === 'completed' || editingTopic?.generatedPostId ? "opacity-50 pointer-events-none" : ""}>
-                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
-                                Schedule <span className="text-[#888888] font-normal">(Optional)</span>
-                              </label>
-                              <DateTimePicker
-                                value={topicForm.scheduledAt}
-                                onChange={(value) =>
-                                  setTopicForm((prev) => ({
-                                    ...prev,
-                                    scheduledAt: value,
-                                  }))
-                                }
-                                placeholder="Pick a date and time"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Content Options */}
-                          <div className="bg-white rounded-xl border border-[#E0DED8] p-4">
-                            <label className="text-[13px] font-medium text-[#111111] mb-3 block">
-                              Content Options
-                            </label>
-                            <div className="flex items-center gap-4">
-                              <label
-                                htmlFor="edit-includeImages"
-                                className={`flex items-center gap-2 px-3 py-2 rounded-full cursor-pointer transition-all text-[13px] ${
-                                  topicForm.includeImages
-                                    ? "bg-[#111111] text-white"
-                                    : "bg-[#F5F4F0] text-[#666666] hover:bg-[#E8E6E1]"
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  id="edit-includeImages"
-                                  checked={topicForm.includeImages}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      includeImages: e.target.checked,
-                                    }))
-                                  }
-                                  className="sr-only"
-                                />
-                                <ImageIcon className="h-3.5 w-3.5" />
-                                Images
-                              </label>
-                              <label
-                                htmlFor="edit-includeCallouts"
-                                className={`flex items-center gap-2 px-3 py-2 rounded-full cursor-pointer transition-all text-[13px] ${
-                                  topicForm.includeCallouts
-                                    ? "bg-[#111111] text-white"
-                                    : "bg-[#F5F4F0] text-[#666666] hover:bg-[#E8E6E1]"
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  id="edit-includeCallouts"
-                                  checked={topicForm.includeCallouts}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      includeCallouts: e.target.checked,
-                                    }))
-                                  }
-                                  className="sr-only"
-                                />
-                                <AlertCircle className="h-3.5 w-3.5" />
-                                Callouts
-                              </label>
-                              <label
-                                htmlFor="edit-includeCTA"
-                                className={`flex items-center gap-2 px-3 py-2 rounded-full cursor-pointer transition-all text-[13px] ${
-                                  topicForm.includeCTA
-                                    ? "bg-[#111111] text-white"
-                                    : "bg-[#F5F4F0] text-[#666666] hover:bg-[#E8E6E1]"
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  id="edit-includeCTA"
-                                  checked={topicForm.includeCTA}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      includeCTA: e.target.checked,
-                                    }))
-                                  }
-                                  className="sr-only"
-                                />
-                                <Sparkles className="h-3.5 w-3.5" />
-                                CTA
-                              </label>
-                            </div>
-                          </div>
-
-                          {/* Image Options - Only show when Images is enabled */}
-                          {topicForm.includeImages && (
-                            <div className="bg-[#F5F4F0] rounded-xl p-4 space-y-4">
-                              <div className="flex items-center gap-2">
-                                <ImageIcon className="h-4 w-4 text-[#666666]" />
-                                <span className="text-[13px] font-medium text-[#111111]">Image Options</span>
-                              </div>
-
-                              {/* Image Style */}
-                              <div>
-                                <label className="text-[12px] font-medium text-[#666666] mb-1.5 block">
-                                  Image Style Description
-                                </label>
-                                <Textarea
-                                  value={topicForm.imageContext}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      imageContext: e.target.value,
-                                    }))
-                                  }
-                                  placeholder="e.g., Modern minimalist with blue corporate tones, clean geometric shapes..."
-                                  rows={2}
-                                  className="bg-white border-[#E0DED8] focus:border-[#111111] text-[13px] resize-none"
-                                />
-                              </div>
-
-                              {/* Reference Images */}
-                              <div>
-                                <label className="text-[12px] font-medium text-[#666666] mb-1.5 block">
-                                  Reference Images
-                                </label>
-                                <p className="text-[11px] text-[#888888] mb-2">
-                                  AI will analyze these to match their visual style
-                                </p>
-
-                                {/* Selected Images Preview */}
-                                {(selectedExistingImages.length > 0 || newReferenceImages.length > 0) && (
-                                  <div className="flex flex-wrap gap-2 mb-3">
-                                    {/* Library images */}
-                                    {selectedExistingImages.map((imageRef, index) => {
-                                      const image = images.find(img => img.url === imageRef || img._id === imageRef);
-                                      // Check if imageRef is base64 (no http/https prefix and long string)
-                                      const isBase64 = !imageRef.startsWith('http') && imageRef.length > 100;
-                                      const imageSrc = image?.thumbnailUrl || image?.url || (isBase64 ? `data:image/jpeg;base64,${imageRef}` : imageRef);
-                                      return (
-                                        <div key={`lib-${index}`} className="relative group">
-                                          <img
-                                            src={imageSrc}
-                                            alt={`Reference ${index + 1}`}
-                                            className="w-16 h-16 object-cover rounded-lg border border-[#E0DED8]"
-                                          />
-                                          <button
-                                            type="button"
-                                            onClick={() => setSelectedExistingImages(prev => prev.filter(ref => ref !== imageRef))}
-                                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                          >
-                                            <X className="h-3 w-3" />
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
-                                    {/* Uploaded images */}
-                                    {newReferenceImages.map((file, index) => (
-                                      <div key={`upload-${index}`} className="relative group">
-                                        <img
-                                          src={URL.createObjectURL(file)}
-                                          alt={`Uploaded ${index + 1}`}
-                                          className="w-16 h-16 object-cover rounded-lg border border-[#E0DED8]"
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={() => setNewReferenceImages(prev => prev.filter((_, i) => i !== index))}
-                                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                          <X className="h-3 w-3" />
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowImagePicker(true)}
-                                    className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#CCCCCC] text-[13px] text-[#666666] hover:border-[#111111] hover:text-[#111111] transition-colors justify-center"
-                                  >
-                                    <ImageIcon className="h-4 w-4" />
-                                    From Library
-                                  </button>
-                                  <label className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#CCCCCC] text-[13px] text-[#666666] hover:border-[#111111] hover:text-[#111111] transition-colors justify-center cursor-pointer">
-                                    <Upload className="h-4 w-4" />
-                                    Upload
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      multiple
-                                      onChange={(e) => handleReferenceImageUpload(e.target.files)}
-                                      className="sr-only"
-                                    />
-                                  </label>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Tags */}
-                          <div>
-                            <label className="text-[13px] font-medium text-[#111111] mb-2 block">
-                              Tags
-                            </label>
-                            <div className="flex gap-2 mb-2">
-                              <Input
-                                value={newTagInput}
-                                onChange={(e) => setNewTagInput(e.target.value)}
-                                placeholder="Add a tag and press Enter..."
-                                onKeyPress={(e) => e.key === "Enter" && addTag()}
-                                className="flex-1 h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={addTag}
-                                disabled={!newTagInput.trim()}
-                                className="h-10 border-[#E0DED8] hover:bg-[#F5F4F0]"
-                              >
-                                Add
-                              </Button>
-                            </div>
-                            {topicForm.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-2">
-                                {topicForm.tags.map((tag, index) => (
-                                  <span
-                                    key={index}
-                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[13px] bg-[#111111] text-white cursor-pointer hover:bg-[#333333] transition-colors"
-                                    onClick={() => removeTag(tag)}
-                                  >
-                                    {tag}
-                                    <X className="h-3 w-3" />
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Additional Instructions */}
-                          <div>
-                            <label className="text-[13px] font-medium text-[#111111] mb-2 block">
-                              Additional Instructions (Optional)
-                            </label>
-                            <Textarea
-                              value={topicForm.additionalRequirements}
-                              onChange={(e) =>
-                                setTopicForm((prev) => ({
-                                  ...prev,
-                                  additionalRequirements: e.target.value,
-                                }))
-                              }
-                              placeholder="Any specific requirements, keywords to include, topics to cover, or style notes..."
-                              rows={3}
-                              className="bg-white border-[#E0DED8] focus:border-[#111111] text-[14px] resize-none"
-                            />
-                          </div>
-
-                          {/* Advanced SEO - Collapsible */}
-                          <details className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden group">
-                            <summary className="px-4 py-3 cursor-pointer text-[13px] font-medium text-[#111111] hover:bg-[#FAFAF8] transition-colors flex items-center justify-between list-none">
-                              <span className="flex items-center gap-2">
-                                <Search className="h-4 w-4 text-[#888888]" />
-                                Advanced SEO Options
-                              </span>
-                              <ChevronDown className="h-4 w-4 text-[#888888] transition-transform group-open:rotate-180" />
-                            </summary>
-                            <div className="px-4 pb-4 pt-2 space-y-4 border-t border-[#E0DED8] bg-[#FAFAF8]">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <label className="text-[13px] font-medium text-[#111111] mb-2 block">
-                                    Primary Keyword
-                                  </label>
-                                  <Input
-                                    value={topicForm.seo.primaryKeyword}
-                                    onChange={(e) =>
-                                      setTopicForm((prev) => ({
-                                        ...prev,
-                                        seo: { ...prev.seo, primaryKeyword: e.target.value },
-                                      }))
-                                    }
-                                    placeholder="e.g., remote work tips"
-                                    className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[13px] font-medium text-[#111111] mb-2 block">
-                                    URL Slug
-                                  </label>
-                                  <div className="flex gap-2">
-                                    <Input
-                                      value={topicForm.seo.slug}
-                                      onChange={(e) =>
-                                        setTopicForm((prev) => ({
-                                          ...prev,
-                                          seo: { ...prev.seo, slug: generateSlug(e.target.value) },
-                                        }))
-                                      }
-                                      placeholder="auto-generated"
-                                      className="flex-1 h-10 bg-white border-[#E0DED8] focus:border-[#111111] font-mono text-[13px]"
-                                    />
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      onClick={updateSlug}
-                                      disabled={!topicForm.seo.primaryKeyword && !topicForm.topic}
-                                      className="h-10 border-[#E0DED8] hover:bg-white text-[13px]"
-                                    >
-                                      Auto
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="text-[13px] font-medium text-[#111111] mb-2 block">
-                                  Meta Title
-                                  <span className={`ml-2 text-[11px] ${topicForm.seo.metaTitle.length > 50 ? 'text-red-500' : 'text-[#888888]'}`}>
-                                    {topicForm.seo.metaTitle.length}/60
-                                  </span>
-                                </label>
-                                <Input
-                                  value={topicForm.seo.metaTitle}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      seo: { ...prev.seo, metaTitle: e.target.value.slice(0, 60) },
-                                    }))
-                                  }
-                                  placeholder="Leave blank to auto-generate"
-                                  maxLength={60}
-                                  className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="text-[13px] font-medium text-[#111111] mb-2 block">
-                                  Meta Description
-                                  <span className={`ml-2 text-[11px] ${topicForm.seo.metaDescription.length > 140 ? 'text-red-500' : 'text-[#888888]'}`}>
-                                    {topicForm.seo.metaDescription.length}/155
-                                  </span>
-                                </label>
-                                <Textarea
-                                  value={topicForm.seo.metaDescription}
-                                  onChange={(e) =>
-                                    setTopicForm((prev) => ({
-                                      ...prev,
-                                      seo: { ...prev.seo, metaDescription: e.target.value.slice(0, 155) },
-                                    }))
-                                  }
-                                  placeholder="Leave blank to auto-generate"
-                                  rows={2}
-                                  maxLength={155}
-                                  className="bg-white border-[#E0DED8] focus:border-[#111111] text-[14px] resize-none"
-                                />
-                              </div>
-                            </div>
-                          </details>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="flex gap-3 justify-end border-t border-[#E0DED8] pt-5 mt-2">
-                          <button
-                            type="button"
-                            onClick={() => setShowEditTopicDialog(false)}
-                            className="px-5 py-2.5 rounded-full text-[14px] font-medium text-[#666666] hover:bg-[#F5F4F0] transition-colors"
-                          >
-                            Cancel
-                          </button>
-
-                          {topicForm.scheduledAt && !editingTopic?.generatedPostId && editingTopic?.status !== 'completed' && (
-                            <button
-                              type="button"
-                              onClick={handleRescheduleTopic}
-                              disabled={isUpdatingTopic}
-                              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[14px] font-medium border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
-                            >
-                              {isUpdatingTopic ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                  Rescheduling...
-                                </>
-                              ) : (
-                                <>
-                                  <RefreshCw className="h-4 w-4" />
-                                  Reschedule Only
-                                </>
-                              )}
-                            </button>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={handleUpdateTopic}
-                            disabled={isUpdatingTopic || !topicForm.topic.trim()}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[14px] font-medium bg-[#111111] text-white hover:bg-[#333333] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isUpdatingTopic ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Updating...
-                              </>
-                            ) : (
-                              <>
-                                <Edit className="h-4 w-4" />
-                                Update Topic
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-
                     {/* Image Picker Dialog */}
                     <Dialog open={showImagePicker} onOpenChange={setShowImagePicker}>
                       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -2861,12 +2252,13 @@ export default function BlogAdminClient() {
                         return (
                           <div
                             key={topic._id}
-                            className={`grid grid-cols-[auto_1fr_120px_140px_100px_48px] gap-4 px-5 py-4 border-b border-[#F0EEE8] hover:bg-[#FAFAF8] transition-colors items-center ${
+                            className={`grid grid-cols-[auto_1fr_120px_140px_100px_48px] gap-4 px-5 py-4 border-b border-[#F0EEE8] hover:bg-[#FAFAF8] transition-colors items-center cursor-pointer ${
                               selectedTopics.includes(topic._id) ? "bg-blue-50" : ""
                             }`}
+                            onClick={() => { setDetailTopic(topic); setShowDetailSheet(true); }}
                           >
                             {/* Checkbox */}
-                            <div className="flex items-center">
+                            <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
                               {(topic.status === "pending" || topic.status === "failed") ? (
                                 <input
                                   type="checkbox"
@@ -2939,7 +2331,7 @@ export default function BlogAdminClient() {
                                     </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleEditTopic(topic)}>
+                                    <DropdownMenuItem onClick={() => { setDetailTopic(topic); setShowDetailSheet(true); }}>
                                       <Edit className="h-4 w-4 mr-2" />
                                       Edit
                                     </DropdownMenuItem>
@@ -2976,6 +2368,18 @@ export default function BlogAdminClient() {
                 </>
               );
             })()}
+
+            <TopicDetailSheet
+              topic={detailTopic}
+              open={showDetailSheet}
+              onOpenChange={setShowDetailSheet}
+              onSave={handleUpdateTopic}
+              onDelete={async (topicId) => {
+                await handleDeleteTopic(topicId);
+                setShowDetailSheet(false);
+              }}
+              onGenerate={handleGenerateTopic}
+            />
 
           </TabsContent>
 

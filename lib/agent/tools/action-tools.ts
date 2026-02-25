@@ -38,6 +38,7 @@ export function buildActionTools(ctx: ToolContext) {
         priority: z.enum(['low', 'medium', 'high']).optional().describe('Generation priority (default: medium)'),
         primaryKeyword: z.string().optional().describe('Primary SEO keyword'),
         secondaryKeywords: z.array(z.string()).optional().describe('Secondary SEO keywords'),
+        searchIntent: z.enum(['informational', 'commercial', 'navigational', 'transactional']).optional().describe('Search intent for SEO'),
         tags: z.array(z.string()).optional().describe('Tags for organization'),
         scheduledAt: z.string().optional().describe('ISO date string for scheduled generation'),
         additionalRequirements: z.string().optional().describe('Additional instructions for content generation'),
@@ -56,9 +57,10 @@ export function buildActionTools(ctx: ToolContext) {
           tags: input.tags,
           scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : undefined,
           additionalRequirements: input.additionalRequirements,
-          seo: input.primaryKeyword ? {
+          seo: (input.primaryKeyword || input.secondaryKeywords || input.searchIntent) ? {
             primaryKeyword: input.primaryKeyword,
             secondaryKeywords: input.secondaryKeywords,
+            searchIntent: input.searchIntent,
           } : undefined,
         });
 
@@ -82,6 +84,8 @@ export function buildActionTools(ctx: ToolContext) {
           tone: z.string().optional(),
           priority: z.enum(['low', 'medium', 'high']).optional(),
           primaryKeyword: z.string().optional(),
+          secondaryKeywords: z.array(z.string()).optional().describe('Secondary SEO keywords'),
+          searchIntent: z.enum(['informational', 'commercial', 'navigational', 'transactional']).optional().describe('Search intent for SEO'),
           tags: z.array(z.string()).optional(),
           scheduledAt: z.string().optional(),
         })).max(20).describe('Array of topics to add (max 20)'),
@@ -98,7 +102,11 @@ export function buildActionTools(ctx: ToolContext) {
           owner: ctx.userId,
           tags: t.tags,
           scheduledAt: t.scheduledAt ? new Date(t.scheduledAt) : undefined,
-          seo: t.primaryKeyword ? { primaryKeyword: t.primaryKeyword } : undefined,
+          seo: (t.primaryKeyword || t.secondaryKeywords || t.searchIntent) ? {
+            primaryKeyword: t.primaryKeyword,
+            secondaryKeywords: t.secondaryKeywords,
+            searchIntent: t.searchIntent,
+          } : undefined,
         }));
 
         const created = await Topic.insertMany(docs);
