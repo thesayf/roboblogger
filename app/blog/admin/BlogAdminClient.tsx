@@ -524,11 +524,7 @@ export default function BlogAdminClient() {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        alert(
-          `Blog post generated successfully! Post ID: ${result.blogPost._id}`
-        );
-        fetchTopics(); // Refresh the list
+        fetchTopics(); // Refresh the list to show "Generating" status
       } else {
         const error = await response.json();
         alert(`Failed to generate blog post: ${error.message}`);
