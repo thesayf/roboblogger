@@ -65,6 +65,14 @@ export interface ITopic extends Document {
   };
   researchedAt?: Date;
 
+  // Intermediate research state (for multi-turn workflow)
+  researchState?: {
+    messages: any[]; // Anthropic.MessageParam[]
+    systemPrompt: string;
+    iteration: number;
+    startedAt: Date;
+  };
+
   // SEO Strategy
   seo?: {
     primaryKeyword?: string;
@@ -197,6 +205,14 @@ const TopicSchema = new Schema<ITopic>({
   },
   researchedAt: {
     type: Date
+  },
+
+  // Intermediate research state (for multi-turn workflow)
+  researchState: {
+    messages: { type: Schema.Types.Mixed },
+    systemPrompt: { type: String },
+    iteration: { type: Number, default: 0 },
+    startedAt: { type: Date }
   },
 
   // SEO Strategy

@@ -112,8 +112,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Also check for stuck "generating" topics (older than 10 minutes)
-    const stuckTimeout = new Date(Date.now() - 10 * 60 * 1000);
+    // Also check for stuck "generating" topics (older than 20 minutes)
+    // Workflow pipelines can legitimately take longer since each stage gets its own 300s
+    const stuckTimeout = new Date(Date.now() - 20 * 60 * 1000);
     const stuckTopics = await Topic.find({
       status: 'generating',
       processingStartedAt: { $lt: stuckTimeout }
