@@ -39,12 +39,14 @@ export async function POST(
       await topic.markAsGenerating();
     }
 
+    // Create abort controller for the pipeline - actually cancels in-flight requests on timeout
+    // (unlike Promise.race which lets background work continue and create orphan posts)
+    const pipelineAbort = new AbortController();
+    const pipelineTimeoutHandle = setTimeout(() => {
+      pipelineAbort.abort();
+    }, 280000); // 280s, leaving margin before Vercel's 300s maxDuration
+
     try {
-      // Add a timeout wrapper for the entire generation process
-      const timeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Generation timeout after 295 seconds')), 295000)
-      );
-      
       const generateProcess = async () => {
         // Update phase to initializing
       await Topic.findByIdAndUpdate(topic._id, { generationPhase: 'initializing' });
@@ -88,6 +90,11 @@ export async function POST(
         console.log(`\n   📡 Calling research API...`);
         console.log(`   Topic: "${topic.topic}"`);
 
+        // Research gets a 60s abort - prevents it from eating the whole time budget
+        const researchAbort = new AbortController();
+        const researchTimeoutHandle = setTimeout(() => researchAbort.abort(), 60000);
+        pipelineAbort.signal.addEventListener('abort', () => researchAbort.abort());
+
         try {
           // Prepare SEO keywords for research
           const seoKeywords: string[] = [];
@@ -106,8 +113,10 @@ export async function POST(
               topic: topic.topic,
               audience: topic.audience || '',
               seoKeywords
-            })
+            }),
+            signal: researchAbort.signal
           });
+          clearTimeout(researchTimeoutHandle);
 
           const researchDuration = ((Date.now() - researchStartTime) / 1000).toFixed(1);
 
@@ -144,14 +153,21 @@ export async function POST(
             console.log(`   Continuing generation without research data...`);
           }
         } catch (researchError) {
+          clearTimeout(researchTimeoutHandle);
           const researchDuration = ((Date.now() - researchStartTime) / 1000).toFixed(1);
-          console.log(`\n   ❌ Research failed after ${researchDuration}s`);
+          const isAbort = researchError instanceof Error && researchError.name === 'AbortError';
+          console.log(`\n   ${isAbort ? '⏰' : '❌'} Research ${isAbort ? 'timed out' : 'failed'} after ${researchDuration}s`);
           console.log(`   Error: ${researchError instanceof Error ? researchError.message : 'Unknown error'}`);
           console.log(`   Continuing generation without research data...`);
         }
       } else {
         console.log(`\n   ⚠️  PERPLEXITY_API_KEY not configured`);
         console.log(`   Skipping research phase - blog will be generated without real-time data`);
+      }
+
+      // Check if pipeline was aborted during research
+      if (pipelineAbort.signal.aborted) {
+        throw new Error('Generation timeout - pipeline exceeded time limit');
       }
 
       // ============================================
@@ -200,6 +216,7 @@ export async function POST(
         headers: Object.fromEntries(generateRequest.headers.entries()),
         body: generateRequest.body,
         redirect: 'follow',
+        signal: pipelineAbort.signal,
         duplex: 'half'
       } as any);
       const generateDuration = Date.now() - generateStartTime;
@@ -254,7 +271,8 @@ export async function POST(
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(imageGenRequest)
+          body: JSON.stringify(imageGenRequest),
+          signal: pipelineAbort.signal
         });
         
         const imageGenDuration = Date.now() - imageGenStartTime;
@@ -293,6 +311,7 @@ export async function POST(
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: pipelineAbort.signal,
         body: JSON.stringify({
           ...finalBlogData.blogPost,
           slug: topic.seo?.slug || (finalBlogData.blogPost.title
@@ -341,28 +360,51 @@ export async function POST(
         imageGenerationTriggered: generatedBlog._imageGenerationData?.requiresImageGeneration || false
       };
       }; // End of generateProcess function
-      
-      // Race between the generation process and timeout
-      const result = await Promise.race([generateProcess(), timeout]);
-      
+
+      const result = await generateProcess();
+      clearTimeout(pipelineTimeoutHandle);
+
       return NextResponse.json(result, { status: 201 });
 
     } catch (generationError) {
+      clearTimeout(pipelineTimeoutHandle);
+
       console.error('[Generate] Blog generation failed for topic:', topic._id);
       console.error('[Generate] Error details:', generationError);
       console.error('[Generate] Error stack:', generationError instanceof Error ? generationError.stack : 'No stack trace');
-      
-      // Mark topic as failed
+
       const errorMessage = generationError instanceof Error ? generationError.message : String(generationError);
-      await topic.markAsFailed(errorMessage);
+      const isAbortError = generationError instanceof Error && generationError.name === 'AbortError';
+      const displayError = isAbortError ? 'Generation timeout - pipeline exceeded time limit' : errorMessage;
+
+      // Before marking as failed, re-check topic status in case a post was already created
+      // (handles edge case where post creation completed server-side but our fetch was aborted)
+      try {
+        const freshTopic = await Topic.findById(topic._id);
+        if (freshTopic?.status === 'completed' && freshTopic?.generatedPostId) {
+          console.log(`[Generate] Topic ${topic._id} already completed (post ${freshTopic.generatedPostId}), skipping markAsFailed`);
+          return NextResponse.json({
+            message: 'Blog post was already generated',
+            topic: {
+              id: topic._id,
+              status: 'completed',
+              generatedPostId: freshTopic.generatedPostId
+            }
+          });
+        }
+      } catch (checkError) {
+        console.warn('[Generate] Failed to check topic status before marking as failed:', checkError);
+      }
+
+      await topic.markAsFailed(displayError);
 
       return NextResponse.json({
         message: 'Blog generation failed',
-        error: errorMessage,
+        error: displayError,
         topic: {
           id: topic._id,
           status: 'failed',
-          errorMessage: errorMessage,
+          errorMessage: displayError,
           retryCount: topic.retryCount
         }
       }, { status: 500 });
