@@ -222,6 +222,16 @@ export default function BlogAdminClient() {
     return () => window.removeEventListener('chat-data-changed', handler);
   }, []);
 
+  // Auto-poll when any topic is generating
+  useEffect(() => {
+    const hasGenerating = topics.some((t: any) => t.status === "generating");
+    if (!hasGenerating || selectedTab !== "pipeline") return;
+    const interval = setInterval(() => {
+      fetchTopics();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [topics, selectedTab]);
+
   const fetchBlogPosts = async () => {
     try {
       setIsLoading(true);
@@ -259,7 +269,7 @@ export default function BlogAdminClient() {
         const allTopics = allData.topics || [];
         
         // Filter topics by status
-        const pendingAndFailedTopics = allTopics.filter((t: any) => t.status === "pending" || t.status === "failed");
+        const pendingAndFailedTopics = allTopics.filter((t: any) => t.status === "pending" || t.status === "failed" || t.status === "generating");
         const completedTopicsAll = allTopics.filter((t: any) => t.status === "completed");
         
         // Sort by scheduledAt
@@ -2092,7 +2102,7 @@ export default function BlogAdminClient() {
               };
 
               // Status badge component matching mockup
-              const getStatusBadgeElement = (status: string) => {
+              const getStatusBadgeElement = (status: string, topic?: any) => {
                 switch (status) {
                   case "scheduled":
                     return (
@@ -2279,24 +2289,34 @@ export default function BlogAdminClient() {
                               <p className="text-[15px] text-[#111111] font-medium truncate" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                                 {topic.topic}
                               </p>
-                              {topic.status === "generating" && topic.progress && (
-                                <div className="mt-2 flex items-center gap-2">
-                                  <div className="flex-1 h-1.5 bg-[#F0EEE8] rounded-full overflow-hidden max-w-[200px]">
-                                    <div
-                                      className="h-full bg-purple-500 rounded-full transition-all duration-300"
-                                      style={{ width: `${topic.progress}%` }}
-                                    />
+                              {topic.status === "generating" && (() => {
+                                const phaseMap: Record<string, { label: string; percent: number }> = {
+                                  initializing: { label: "Initializing", percent: 5 },
+                                  researching: { label: "Researching", percent: 25 },
+                                  writing_content: { label: "Writing content", percent: 55 },
+                                  generating_images: { label: "Generating images", percent: 75 },
+                                  saving: { label: "Saving", percent: 95 },
+                                };
+                                const phase = phaseMap[topic.generationPhase] || { label: "Starting", percent: 2 };
+                                return (
+                                  <div className="mt-1.5 flex items-center gap-2">
+                                    <div className="flex-1 h-1.5 bg-[#F0EEE8] rounded-full overflow-hidden max-w-[200px]">
+                                      <div
+                                        className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                                        style={{ width: `${phase.percent}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[11px] text-[#888888] whitespace-nowrap">{phase.label}...</span>
                                   </div>
-                                  <span className="text-[12px] text-[#888888]">{topic.progress}%</span>
-                                </div>
-                              )}
+                                );
+                              })()}
                               {topic.status === "failed" && topic.error && (
                                 <p className="text-[12px] text-red-600 mt-1 truncate">{topic.error}</p>
                               )}
                             </div>
 
                             {/* Status cell */}
-                            <div>{getStatusBadgeElement(displayStatus)}</div>
+                            <div>{getStatusBadgeElement(displayStatus, topic)}</div>
 
                             {/* Scheduled date cell */}
                             <div className="text-[13px] text-[#666666]">

@@ -191,5 +191,41 @@ export function buildReadTools(ctx: ToolContext) {
         });
       }),
     }),
+
+    betaZodTool({
+      name: 'get_media_images',
+      description: 'Browse images in the media library (ImageKit). Returns image URLs, names, and metadata. Use this to find existing images that could be used as reference images for topics.',
+      inputSchema: z.object({
+        limit: z.number().optional().describe('Max images to return (default 20)'),
+        skip: z.number().optional().describe('Number of images to skip for pagination (default 0)'),
+      }),
+      run: wrapTool(ctx, 'get_media_images', async (input) => {
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+        const params = new URLSearchParams();
+        params.set('limit', String(input.limit || 20));
+        params.set('skip', String(input.skip || 0));
+
+        const response = await fetch(`${baseUrl}/api/images?${params.toString()}`);
+        if (!response.ok) {
+          return JSON.stringify({ error: 'Failed to fetch images from media library' });
+        }
+
+        const data = await response.json();
+        return JSON.stringify({
+          total: data.total,
+          images: (data.images || []).map((img: any) => ({
+            name: img.name,
+            url: img.url,
+            thumbnailUrl: img.thumbnailUrl,
+            width: img.width,
+            height: img.height,
+            format: img.format,
+            createdAt: img.createdAt,
+          })),
+        });
+      }),
+    }),
   ];
 }

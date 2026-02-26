@@ -42,6 +42,7 @@ export function buildActionTools(ctx: ToolContext) {
         tags: z.array(z.string()).optional().describe('Tags for organization'),
         scheduledAt: z.string().optional().describe('ISO date string for scheduled generation'),
         additionalRequirements: z.string().optional().describe('Additional instructions for content generation'),
+        imageContext: z.string().optional().describe('Image style description for generated images (e.g., "Modern minimalist with blue corporate tones", "Warm watercolor illustrations")'),
       }),
       run: wrapTool(ctx, 'create_topic', async (input) => {
         await dbConnect();
@@ -57,6 +58,7 @@ export function buildActionTools(ctx: ToolContext) {
           tags: input.tags,
           scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : undefined,
           additionalRequirements: input.additionalRequirements,
+          imageContext: input.imageContext,
           seo: (input.primaryKeyword || input.secondaryKeywords || input.searchIntent) ? {
             primaryKeyword: input.primaryKeyword,
             secondaryKeywords: input.secondaryKeywords,
@@ -90,6 +92,7 @@ export function buildActionTools(ctx: ToolContext) {
           tags: z.array(z.string()).optional(),
           scheduledAt: z.string().optional().describe('ISO date string for scheduled generation'),
           additionalRequirements: z.string().optional().describe('Additional instructions for content generation'),
+          imageContext: z.string().optional().describe('Image style description for generated images'),
         })).max(20).describe('Array of topics to add (max 20)'),
       }),
       run: wrapTool(ctx, 'create_topics_bulk', async (input) => {
@@ -106,6 +109,7 @@ export function buildActionTools(ctx: ToolContext) {
           tags: t.tags,
           scheduledAt: t.scheduledAt ? new Date(t.scheduledAt) : undefined,
           additionalRequirements: t.additionalRequirements,
+          imageContext: t.imageContext,
           seo: (t.primaryKeyword || t.secondaryKeywords || t.searchIntent) ? {
             primaryKeyword: t.primaryKeyword,
             secondaryKeywords: t.secondaryKeywords,
@@ -140,6 +144,7 @@ export function buildActionTools(ctx: ToolContext) {
         searchIntent: z.enum(['informational', 'commercial', 'navigational', 'transactional']).optional(),
         tags: z.array(z.string()).optional(),
         additionalRequirements: z.string().optional().describe('Specific writing instructions: key points, angle, structure'),
+        imageContext: z.string().optional().describe('Image style description for generated images (e.g., "Modern minimalist with blue corporate tones")'),
       }),
       run: wrapTool(ctx, 'update_topic', async (input) => {
         await dbConnect();
@@ -152,6 +157,7 @@ export function buildActionTools(ctx: ToolContext) {
         if (input.scheduledAt) update.scheduledAt = new Date(input.scheduledAt);
         if (input.tags) update.tags = input.tags;
         if (input.additionalRequirements) update.additionalRequirements = input.additionalRequirements;
+        if (input.imageContext) update.imageContext = input.imageContext;
         if (input.primaryKeyword || input.secondaryKeywords || input.searchIntent) {
           if (input.primaryKeyword) update['seo.primaryKeyword'] = input.primaryKeyword;
           if (input.secondaryKeywords) update['seo.secondaryKeywords'] = input.secondaryKeywords;
