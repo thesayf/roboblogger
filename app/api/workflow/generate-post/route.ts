@@ -160,29 +160,33 @@ export const { POST } = serve<{ topicId: string }>(
         await Topic.findByIdAndUpdate(topicId, { generationPhase: 'generating_images' });
       });
 
-      try {
-        const imageResult = await context.call<{
-          featuredImage?: string;
-          featuredImageThumbnail?: string;
-          components?: any[];
-          totalImages?: number;
-        }>('generate-images', {
-          url: `${baseUrl}/api/blog/generate-images`,
-          method: 'POST',
-          body: JSON.stringify({
-            title: finalBlogData.blogPost.title,
-            topic: topic.topic,
-            imageContext: finalBlogData._imageGenerationData.imageContext,
-            referenceImages: finalBlogData._imageGenerationData.referenceImages,
-            components: finalBlogData.components || [],
-            generateFeaturedImage: true,
-            returnOnly: true,
-          }),
-          headers: { 'Content-Type': 'application/json' },
-          retries: 1,
-          timeout: '300s',
-        });
+      // IMPORTANT: Do NOT wrap context.call() in try/catch — Upstash Workflow uses
+      // internal WorkflowAbort exceptions for step tracking. Catching them breaks the
+      // step sequence. Instead, check the response status after the call.
+      const imageResult = await context.call<{
+        featuredImage?: string;
+        featuredImageThumbnail?: string;
+        components?: any[];
+        totalImages?: number;
+      }>('generate-images', {
+        url: `${baseUrl}/api/blog/generate-images`,
+        method: 'POST',
+        body: JSON.stringify({
+          title: finalBlogData.blogPost.title,
+          topic: topic.topic,
+          imageContext: finalBlogData._imageGenerationData.imageContext,
+          referenceImages: finalBlogData._imageGenerationData.referenceImages,
+          components: finalBlogData.components || [],
+          generateFeaturedImage: true,
+          returnOnly: true,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        retries: 1,
+        timeout: '300s',
+      });
 
+      // Handle image result — non-200 just means we continue without images
+      await context.run('apply-images', async () => {
         if (imageResult.status === 200 && imageResult.body) {
           if (imageResult.body.featuredImage) {
             finalBlogData.blogPost.featuredImage = imageResult.body.featuredImage;
@@ -195,10 +199,7 @@ export const { POST } = serve<{ topicId: string }>(
         } else {
           console.warn(`[workflow] Image generation returned status ${imageResult.status}, continuing without images`);
         }
-      } catch (imageError) {
-        // Image failure should not kill the pipeline
-        console.error('[workflow] Image generation failed, continuing without images:', imageError);
-      }
+      });
     }
 
     // Step 6: Save the blog post
