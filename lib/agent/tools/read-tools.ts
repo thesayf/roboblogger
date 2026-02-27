@@ -5,6 +5,7 @@ import { executeSearchExistingContent } from '@/lib/seo-research/tool-executors'
 import { searchChatsByEmbedding } from '../embeddings';
 import dbConnect from '@/lib/mongo';
 import BlogPost from '@/models/BlogPost';
+import BlogComponent from '@/models/BlogComponent';
 import Topic from '@/models/Topic';
 import BrandSettings from '@/models/BrandSettings';
 
@@ -224,6 +225,74 @@ export function buildReadTools(ctx: ToolContext) {
             format: img.format,
             createdAt: img.createdAt,
           })),
+        });
+      }),
+    }),
+
+    betaZodTool({
+      name: 'get_post',
+      description: 'Read a single blog post with all its components. Use this before editing a post to see its full content and component IDs.',
+      inputSchema: z.object({
+        postId: z.string().describe('The blog post ID to read'),
+      }),
+      run: wrapTool(ctx, 'get_post', async (input) => {
+        await dbConnect();
+
+        const post = await BlogPost.findOne({ _id: input.postId, owner: ctx.userId })
+          .select('title description slug status tags category seoTitle seoDescription featuredImage featuredImageThumbnail readTime publishedAt createdAt')
+          .lean();
+
+        if (!post) {
+          return JSON.stringify({ error: 'Post not found or not owned by this user.' });
+        }
+
+        const components = await BlogComponent.find({ blogPost: input.postId })
+          .sort({ order: 1 })
+          .lean();
+
+        return JSON.stringify({
+          id: (post as any)._id.toString(),
+          title: (post as any).title,
+          description: (post as any).description,
+          slug: (post as any).slug,
+          status: (post as any).status,
+          tags: (post as any).tags,
+          category: (post as any).category,
+          seoTitle: (post as any).seoTitle,
+          seoDescription: (post as any).seoDescription,
+          featuredImage: (post as any).featuredImage,
+          featuredImageThumbnail: (post as any).featuredImageThumbnail,
+          readTime: (post as any).readTime,
+          publishedAt: (post as any).publishedAt,
+          createdAt: (post as any).createdAt,
+          components: components.map((c: any) => {
+            const base: any = {
+              id: c._id.toString(),
+              type: c.type,
+              order: c.order,
+            };
+            // Include type-specific fields
+            if (c.content) base.content = c.content;
+            if (c.url) base.url = c.url;
+            if (c.src) base.src = c.src;
+            if (c.alt) base.alt = c.alt;
+            if (c.caption) base.caption = c.caption;
+            if (c.variant) base.variant = c.variant;
+            if (c.title) base.title = c.title;
+            if (c.author) base.author = c.author;
+            if (c.citation) base.citation = c.citation;
+            if (c.text) base.text = c.text;
+            if (c.link) base.link = c.link;
+            if (c.style) base.style = c.style;
+            if (c.data) base.data = c.data;
+            if (c.videoUrl) base.videoUrl = c.videoUrl;
+            if (c.videoTitle) base.videoTitle = c.videoTitle;
+            if (c.headers) base.headers = c.headers;
+            if (c.rows) base.rows = c.rows;
+            if (c.tableCaption) base.tableCaption = c.tableCaption;
+            if (c.tableStyle) base.tableStyle = c.tableStyle;
+            return base;
+          }),
         });
       }),
     }),

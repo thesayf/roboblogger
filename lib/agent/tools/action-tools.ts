@@ -4,6 +4,7 @@ import { ToolContext, ToolCallInfo } from '../types';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
 import BlogPost from '@/models/BlogPost';
+import BlogComponent from '@/models/BlogComponent';
 
 function wrapTool(ctx: ToolContext, toolName: string, fn: (input: any) => Promise<string>) {
   return async (input: any): Promise<string> => {
@@ -43,6 +44,7 @@ export function buildActionTools(ctx: ToolContext) {
         scheduledAt: z.string().optional().describe('ISO date string for scheduled generation'),
         additionalRequirements: z.string().optional().describe('Additional instructions for content generation'),
         imageContext: z.string().optional().describe('Image style description for generated images (e.g., "Modern minimalist with blue corporate tones", "Warm watercolor illustrations")'),
+        referenceImages: z.array(z.string()).optional().describe('URLs of reference images from the media library to guide image generation style'),
       }),
       run: wrapTool(ctx, 'create_topic', async (input) => {
         await dbConnect();
@@ -59,6 +61,7 @@ export function buildActionTools(ctx: ToolContext) {
           scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : undefined,
           additionalRequirements: input.additionalRequirements,
           imageContext: input.imageContext,
+          referenceImages: input.referenceImages,
           seo: (input.primaryKeyword || input.secondaryKeywords || input.searchIntent) ? {
             primaryKeyword: input.primaryKeyword,
             secondaryKeywords: input.secondaryKeywords,
@@ -93,6 +96,7 @@ export function buildActionTools(ctx: ToolContext) {
           scheduledAt: z.string().optional().describe('ISO date string for scheduled generation'),
           additionalRequirements: z.string().optional().describe('Additional instructions for content generation'),
           imageContext: z.string().optional().describe('Image style description for generated images'),
+          referenceImages: z.array(z.string()).optional().describe('URLs of reference images from the media library'),
         })).max(20).describe('Array of topics to add (max 20)'),
       }),
       run: wrapTool(ctx, 'create_topics_bulk', async (input) => {
@@ -110,6 +114,7 @@ export function buildActionTools(ctx: ToolContext) {
           scheduledAt: t.scheduledAt ? new Date(t.scheduledAt) : undefined,
           additionalRequirements: t.additionalRequirements,
           imageContext: t.imageContext,
+          referenceImages: t.referenceImages,
           seo: (t.primaryKeyword || t.secondaryKeywords || t.searchIntent) ? {
             primaryKeyword: t.primaryKeyword,
             secondaryKeywords: t.secondaryKeywords,
@@ -145,6 +150,7 @@ export function buildActionTools(ctx: ToolContext) {
         tags: z.array(z.string()).optional(),
         additionalRequirements: z.string().optional().describe('Specific writing instructions: key points, angle, structure'),
         imageContext: z.string().optional().describe('Image style description for generated images (e.g., "Modern minimalist with blue corporate tones")'),
+        referenceImages: z.array(z.string()).optional().describe('URLs of reference images from the media library to guide image generation style'),
       }),
       run: wrapTool(ctx, 'update_topic', async (input) => {
         await dbConnect();
@@ -158,6 +164,7 @@ export function buildActionTools(ctx: ToolContext) {
         if (input.tags) update.tags = input.tags;
         if (input.additionalRequirements) update.additionalRequirements = input.additionalRequirements;
         if (input.imageContext) update.imageContext = input.imageContext;
+        if (input.referenceImages) update.referenceImages = input.referenceImages;
         if (input.primaryKeyword || input.secondaryKeywords || input.searchIntent) {
           if (input.primaryKeyword) update['seo.primaryKeyword'] = input.primaryKeyword;
           if (input.secondaryKeywords) update['seo.secondaryKeywords'] = input.secondaryKeywords;
@@ -213,6 +220,115 @@ export function buildActionTools(ctx: ToolContext) {
         return JSON.stringify({
           success: true,
           message: `Post "${post.title}" status changed to ${input.status}.`,
+        });
+      }),
+    }),
+
+    betaZodTool({
+      name: 'edit_post',
+      description: 'Edit a blog post\'s top-level fields (title, description, SEO data, tags, featured image). Use get_post first to see current values.',
+      inputSchema: z.object({
+        postId: z.string().describe('The blog post ID to edit'),
+        title: z.string().optional().describe('New post title'),
+        description: z.string().optional().describe('New post description'),
+        seoTitle: z.string().optional().describe('New SEO title (50-60 characters)'),
+        seoDescription: z.string().optional().describe('New SEO meta description (150-160 characters)'),
+        tags: z.array(z.string()).optional().describe('New tags array'),
+        category: z.string().optional().describe('New category'),
+        featuredImage: z.string().optional().describe('New featured image URL'),
+        featuredImageThumbnail: z.string().optional().describe('New featured image thumbnail URL'),
+      }),
+      run: wrapTool(ctx, 'edit_post', async (input) => {
+        await dbConnect();
+
+        const update: any = {};
+        if (input.title) update.title = input.title;
+        if (input.description) update.description = input.description;
+        if (input.seoTitle) update.seoTitle = input.seoTitle;
+        if (input.seoDescription) update.seoDescription = input.seoDescription;
+        if (input.tags) update.tags = input.tags;
+        if (input.category) update.category = input.category;
+        if (input.featuredImage) update.featuredImage = input.featuredImage;
+        if (input.featuredImageThumbnail) update.featuredImageThumbnail = input.featuredImageThumbnail;
+
+        const post = await BlogPost.findOneAndUpdate(
+          { _id: input.postId, owner: ctx.userId },
+          { $set: update },
+          { new: true }
+        );
+
+        if (!post) {
+          return JSON.stringify({ error: 'Post not found or not owned by this user.' });
+        }
+
+        ctx.dataChanged.push('posts');
+
+        return JSON.stringify({
+          success: true,
+          message: `Post "${post.title}" updated.`,
+        });
+      }),
+    }),
+
+    betaZodTool({
+      name: 'edit_post_component',
+      description: 'Edit a single component within a blog post. Use get_post first to see component IDs and current content.',
+      inputSchema: z.object({
+        postId: z.string().describe('The blog post ID that owns this component'),
+        componentId: z.string().describe('The component ID to edit'),
+        content: z.string().optional().describe('New content (for rich_text, code_block)'),
+        url: z.string().optional().describe('New image URL (for image components)'),
+        alt: z.string().optional().describe('New alt text (for image components)'),
+        caption: z.string().optional().describe('New caption (for image components)'),
+        variant: z.enum(['info', 'success', 'warning', 'error']).optional().describe('New variant (for callout components)'),
+        title: z.string().optional().describe('New title (for callout components)'),
+        author: z.string().optional().describe('New author (for quote components)'),
+        citation: z.string().optional().describe('New citation (for quote components)'),
+        text: z.string().optional().describe('New text (for CTA components)'),
+        link: z.string().optional().describe('New link (for CTA components)'),
+        style: z.enum(['primary', 'secondary', 'outline']).optional().describe('New style (for CTA components)'),
+        data: z.any().optional().describe('New data (for chart, timeline, and other data-driven components)'),
+      }),
+      run: wrapTool(ctx, 'edit_post_component', async (input) => {
+        await dbConnect();
+
+        // Verify user owns the post
+        const post = await BlogPost.findOne({ _id: input.postId, owner: ctx.userId }).select('_id').lean();
+        if (!post) {
+          return JSON.stringify({ error: 'Post not found or not owned by this user.' });
+        }
+
+        // Verify component belongs to this post
+        const component = await BlogComponent.findOne({ _id: input.componentId, blogPost: input.postId }).lean();
+        if (!component) {
+          return JSON.stringify({ error: 'Component not found or does not belong to this post.' });
+        }
+
+        const update: any = {};
+        if (input.content !== undefined) update.content = input.content;
+        if (input.url !== undefined) update.url = input.url;
+        if (input.alt !== undefined) update.alt = input.alt;
+        if (input.caption !== undefined) update.caption = input.caption;
+        if (input.variant !== undefined) update.variant = input.variant;
+        if (input.title !== undefined) update.title = input.title;
+        if (input.author !== undefined) update.author = input.author;
+        if (input.citation !== undefined) update.citation = input.citation;
+        if (input.text !== undefined) update.text = input.text;
+        if (input.link !== undefined) update.link = input.link;
+        if (input.style !== undefined) update.style = input.style;
+        if (input.data !== undefined) update.data = input.data;
+
+        await BlogComponent.findByIdAndUpdate(
+          input.componentId,
+          { $set: update },
+          { new: true }
+        );
+
+        ctx.dataChanged.push('posts');
+
+        return JSON.stringify({
+          success: true,
+          message: `Component ${input.componentId} updated.`,
         });
       }),
     }),

@@ -600,8 +600,8 @@ ${outputJsonFormat}`;
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5-20250929",
-        max_tokens: 8192, // Increased for longer blog posts
+        model: "claude-opus-4-6",
+        max_tokens: 16384,
         temperature: 0.7, // Slightly higher for creative content
         tools: [
           {
@@ -783,8 +783,8 @@ ${outputJsonFormat}`;
               "anthropic-version": "2023-06-01",
             },
             body: JSON.stringify({
-              model: "claude-sonnet-4-5-20250929",
-              max_tokens: 8192,
+              model: "claude-opus-4-6",
+              max_tokens: 16384,
               temperature: 0.7,
               tools: [
                 {
