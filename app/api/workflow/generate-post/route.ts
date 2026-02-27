@@ -185,20 +185,26 @@ export const { POST } = serve<{ topicId: string }>(
         timeout: '300s',
       });
 
-      // Handle image result — non-200 just means we continue without images
-      await context.run('apply-images', async () => {
+      // Apply image results to blog data. IMPORTANT: We must return the updated
+      // data from context.run() — side-effect mutations are lost on workflow replay
+      // because each step causes a new invocation where previous steps return cached values.
+      finalBlogData = await context.run('apply-images', async () => {
         if (imageResult.status === 200 && imageResult.body) {
-          if (imageResult.body.featuredImage) {
-            finalBlogData.blogPost.featuredImage = imageResult.body.featuredImage;
-            finalBlogData.blogPost.featuredImageThumbnail = imageResult.body.featuredImageThumbnail;
-          }
-          if (imageResult.body.components) {
-            finalBlogData.components = imageResult.body.components;
-          }
           console.log(`[workflow] Image generation succeeded, ${imageResult.body.totalImages} images`);
-        } else {
-          console.warn(`[workflow] Image generation returned status ${imageResult.status}, continuing without images`);
+          return {
+            ...finalBlogData,
+            blogPost: {
+              ...finalBlogData.blogPost,
+              ...(imageResult.body.featuredImage && {
+                featuredImage: imageResult.body.featuredImage,
+                featuredImageThumbnail: imageResult.body.featuredImageThumbnail,
+              }),
+            },
+            components: imageResult.body.components || finalBlogData.components,
+          };
         }
+        console.warn(`[workflow] Image generation returned status ${imageResult.status}, continuing without images`);
+        return finalBlogData;
       });
     }
 
