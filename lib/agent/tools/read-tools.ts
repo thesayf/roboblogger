@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
 import { ToolContext, ToolCallInfo } from '../types';
@@ -226,6 +227,69 @@ export function buildReadTools(ctx: ToolContext) {
             createdAt: img.createdAt,
           })),
         });
+      }),
+    }),
+
+    betaZodTool({
+      name: 'view_image',
+      description: 'View and analyze an image by URL using vision. Fetches the image and returns a detailed visual description. Use after get_media_images to examine specific images closely.',
+      inputSchema: z.object({
+        url: z.string().describe('Image URL to view (from get_media_images results or any ImageKit URL)'),
+        prompt: z.string().optional().describe('Optional specific question about the image (e.g., "describe the color palette", "what style is this"). Defaults to a comprehensive visual description.'),
+      }),
+      run: wrapTool(ctx, 'view_image', async (input) => {
+        const { url, prompt } = input;
+
+        // Fetch image and convert to base64
+        const response = await fetch(url);
+        if (!response.ok) {
+          return JSON.stringify({ error: `Failed to fetch image: ${response.status} ${response.statusText}` });
+        }
+
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        const mediaType = contentType.split(';')[0].trim() as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+        const arrayBuffer = await response.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+        // ~10MB base64 limit (roughly 7.5MB image)
+        if (base64.length > 10_000_000) {
+          return JSON.stringify({ error: 'Image is too large to analyze. Try a smaller image or a thumbnail URL.' });
+        }
+
+        const visionPrompt = prompt || 'Describe this image in detail. Include: the subject/content, color palette, visual style (photographic, illustration, abstract, etc.), mood/atmosphere, composition, and any notable elements. Be specific and concise.';
+
+        const anthropic = new Anthropic();
+        const visionResponse = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1024,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'image',
+                  source: {
+                    type: 'base64',
+                    media_type: mediaType,
+                    data: base64,
+                  },
+                },
+                {
+                  type: 'text',
+                  text: visionPrompt,
+                },
+              ],
+            },
+          ],
+        });
+
+        const description = visionResponse.content
+          .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+          .map((block) => block.text)
+          .join('\n');
+
+        return JSON.stringify({ url, description });
       }),
     }),
 

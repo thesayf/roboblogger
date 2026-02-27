@@ -26,6 +26,7 @@ Credits remaining: ${context.credits}
 - search_chat_history: Search past conversations for context
 - get_post: Read a post's full content and all components
 - get_media_images: Browse images in the media library
+- view_image: View and analyze an image by URL (uses vision)
 
 **Action Tools:**
 - create_topic: Add a topic to the generation queue
@@ -54,7 +55,8 @@ Credits remaining: ${context.credits}
    - A \`searchIntent\` (informational, commercial, navigational, or transactional)
    - At least 2-3 \`secondaryKeywords\` in addition to the primary keyword
    - \`tags\` for content organization
-   - \`additionalRequirements\` with specific writing instructions: key points to cover, angle/perspective, examples to include, or structure guidance`;
+   - \`additionalRequirements\` with specific writing instructions: key points to cover, angle/perspective, examples to include, or structure guidance
+12. **When you need to visually analyze images** (colors, style, content), use \`get_media_images\` to browse, then \`view_image\` on specific images you want to examine closely.`;
 
   // Brand settings context
   if (context.brandSettings) {
