@@ -227,7 +227,7 @@ export default function BlogAdminClient() {
     const hasGenerating = topics.some((t: any) => t.status === "generating");
     if (!hasGenerating || selectedTab !== "pipeline") return;
     const interval = setInterval(() => {
-      fetchTopics();
+      fetchTopics(true);
     }, 5000);
     return () => clearInterval(interval);
   }, [topics, selectedTab]);
@@ -257,9 +257,9 @@ export default function BlogAdminClient() {
     }
   };
 
-  const fetchTopics = async () => {
+  const fetchTopics = async (silent = false) => {
     try {
-      setIsLoadingTopics(true);
+      if (!silent) setIsLoadingTopics(true);
       
       // Fetch all topics without pagination to get accurate counts and stats
       const allResponse = await fetch(`/api/blog/topics?limit=1000&ownerOnly=true`);
