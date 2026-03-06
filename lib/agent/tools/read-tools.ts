@@ -360,5 +360,281 @@ export function buildReadTools(ctx: ToolContext) {
         });
       }),
     }),
+
+    betaZodTool({
+      name: 'audit_content',
+      description: 'Audit published blog posts for SEO and quality issues. Checks for missing meta descriptions, thin content, missing featured images, missing alt text, no internal links, and more. Returns a prioritized list of issues to fix.',
+      inputSchema: z.object({
+        limit: z.number().optional().describe('Number of posts to audit (default 10, max 20)'),
+      }),
+      run: wrapTool(ctx, 'audit_content', async (input) => {
+        await dbConnect();
+
+        const posts = await BlogPost.find({ owner: ctx.userId, status: 'published' })
+          .sort({ publishedAt: -1 })
+          .limit(Math.min(input.limit || 10, 20))
+          .select('title slug description seoTitle seoDescription featuredImage tags readTime publishedAt')
+          .lean();
+
+        const components = await BlogComponent.find({
+          blogPost: { $in: posts.map((p: any) => p._id) },
+        })
+          .select('blogPost type content url alt')
+          .lean();
+
+        const componentsByPost = new Map<string, any[]>();
+        for (const c of components) {
+          const postId = (c as any).blogPost.toString();
+          if (!componentsByPost.has(postId)) componentsByPost.set(postId, []);
+          componentsByPost.get(postId)!.push(c);
+        }
+
+        const audits = posts.map((post: any) => {
+          const postComponents = componentsByPost.get(post._id.toString()) || [];
+          const textComponents = postComponents.filter((c: any) => c.type === 'text' || c.type === 'paragraph');
+          const imageComponents = postComponents.filter((c: any) => c.type === 'image');
+          const totalWordCount = textComponents.reduce((sum: number, c: any) => {
+            return sum + (c.content ? c.content.split(/\s+/).length : 0);
+          }, 0);
+
+          const hasInternalLinks = textComponents.some((c: any) =>
+            c.content && /\[.*?\]\(\/blog\//.test(c.content)
+          );
+
+          const issues: string[] = [];
+
+          if (!post.seoDescription && !post.description) issues.push('Missing meta description');
+          if (!post.seoTitle) issues.push('Missing SEO title');
+          if (!post.featuredImage) issues.push('Missing featured image');
+          if (!post.tags || post.tags.length === 0) issues.push('No tags');
+          if (totalWordCount < 300) issues.push(`Thin content (${totalWordCount} words)`);
+          if (imageComponents.length === 0) issues.push('No images in content');
+          const missingAlt = imageComponents.filter((c: any) => !c.alt).length;
+          if (missingAlt > 0) issues.push(`${missingAlt} image(s) missing alt text`);
+          if (!hasInternalLinks) issues.push('No internal links detected');
+
+          return {
+            id: post._id.toString(),
+            title: post.title,
+            slug: post.slug,
+            publishedAt: post.publishedAt?.toISOString(),
+            wordCount: totalWordCount,
+            componentCount: postComponents.length,
+            imageCount: imageComponents.length,
+            issues,
+            score: Math.max(0, 100 - issues.length * 12),
+          };
+        });
+
+        const totalIssues = audits.reduce((sum, a) => sum + a.issues.length, 0);
+        const avgScore = audits.length > 0
+          ? Math.round(audits.reduce((sum, a) => sum + a.score, 0) / audits.length)
+          : 0;
+
+        return JSON.stringify({
+          summary: `Audited ${audits.length} posts: ${totalIssues} issues found, average score ${avgScore}/100`,
+          averageScore: avgScore,
+          posts: audits.sort((a, b) => a.score - b.score),
+        });
+      }),
+    }),
+
+    betaZodTool({
+      name: 'check_keyword_cannibalization',
+      description: 'Find posts that may be competing for the same keywords (keyword cannibalization). This hurts SEO because Google doesn\'t know which page to rank. Returns groups of posts targeting similar keywords.',
+      inputSchema: z.object({}),
+      run: wrapTool(ctx, 'check_keyword_cannibalization', async () => {
+        await dbConnect();
+
+        const posts = await BlogPost.find({ owner: ctx.userId, status: 'published' })
+          .select('title slug tags seoTitle seoDescription')
+          .lean();
+
+        const topics = await Topic.find({ owner: ctx.userId, status: 'completed' })
+          .select('topic seo.primaryKeyword seo.secondaryKeywords generatedPostId')
+          .lean();
+
+        // Build keyword-to-post mapping
+        const keywordMap = new Map<string, Array<{ title: string; slug: string; postId: string; source: string }>>();
+
+        for (const post of posts) {
+          const postId = (post as any)._id.toString();
+          const keywords: string[] = [];
+
+          if ((post as any).tags) keywords.push(...(post as any).tags);
+          if ((post as any).seoTitle) {
+            keywords.push(...(post as any).seoTitle.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3));
+          }
+
+          // Find matching topic for primary keyword
+          const matchingTopic = topics.find((t: any) => t.generatedPostId === postId);
+          if (matchingTopic) {
+            const seo = (matchingTopic as any).seo;
+            if (seo?.primaryKeyword) keywords.push(seo.primaryKeyword.toLowerCase());
+            if (seo?.secondaryKeywords) keywords.push(...seo.secondaryKeywords.map((k: string) => k.toLowerCase()));
+          }
+
+          const normalized = Array.from(new Set(keywords.map(k => k.toLowerCase().trim()).filter(k => k.length > 3)));
+          for (const kw of normalized) {
+            if (!keywordMap.has(kw)) keywordMap.set(kw, []);
+            keywordMap.get(kw)!.push({
+              title: (post as any).title,
+              slug: (post as any).slug,
+              postId,
+              source: matchingTopic ? 'keyword' : 'tag',
+            });
+          }
+        }
+
+        // Find cannibalization: keywords mapped to 2+ posts
+        const conflicts = Array.from(keywordMap.entries())
+          .filter(([, posts]) => posts.length >= 2)
+          .map(([keyword, posts]) => ({ keyword, posts, count: posts.length }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 20);
+
+        return JSON.stringify({
+          summary: `Found ${conflicts.length} keywords targeted by multiple posts`,
+          totalPostsAnalyzed: posts.length,
+          conflicts,
+        });
+      }),
+    }),
+
+    betaZodTool({
+      name: 'check_post_rankings',
+      description: 'Check where blog posts rank in Google search results for their target keywords using DataForSEO SERP API. Returns current ranking position for each post/keyword combination.',
+      inputSchema: z.object({
+        postIds: z.array(z.string()).max(5).optional().describe('Specific post IDs to check (default: 5 most recent published posts)'),
+        domain: z.string().describe('Your blog domain (e.g., "yourblog.com") to search for in results'),
+        location: z.string().optional().describe('Location for search data (default: "United States")'),
+      }),
+      run: wrapTool(ctx, 'check_post_rankings', async (input) => {
+        await dbConnect();
+
+        let posts;
+        if (input.postIds && input.postIds.length > 0) {
+          posts = await BlogPost.find({
+            _id: { $in: input.postIds },
+            owner: ctx.userId,
+          }).select('title slug seoTitle tags').lean();
+        } else {
+          posts = await BlogPost.find({ owner: ctx.userId, status: 'published' })
+            .sort({ publishedAt: -1 })
+            .limit(5)
+            .select('title slug seoTitle tags')
+            .lean();
+        }
+
+        if (posts.length === 0) {
+          return JSON.stringify({ error: 'No published posts found' });
+        }
+
+        // Get primary keywords from topics
+        const postIds = posts.map((p: any) => p._id.toString());
+        const topics = await Topic.find({
+          owner: ctx.userId,
+          generatedPostId: { $in: postIds },
+        }).select('generatedPostId seo.primaryKeyword').lean();
+
+        const topicMap = new Map(
+          topics.map((t: any) => [t.generatedPostId, t.seo?.primaryKeyword])
+        );
+
+        // Check rankings via DataForSEO SERP API
+        const login = process.env.DATAFORSEO_LOGIN;
+        const password = process.env.DATAFORSEO_PASSWORD;
+
+        if (!login || !password) {
+          return JSON.stringify({ error: 'DataForSEO credentials not configured' });
+        }
+
+        const authString = Buffer.from(`${login}:${password}`).toString('base64');
+        const locationCodes: Record<string, number> = {
+          'United States': 2840, 'United Kingdom': 2826, 'Canada': 2124,
+          'Australia': 2036, 'Germany': 2276, 'India': 2356,
+        };
+        const locationCode = locationCodes[input.location || 'United States'] || 2840;
+
+        const rankings: Array<{
+          postTitle: string;
+          slug: string;
+          keyword: string;
+          position: number | null;
+          url: string | null;
+          title: string | null;
+        }> = [];
+
+        for (const post of posts) {
+          const postId = (post as any)._id.toString();
+          const keyword = topicMap.get(postId) || (post as any).tags?.[0];
+          if (!keyword) continue;
+
+          try {
+            const response = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/regular', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Basic ${authString}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify([{
+                keyword,
+                location_code: locationCode,
+                language_code: 'en',
+                depth: 100,
+              }]),
+            });
+
+            if (!response.ok) {
+              rankings.push({
+                postTitle: (post as any).title,
+                slug: (post as any).slug,
+                keyword,
+                position: null,
+                url: null,
+                title: null,
+              });
+              continue;
+            }
+
+            const data = await response.json();
+            const items = data.tasks?.[0]?.result?.[0]?.items || [];
+            const domain = input.domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+            const match = items.find((item: any) =>
+              item.type === 'organic' && item.url?.includes(domain)
+            );
+
+            rankings.push({
+              postTitle: (post as any).title,
+              slug: (post as any).slug,
+              keyword,
+              position: match?.rank_group || null,
+              url: match?.url || null,
+              title: match?.title || null,
+            });
+          } catch (error: any) {
+            rankings.push({
+              postTitle: (post as any).title,
+              slug: (post as any).slug,
+              keyword,
+              position: null,
+              url: null,
+              title: `Error: ${error.message}`,
+            });
+          }
+        }
+
+        const ranked = rankings.filter(r => r.position !== null);
+        const avgPosition = ranked.length > 0
+          ? Math.round(ranked.reduce((sum, r) => sum + (r.position || 0), 0) / ranked.length)
+          : null;
+
+        return JSON.stringify({
+          summary: `Checked ${rankings.length} posts: ${ranked.length} found in top 100, average position ${avgPosition || 'N/A'}`,
+          domain: input.domain,
+          rankings,
+        });
+      }),
+    }),
   ];
 }

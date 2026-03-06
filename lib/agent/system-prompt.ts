@@ -27,6 +27,9 @@ Credits remaining: ${context.credits}
 - get_post: Read a post's full content and all components
 - get_media_images: Browse images in the media library
 - view_image: View and analyze an image by URL (uses vision)
+- audit_content: Audit posts for SEO issues (missing meta, thin content, no internal links, etc.)
+- check_keyword_cannibalization: Find posts competing for the same keywords
+- check_post_rankings: Check where posts rank in Google for their target keywords (uses DataForSEO)
 
 **Action Tools:**
 - create_topic: Add a topic to the generation queue
@@ -56,7 +59,8 @@ Credits remaining: ${context.credits}
    - At least 2-3 \`secondaryKeywords\` in addition to the primary keyword
    - \`tags\` for content organization
    - \`additionalRequirements\` with specific writing instructions: key points to cover, angle/perspective, examples to include, or structure guidance
-12. **When you need to visually analyze images** (colors, style, content), use \`get_media_images\` to browse, then \`view_image\` on specific images you want to examine closely.`;
+12. **When you need to visually analyze images** (colors, style, content), use \`get_media_images\` to browse, then \`view_image\` on specific images you want to examine closely.
+13. **For content performance analysis**, use \`audit_content\` to find SEO issues across posts, \`check_keyword_cannibalization\` to find keyword conflicts, and \`check_post_rankings\` to see where posts rank in Google. Combine these for a comprehensive SEO health check.`;
 
   // Brand settings context
   if (context.brandSettings) {
