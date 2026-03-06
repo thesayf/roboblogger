@@ -70,6 +70,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SchedulerTab } from "./components/SchedulerTabNew";
 import { BrandTab } from "./components/BrandTab";
+import { RoutinesTab } from "./components/RoutinesTab";
 import { SubscriptionBanner } from "./components/SubscriptionBanner";
 import { TopicDetailSheet } from "./components/TopicDetailSheet";
 import { localDateTimeToUTC, utcToLocalDateTime } from "@/lib/timezone-utils";
@@ -1293,6 +1294,7 @@ export default function BlogAdminClient() {
             <TabsTrigger value="posts">Posts</TabsTrigger>
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="media">Media</TabsTrigger>
+            <TabsTrigger value="routines">Routines</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -2570,6 +2572,11 @@ export default function BlogAdminClient() {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          {/* Routines Tab */}
+          <TabsContent value="routines" className="space-y-6">
+            <RoutinesTab />
           </TabsContent>
 
           {/* Settings Tab */}

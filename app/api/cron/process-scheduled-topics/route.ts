@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
+import Routine, { calculateNextRun } from '@/models/Routine';
 
 export const maxDuration = 60; // 60 seconds for the cron job
 
@@ -136,11 +137,57 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Process due routines
+    const dueRoutines = await Routine.find({
+      enabled: true,
+      nextRunAt: { $lte: now },
+    }).limit(5);
+
+    const routineResults: Array<{ id: string; name: string }> = [];
+
+    for (const routine of dueRoutines) {
+      try {
+        // Immediately update nextRunAt to prevent double-fire
+        routine.nextRunAt = calculateNextRun(routine.schedule);
+        await routine.save();
+
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+        // Fire and forget
+        fetch(`${baseUrl}/api/blog/routines/${routine._id}/execute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+        .then(response => {
+          if (!response.ok) {
+            console.error(`[Cron] Routine execution failed for ${routine._id}: ${response.status}`);
+          } else {
+            console.log(`[Cron] Routine execution triggered for ${routine._id}`);
+          }
+        })
+        .catch(error => {
+          console.error(`[Cron] Failed to trigger routine ${routine._id}:`, error);
+        });
+
+        routineResults.push({ id: routine._id.toString(), name: routine.name });
+        console.log(`[Cron] Triggered routine: ${routine.name}`);
+      } catch (error) {
+        console.error(`[Cron] Error processing routine ${routine._id}:`, error);
+      }
+    }
+
+    if (dueRoutines.length > 0) {
+      console.log(`[Cron] Triggered ${dueRoutines.length} routines`);
+    }
+
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       results,
-      stuckTopicsReset: stuckTopics.length
+      stuckTopicsReset: stuckTopics.length,
+      routinesTriggered: routineResults.length,
+      routines: routineResults,
     });
 
   } catch (error) {
