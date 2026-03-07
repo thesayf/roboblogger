@@ -379,7 +379,8 @@ export function RoutinesTab() {
     const now = Date.now();
     return routines.some((r) => {
       if (!r.enabled) return false;
-      if (r.lastExecution?.status === "running") return true;
+      const execDone = r.lastExecution?.phase === "completed" || r.lastExecution?.phase === "failed";
+      if (r.lastExecution?.status === "running" && !execDone) return true;
       if (r.nextRunAt && new Date(r.nextRunAt).getTime() <= now) return true;
       return false;
     });
@@ -398,10 +399,12 @@ export function RoutinesTab() {
         const runningIds = new Set<string>();
         const execIds: Record<string, string> = {};
         for (const r of newRoutines) {
-          if (r.lastExecution?.status === "running") {
+          const exec = r.lastExecution;
+          const isDone = exec?.phase === "completed" || exec?.phase === "failed";
+          if (exec?.status === "running" && !isDone) {
             runningIds.add(r.id);
-            if (r.lastExecution.id) {
-              execIds[r.id] = r.lastExecution.id;
+            if (exec.id) {
+              execIds[r.id] = exec.id;
             }
           }
         }
@@ -800,7 +803,8 @@ export function RoutinesTab() {
       ) : (
         <div className="space-y-3">
           {routines.map((routine) => {
-            const isRunning = executingRoutines.has(routine.id) || routine.lastExecution?.status === "running";
+            const execDone = routine.lastExecution?.phase === "completed" || routine.lastExecution?.phase === "failed";
+            const isRunning = !execDone && (executingRoutines.has(routine.id) || routine.lastExecution?.status === "running");
             const isOverdue = routine.enabled && routine.nextRunAt && new Date(routine.nextRunAt).getTime() <= Date.now();
             const executionId = activeExecutionIds[routine.id] || routine.lastExecution?.id;
 
