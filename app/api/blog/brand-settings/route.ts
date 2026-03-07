@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
         thingsToAvoid: '',
         exampleContent: '',
         industryNiche: '',
+        referenceImages: [],
       };
       return NextResponse.json(defaultSettings);
     }
@@ -90,6 +91,7 @@ export async function PUT(request: NextRequest) {
           thingsToAvoid: body.thingsToAvoid ?? '',
           exampleContent: body.exampleContent ?? '',
           industryNiche: body.industryNiche ?? '',
+          referenceImages: body.referenceImages ?? [],
         }
       },
       {

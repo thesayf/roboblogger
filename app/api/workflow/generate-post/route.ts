@@ -9,6 +9,8 @@
 import { serve } from '@upstash/workflow/nextjs';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
+import BrandSettings from '@/models/BrandSettings';
+import User from '@/models/User';
 
 const MAX_RESEARCH_TURNS = 15;
 
@@ -160,6 +162,18 @@ export const { POST } = serve<{ topicId: string }>(
         await Topic.findByIdAndUpdate(topicId, { generationPhase: 'generating_images' });
       });
 
+      // Fallback to brand reference images if topic has none
+      let imageRefImages = finalBlogData._imageGenerationData.referenceImages || [];
+      if (imageRefImages.length === 0) {
+        imageRefImages = await context.run('load-brand-ref-images', async () => {
+          await dbConnect();
+          const user = await User.findById(topic.owner).lean() as any;
+          if (!user?.clerkId) return [];
+          const brand = await BrandSettings.findOne({ userId: user.clerkId }).lean() as any;
+          return brand?.referenceImages || [];
+        });
+      }
+
       // IMPORTANT: Do NOT wrap context.call() in try/catch — Upstash Workflow uses
       // internal WorkflowAbort exceptions for step tracking. Catching them breaks the
       // step sequence. Instead, check the response status after the call.
@@ -175,7 +189,7 @@ export const { POST } = serve<{ topicId: string }>(
           title: finalBlogData.blogPost.title,
           topic: topic.topic,
           imageContext: finalBlogData._imageGenerationData.imageContext,
-          referenceImages: finalBlogData._imageGenerationData.referenceImages,
+          referenceImages: imageRefImages,
           components: finalBlogData.components || [],
           generateFeaturedImage: true,
           returnOnly: true,

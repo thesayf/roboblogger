@@ -23,6 +23,9 @@ import {
   CheckCircle,
   Target,
   Sparkles,
+  ImageIcon,
+  X,
+  Plus,
 } from "lucide-react";
 
 interface BrandSettings {
@@ -36,6 +39,14 @@ interface BrandSettings {
   thingsToAvoid: string;
   exampleContent: string;
   industryNiche: string;
+  referenceImages: string[];
+}
+
+interface MediaImage {
+  fileId: string;
+  name: string;
+  url: string;
+  thumbnailUrl: string;
 }
 
 const defaultSettings: BrandSettings = {
@@ -49,6 +60,7 @@ const defaultSettings: BrandSettings = {
   thingsToAvoid: '',
   exampleContent: '',
   industryNiche: '',
+  referenceImages: [],
 };
 
 const toneOptions = [
@@ -67,6 +79,9 @@ export function BrandTab() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [mediaImages, setMediaImages] = useState<MediaImage[]>([]);
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -89,6 +104,7 @@ export function BrandTab() {
           thingsToAvoid: data.thingsToAvoid || '',
           exampleContent: data.exampleContent || '',
           industryNiche: data.industryNiche || '',
+          referenceImages: data.referenceImages || [],
         });
       }
     } catch (err) {
@@ -130,6 +146,41 @@ export function BrandTab() {
 
   const updateField = (field: keyof BrandSettings, value: string) => {
     setSettings(prev => ({ ...prev, [field]: value }));
+    setSaveStatus('idle');
+  };
+
+  const fetchMediaImages = async () => {
+    try {
+      setIsLoadingMedia(true);
+      const res = await fetch('/api/images?limit=50');
+      if (res.ok) {
+        const data = await res.json();
+        setMediaImages(data.images || []);
+      }
+    } catch (err) {
+      console.error('Error fetching media images:', err);
+    } finally {
+      setIsLoadingMedia(false);
+    }
+  };
+
+  const openMediaPicker = () => {
+    setShowMediaPicker(true);
+    fetchMediaImages();
+  };
+
+  const addReferenceImage = (url: string) => {
+    if (settings.referenceImages.length >= 5) return;
+    if (settings.referenceImages.includes(url)) return;
+    setSettings(prev => ({ ...prev, referenceImages: [...prev.referenceImages, url] }));
+    setSaveStatus('idle');
+  };
+
+  const removeReferenceImage = (index: number) => {
+    setSettings(prev => ({
+      ...prev,
+      referenceImages: prev.referenceImages.filter((_, i) => i !== index),
+    }));
     setSaveStatus('idle');
   };
 
@@ -399,6 +450,130 @@ Example:
           <p className="text-[12px] text-[#888888] mt-2">
             Used as a reference for style matching during content generation
           </p>
+        </div>
+      </section>
+
+      {/* Brand Reference Images */}
+      <section className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#F0EEE8]">
+          <div className="flex items-center gap-2">
+            <ImageIcon className="h-5 w-5 text-[#666666]" />
+            <h3 className="text-[16px] font-semibold text-[#111111]" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+              Brand Image Style
+            </h3>
+            <span className="text-[12px] text-[#888888] bg-[#F5F4F0] px-2 py-0.5 rounded-full">Optional</span>
+          </div>
+          <p className="text-[13px] text-[#888888] mt-1">
+            Select up to 5 images from your media library as style inspiration. These will be analyzed by AI to generate images that match your brand aesthetic. Used as a fallback when topics don&apos;t have their own reference images.
+          </p>
+        </div>
+        <div className="p-6">
+          {/* Selected reference images */}
+          {settings.referenceImages.length > 0 && (
+            <div className="flex flex-wrap gap-3 mb-4">
+              {settings.referenceImages.map((url, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={url}
+                    alt={`Reference ${index + 1}`}
+                    className="w-24 h-24 object-cover rounded-lg border border-[#E0DED8]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeReferenceImage(index)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {settings.referenceImages.length < 5 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={openMediaPicker}
+              className="border-dashed border-[#E0DED8] text-[#666666] hover:border-[#CCCCCC]"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {settings.referenceImages.length === 0 ? 'Select from Media Library' : 'Add More Images'}
+            </Button>
+          )}
+
+          {/* Media picker modal */}
+          {showMediaPicker && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+                <div className="px-6 py-4 border-b border-[#F0EEE8] flex items-center justify-between">
+                  <h4 className="text-[16px] font-semibold text-[#111111]">Select Reference Images</h4>
+                  <button onClick={() => setShowMediaPicker(false)} className="text-[#888888] hover:text-[#111111]">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="p-6 overflow-y-auto flex-1">
+                  {isLoadingMedia ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-[#888888]" />
+                    </div>
+                  ) : mediaImages.length === 0 ? (
+                    <div className="text-center py-12 text-[#888888]">
+                      <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-[14px]">No images in your media library</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3">
+                      {mediaImages.map((img) => {
+                        const isSelected = settings.referenceImages.includes(img.url);
+                        return (
+                          <button
+                            key={img.fileId}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                const idx = settings.referenceImages.indexOf(img.url);
+                                if (idx !== -1) removeReferenceImage(idx);
+                              } else {
+                                addReferenceImage(img.url);
+                              }
+                            }}
+                            className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-colors ${
+                              isSelected
+                                ? 'border-[#111111] ring-2 ring-[#111111]/20'
+                                : 'border-transparent hover:border-[#CCCCCC]'
+                            }`}
+                          >
+                            <img
+                              src={img.thumbnailUrl || img.url}
+                              alt={img.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {isSelected && (
+                              <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                <CheckCircle className="h-6 w-6 text-white" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="px-6 py-3 border-t border-[#F0EEE8] flex items-center justify-between">
+                  <span className="text-[12px] text-[#888888]">
+                    {settings.referenceImages.length}/5 images selected
+                  </span>
+                  <Button
+                    onClick={() => setShowMediaPicker(false)}
+                    className="bg-[#111111] hover:bg-[#333333] text-white rounded-full px-5"
+                  >
+                    Done
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

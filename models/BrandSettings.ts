@@ -25,6 +25,9 @@ export interface IBrandSettings extends Document {
   // Industry/Niche (for SEO research)
   industryNiche?: string;
 
+  // Brand Reference Images (used as fallback for image generation style)
+  referenceImages?: string[];
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -91,6 +94,11 @@ const BrandSettingsSchema = new Schema<IBrandSettings>(
       type: String,
       default: '',
     },
+
+    // Brand Reference Images
+    referenceImages: [{
+      type: String,
+    }],
   },
   {
     timestamps: true,
