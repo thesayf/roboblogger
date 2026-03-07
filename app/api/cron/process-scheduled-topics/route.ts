@@ -231,18 +231,33 @@ export async function GET(request: NextRequest) {
       console.warn(`[Cron] ── Stuck execution cleanup: ${stuckExecutions.length} found ──`);
       for (const exec of stuckExecutions) {
         const stuckFor = Math.round((Date.now() - new Date(exec.startedAt).getTime()) / 60000);
-        console.warn(`[Cron]   Execution ${exec._id} stuck for ${stuckFor}min (routine: ${exec.routine})`);
-        exec.status = 'failed';
-        exec.phase = 'failed';
-        exec.completedAt = new Date();
-        exec.error = 'Execution timed out (stuck for over 15 minutes)';
-        exec.liveLog.push({
-          timestamp: new Date(),
-          type: 'error',
-          message: `Execution timed out after ${stuckFor} minutes — marked as failed by system cleanup`,
-        });
-        await exec.save();
-        console.warn(`[Cron]   → Marked as failed`);
+        console.warn(`[Cron]   Execution ${exec._id} stuck for ${stuckFor}min (routine: ${exec.routine}, phase: ${exec.phase})`);
+
+        // If the agent actually completed but the workflow status update didn't land,
+        // mark as success instead of failed
+        if (exec.phase === 'completed') {
+          exec.status = 'success';
+          exec.completedAt = new Date();
+          exec.liveLog.push({
+            timestamp: new Date(),
+            type: 'phase',
+            message: `Status reconciled to success by cleanup (phase was completed, status was still running after ${stuckFor}min)`,
+          });
+          await exec.save();
+          console.warn(`[Cron]   → Reconciled to success (phase was completed)`);
+        } else {
+          exec.status = 'failed';
+          exec.phase = 'failed';
+          exec.completedAt = new Date();
+          exec.error = 'Execution timed out (stuck for over 15 minutes)';
+          exec.liveLog.push({
+            timestamp: new Date(),
+            type: 'error',
+            message: `Execution timed out after ${stuckFor} minutes — marked as failed by system cleanup`,
+          });
+          await exec.save();
+          console.warn(`[Cron]   → Marked as failed`);
+        }
       }
     }
 
