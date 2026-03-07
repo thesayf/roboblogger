@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCredits } from "@/lib/contexts/CreditsContext";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -28,10 +28,29 @@ interface SubscriptionGateProps {
 }
 
 export function SubscriptionGate({ children }: SubscriptionGateProps) {
-  const { subscriptionStatus, isLoading } = useCredits();
+  const { subscriptionStatus, isLoading, refreshCredits } = useCredits();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasSynced = useRef(false);
+
+  // Proactively sync subscription status from Stripe if gate would show paywall
+  useEffect(() => {
+    if (!isLoading && !hasSynced.current && subscriptionStatus !== 'active' && subscriptionStatus !== 'trialing') {
+      hasSynced.current = true;
+      setIsSyncing(true);
+      fetch('/api/user/sync-subscription', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.synced && (data.subscriptionStatus === 'active' || data.subscriptionStatus === 'trialing')) {
+            refreshCredits();
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsSyncing(false));
+    }
+  }, [isLoading, subscriptionStatus, refreshCredits]);
 
   const handleOpenBillingPortal = async () => {
     try {
@@ -72,6 +91,18 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
       const data = await response.json();
 
       if (!response.ok) {
+        // If Stripe says they already have a subscription, sync the DB and refresh
+        if (response.status === 400 && data.error?.includes('already have an active subscription')) {
+          setIsCheckingOut(false);
+          setIsSyncing(true);
+          try {
+            await fetch('/api/user/sync-subscription', { method: 'POST' });
+            await refreshCredits();
+          } finally {
+            setIsSyncing(false);
+          }
+          return;
+        }
         console.error("Checkout error:", data);
         throw new Error(data.error || data.details || "Failed to create checkout session");
       }
@@ -88,8 +119,8 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
     }
   };
 
-  // Show loading state
-  if (isLoading) {
+  // Show loading state (including while syncing subscription from Stripe)
+  if (isLoading || isSyncing) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#FAFAF8' }}>
         <Loader2 className="h-8 w-8 animate-spin text-[#888888]" />
