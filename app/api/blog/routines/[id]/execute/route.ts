@@ -1,12 +1,18 @@
+/**
+ * Thin trigger for routine execution.
+ *
+ * Creates the RoutineExecution record, then fires an Upstash Workflow
+ * via QStash client.trigger() and returns immediately.  The durable
+ * workflow (execute-routine) handles the actual agent run + record updates.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { Client } from '@upstash/workflow';
 import dbConnect from '@/lib/mongo';
 import User from '@/models/User';
-import Routine, { calculateNextRun } from '@/models/Routine';
+import Routine from '@/models/Routine';
 import RoutineExecution from '@/models/RoutineExecution';
-import { executeAgent } from '@/lib/agent/execute-agent';
-import { CurrentUser } from '@/lib/auth/getCurrentUser';
 
-export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 export async function POST(
@@ -23,7 +29,6 @@ export async function POST(
       return NextResponse.json({ error: 'Routine not found' }, { status: 404 });
     }
 
-    // Load user
     const user = await User.findById(routine.owner);
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -38,11 +43,6 @@ export async function POST(
       return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
     }
 
-    // Check credit cap
-    if (user.credits < routine.maxCreditsPerRun) {
-      console.log(`[Routine] User credits (${user.credits}) below routine cap (${routine.maxCreditsPerRun})`);
-    }
-
     // Create execution record
     const execution = await RoutineExecution.create({
       routine: routine._id,
@@ -53,89 +53,37 @@ export async function POST(
       prompt: routine.prompt,
     });
 
-    const currentUser: CurrentUser = {
-      clerkId: routine.ownerClerkId,
-      mongoId: routine.owner.toString(),
-      credits: user.credits,
-      subscriptionStatus: user.subscriptionStatus || 'none',
-    };
+    // Trigger the Upstash Workflow via QStash
+    const baseUrl =
+      process.env.UPSTASH_WORKFLOW_URL ||
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
-    try {
-      console.log(`[Routine] Executing routine ${id}: "${routine.name}"`);
+    const workflowUrl = `${baseUrl}/api/workflow/execute-routine`;
 
-      const result = await executeAgent({
-        user: currentUser,
-        message: `[AUTOMATED ROUTINE: ${routine.name}]\n\n${routine.prompt}`,
-        maxCredits: routine.maxCreditsPerRun,
-      });
+    console.log(`[Routine] Triggering workflow for routine ${id}: "${routine.name}"`);
+    console.log(`[Routine] Workflow URL: ${workflowUrl}`);
 
-      // Update execution
-      execution.status = 'success';
-      execution.completedAt = new Date();
-      execution.response = result.response;
-      execution.toolCalls = result.toolCalls;
-      execution.dataChanged = result.dataChanged;
-      execution.creditsUsed = result.creditsUsed;
-      await execution.save();
-
-      // Update routine stats
-      routine.lastRunAt = new Date();
-      routine.lastRunStatus = 'success';
-      routine.totalRuns += 1;
-      routine.successfulRuns += 1;
-      routine.totalCreditsUsed += result.creditsUsed;
-      routine.nextRunAt = calculateNextRun(routine.schedule);
-
-      // Disable one-time routines after execution
-      if (routine.schedule.frequency === 'once') {
-        routine.enabled = false;
-      }
-
-      await routine.save();
-
-      console.log(`[Routine] Completed ${id}: ${result.toolCalls.length} tool calls, ${result.creditsUsed} credits`);
-
-      return NextResponse.json({
-        success: true,
+    const client = new Client({ token: process.env.QSTASH_TOKEN! });
+    const { workflowRunId } = await client.trigger({
+      url: workflowUrl,
+      body: JSON.stringify({
+        routineId: routine._id.toString(),
         executionId: execution._id.toString(),
-        creditsUsed: result.creditsUsed,
-        toolCalls: result.toolCalls.length,
-        dataChanged: result.dataChanged,
-      });
-    } catch (error: any) {
-      console.error(`[Routine] Failed ${id}:`, error);
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    });
 
-      execution.status = 'failed';
-      execution.completedAt = new Date();
-      execution.error = error.message || 'Unknown error';
-      await execution.save();
+    console.log(`[Routine] Workflow triggered for routine ${id}, runId: ${workflowRunId}`);
 
-      routine.lastRunAt = new Date();
-      routine.lastRunStatus = 'failed';
-      routine.totalRuns += 1;
-      routine.nextRunAt = calculateNextRun(routine.schedule);
-
-      // Disable after 3 consecutive failures
-      const recentFailures = await RoutineExecution.countDocuments({
-        routine: id,
-        status: 'failed',
-        createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-      });
-      if (recentFailures >= 3) {
-        routine.enabled = false;
-        console.log(`[Routine] Disabled ${id} after 3 failures`);
-      }
-
-      await routine.save();
-
-      return NextResponse.json({
-        success: false,
-        error: error.message,
-        executionId: execution._id.toString(),
-      });
-    }
+    return NextResponse.json({
+      success: true,
+      executionId: execution._id.toString(),
+      workflowRunId,
+      message: 'Routine execution started',
+    });
   } catch (error: any) {
-    console.error(`[Routine] Route error for ${id}:`, error);
+    console.error(`[Routine] Trigger error for ${id}:`, error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
