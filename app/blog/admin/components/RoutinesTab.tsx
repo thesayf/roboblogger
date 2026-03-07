@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Clock,
   Plus,
@@ -154,6 +154,7 @@ export function RoutinesTab() {
   const [executingRoutines, setExecutingRoutines] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Create form state
   const [form, setForm] = useState({
@@ -167,22 +168,82 @@ export function RoutinesTab() {
     maxCreditsPerRun: 2.0,
   });
 
+  // Determine if any routine needs polling (running or overdue)
+  const needsPolling = useCallback(() => {
+    if (executingRoutines.size > 0) return true;
+    const now = Date.now();
+    return routines.some((r) => {
+      if (!r.enabled) return false;
+      // Has a running execution
+      if (r.lastExecution?.status === "running") return true;
+      // Is overdue (nextRunAt in the past)
+      if (r.nextRunAt && new Date(r.nextRunAt).getTime() <= now) return true;
+      return false;
+    });
+  }, [routines, executingRoutines]);
+
+  const fetchRoutines = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setIsLoading(true);
+      const response = await fetch("/api/blog/routines");
+      const data = await response.json();
+      if (response.ok) {
+        const newRoutines: Routine[] = data.routines || [];
+        setRoutines(newRoutines);
+
+        // Auto-expand and track running routines
+        const runningIds = new Set<string>();
+        for (const r of newRoutines) {
+          if (r.lastExecution?.status === "running") {
+            runningIds.add(r.id);
+          }
+        }
+        if (runningIds.size > 0) {
+          setExecutingRoutines(runningIds);
+          // Auto-expand the first running routine
+          const firstRunning = newRoutines.find((r) => r.lastExecution?.status === "running");
+          if (firstRunning) {
+            setExpandedRoutine((prev) => prev || firstRunning.id);
+          }
+        } else {
+          setExecutingRoutines(new Set());
+        }
+
+        // Refresh execution history for expanded routine
+        const expanded = expandedRoutine;
+        if (expanded) {
+          fetchExecutionHistory(expanded);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching routines:", error);
+    } finally {
+      if (!silent) setIsLoading(false);
+    }
+  }, [expandedRoutine]);
+
+  // Initial fetch
   useEffect(() => {
     fetchRoutines();
   }, []);
 
-  const fetchRoutines = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch("/api/blog/routines");
-      const data = await response.json();
-      if (response.ok) setRoutines(data.routines || []);
-    } catch (error) {
-      console.error("Error fetching routines:", error);
-    } finally {
-      setIsLoading(false);
+  // Auto-poll when needed
+  useEffect(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
     }
-  };
+
+    if (needsPolling()) {
+      pollRef.current = setInterval(() => {
+        fetchRoutines(true);
+      }, 3000);
+    }
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [needsPolling, fetchRoutines]);
 
   const fetchExecutionHistory = async (routineId: string) => {
     try {
@@ -266,18 +327,12 @@ export function RoutinesTab() {
 
   const executeRoutine = async (id: string) => {
     setExecutingRoutines((prev) => new Set(prev).add(id));
+    setExpandedRoutine(id);
     try {
-      await fetch(`/api/blog/routines/${id}/execute`, { method: "POST" });
-      // Refresh after a delay to let execution complete
-      setTimeout(() => {
-        fetchRoutines();
-        if (expandedRoutine === id) fetchExecutionHistory(id);
-        setExecutingRoutines((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-      }, 5000);
+      // Fire and forget - polling will pick up the running state
+      fetch(`/api/blog/routines/${id}/execute`, { method: "POST" });
+      // Quick refresh to show running state
+      setTimeout(() => fetchRoutines(true), 1000);
     } catch (error) {
       console.error("Error executing routine:", error);
       setExecutingRoutines((prev) => {
@@ -532,35 +587,69 @@ export function RoutinesTab() {
                   className="flex-1 cursor-pointer"
                   onClick={() => toggleExpand(routine.id)}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-2 h-2 rounded-full ${routine.enabled ? "bg-green-500" : "bg-[#CCCCCC]"}`} />
-                    <span className="font-medium text-[14px] text-[#111111]">{routine.name}</span>
-                    {routine.lastRunStatus === "failed" && (
-                      <AlertCircle className="h-3.5 w-3.5 text-red-500" />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 mt-1.5 ml-4">
-                    <span className="text-[12px] text-[#888888] flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {formatSchedule(routine.schedule)}
-                    </span>
-                    {routine.lastRunAt && (
-                      <span className="text-[12px] text-[#AAAAAA]">
-                        Last run: {timeAgo(routine.lastRunAt)}
-                      </span>
-                    )}
-                    {routine.totalRuns > 0 && (
-                      <span className="text-[12px] text-[#AAAAAA]">
-                        {routine.successfulRuns}/{routine.totalRuns} runs
-                      </span>
-                    )}
-                    {routine.nextRunAt && routine.enabled && (
-                      <span className="text-[12px] text-[#AAAAAA] flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Next: {new Date(routine.nextRunAt).toLocaleDateString()} {new Date(routine.nextRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    )}
-                  </div>
+                  {(() => {
+                    const isRunning = executingRoutines.has(routine.id) || routine.lastExecution?.status === "running";
+                    const isOverdue = routine.enabled && routine.nextRunAt && new Date(routine.nextRunAt).getTime() <= Date.now();
+                    return (
+                      <>
+                        <div className="flex items-center gap-2.5">
+                          {isRunning ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+                          ) : (
+                            <div className={`w-2 h-2 rounded-full ${routine.enabled ? "bg-green-500" : "bg-[#CCCCCC]"}`} />
+                          )}
+                          <span className="font-medium text-[14px] text-[#111111]">{routine.name}</span>
+                          {isRunning && (
+                            <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full animate-pulse">
+                              Running...
+                            </span>
+                          )}
+                          {!isRunning && isOverdue && (
+                            <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                              Due
+                            </span>
+                          )}
+                          {!isRunning && routine.lastRunStatus === "failed" && (
+                            <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 mt-1.5 ml-4">
+                          <span className="text-[12px] text-[#888888] flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatSchedule(routine.schedule)}
+                          </span>
+                          {isRunning && routine.lastExecution && (
+                            <span className="text-[12px] text-blue-500 flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Started {timeAgo(routine.lastExecution.completedAt || new Date().toISOString())}
+                            </span>
+                          )}
+                          {!isRunning && routine.lastRunAt && (
+                            <span className="text-[12px] text-[#AAAAAA]">
+                              Last run: {timeAgo(routine.lastRunAt)}
+                            </span>
+                          )}
+                          {routine.totalRuns > 0 && (
+                            <span className="text-[12px] text-[#AAAAAA]">
+                              {routine.successfulRuns}/{routine.totalRuns} runs
+                            </span>
+                          )}
+                          {!isRunning && routine.nextRunAt && routine.enabled && !isOverdue && (
+                            <span className="text-[12px] text-[#AAAAAA] flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              Next: {new Date(routine.nextRunAt).toLocaleDateString()} {new Date(routine.nextRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          )}
+                          {!isRunning && isOverdue && (
+                            <span className="text-[12px] text-amber-500 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Waiting for next scheduled check...
+                            </span>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Button
@@ -613,6 +702,21 @@ export function RoutinesTab() {
                   </Button>
                 </div>
               </div>
+
+              {/* Running progress bar */}
+              {(executingRoutines.has(routine.id) || routine.lastExecution?.status === "running") && (
+                <div className="h-1 bg-blue-100 overflow-hidden">
+                  <div className="h-full bg-blue-500 animate-[shimmer_2s_ease-in-out_infinite] w-1/3" style={{
+                    animation: "shimmer 2s ease-in-out infinite",
+                  }} />
+                  <style jsx>{`
+                    @keyframes shimmer {
+                      0% { transform: translateX(-100%); }
+                      100% { transform: translateX(400%); }
+                    }
+                  `}</style>
+                </div>
+              )}
 
               {/* Expanded Detail */}
               {expandedRoutine === routine.id && (
