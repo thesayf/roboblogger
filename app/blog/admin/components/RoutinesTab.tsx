@@ -206,7 +206,9 @@ function LogEntryIcon({ type }: { type: string }) {
     case "error":
       return <AlertCircle className="h-2.5 w-2.5 text-red-400" />;
     case "phase":
-      return <CircleDot className="h-2.5 w-2.5 text-blue-400" />;
+      return <Brain className="h-2.5 w-2.5 text-purple-400" />;
+    case "text":
+      return <Brain className="h-2.5 w-2.5 text-purple-300" />;
     default:
       return <CircleDot className="h-2.5 w-2.5 text-gray-300" />;
   }
@@ -994,15 +996,19 @@ export function RoutinesTab() {
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  {exec.status === "success" ? (
+                                  {exec.status === "success" || exec.phase === "completed" ? (
                                     <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                                  ) : exec.status === "running" ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
-                                  ) : (
+                                  ) : exec.status === "failed" || exec.phase === "failed" ? (
                                     <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                                  ) : (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
                                   )}
                                   <span className="text-[12px] font-medium text-[#444444]">
-                                    {exec.status === "success" ? "Completed" : exec.status === "running" ? phaseLabel(exec.phase) : "Failed"}
+                                    {exec.status === "success" || exec.phase === "completed"
+                                      ? "Completed"
+                                      : exec.status === "failed" || exec.phase === "failed"
+                                        ? "Failed"
+                                        : phaseLabel(exec.phase)}
                                   </span>
                                   <span className="text-[11px] text-[#AAAAAA]">
                                     {timeAgo(exec.startedAt)}
