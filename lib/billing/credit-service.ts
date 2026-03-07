@@ -22,10 +22,10 @@ const TOOL_COSTS: Record<string, number> = {
   view_image: 0.005,              // Claude Haiku vision
 };
 
-// 2x markup: $1 in API cost = 2 credits. At $5/credit, user pays $10 for $1 of API cost.
-// Adjust CREDITS_PER_DOLLAR to change markup. 2 = 2x cost in credits, so at $5/credit = 10x revenue margin.
-const CREDITS_PER_DOLLAR = 2;
-const MIN_CREDITS_PER_CHAT = 0.1;
+// 2x markup: at $5/credit, CREDITS_PER_DOLLAR = 0.4 so user pays 2x API cost.
+// Formula: API cost × 0.4 = credits → credits × $5 = 2× API cost.
+const CREDITS_PER_DOLLAR = 0.4;
+const MIN_CREDITS_PER_CHAT = 0.02;
 const BLOG_GENERATION_CREDITS = 1;
 
 export interface ChatUsage {
@@ -56,7 +56,7 @@ export function calculateChatCredits(usage: ChatUsage): {
   );
 
   const totalApiCost = claudeCost + toolCost;
-  const credits = Math.max(MIN_CREDITS_PER_CHAT, Math.ceil(totalApiCost * CREDITS_PER_DOLLAR * 100) / 100);
+  const credits = Math.max(MIN_CREDITS_PER_CHAT, Math.round(totalApiCost * CREDITS_PER_DOLLAR * 100) / 100);
 
   return { credits, claudeCost, toolCost, totalApiCost };
 }

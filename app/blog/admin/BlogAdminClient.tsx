@@ -1242,7 +1242,7 @@ export default function BlogAdminClient() {
 
     const requiredCredits = selectedTopics.length;
     if (credits < requiredCredits) {
-      alert(`Insufficient credits. You need ${requiredCredits} credit(s) for ${selectedTopics.length} post(s), but you have ${credits}. Please top up.`);
+      alert(`Insufficient credits. You need ${requiredCredits} credit(s) for ${selectedTopics.length} post(s), but you have ${Math.round(credits * 100) / 100}. Please top up.`);
       return;
     }
 

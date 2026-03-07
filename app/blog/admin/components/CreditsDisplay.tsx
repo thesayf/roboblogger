@@ -132,7 +132,7 @@ export function CreditsDisplay() {
           <div className="flex items-center gap-1.5">
             <Coins className={`h-4 w-4 ${isOutOfCredits ? "text-red-500" : "text-amber-500"}`} />
             <span className={`text-[14px] font-medium ${isOutOfCredits ? "text-red-600" : "text-[#111111]"}`}>
-              {credits}
+              {Math.round(credits * 100) / 100}
             </span>
             <span className={`text-[13px] ${isOutOfCredits ? "text-red-500" : "text-[#666666]"}`}>credits</span>
           </div>
@@ -187,7 +187,7 @@ export function CreditsDisplay() {
               <p className={`text-[28px] font-semibold ${
                 isOutOfCredits ? "text-red-600" : "text-[#111111]"
               }`}>
-                {credits}{" "}
+                {Math.round(credits * 100) / 100}{" "}
                 <span className={`text-[14px] font-normal ${
                   isOutOfCredits ? "text-red-500" : "text-[#666666]"
                 }`}>

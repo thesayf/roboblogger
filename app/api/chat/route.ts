@@ -12,7 +12,7 @@ import { createMemoryClient, addMemory } from '@/lib/agent/memory';
 import { calculateChatCredits, deductCredits } from '@/lib/billing/credit-service';
 
 const CHAT_MODEL = 'claude-sonnet-4-6';
-const MIN_CREDITS_PREFLIGHT = 0.1; // Minimum credits to start a chat
+const MIN_CREDITS_PREFLIGHT = 0.02; // Minimum credits to start a chat
 
 export async function POST(req: Request) {
   try {

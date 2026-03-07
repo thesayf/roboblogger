@@ -364,7 +364,7 @@ export default function SuperAdminDashboard() {
                           {user.status || "none"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{user.credits ?? 0}</TableCell>
+                      <TableCell>{Math.round((user.credits ?? 0) * 100) / 100}</TableCell>
                       <TableCell>{user.lifetimeUsed ?? 0}</TableCell>
                       <TableCell>{user.lifetimePurchased ?? 0}</TableCell>
                       <TableCell className="font-mono text-xs">
