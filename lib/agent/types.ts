@@ -38,6 +38,7 @@ export interface ToolCallInfo {
 
 export interface ToolContext {
   userId: string;
+  clerkId: string;
   sendEvent: (event: string, data: any) => void;
   dataChanged: string[];
   toolCalls: ToolCallInfo[];

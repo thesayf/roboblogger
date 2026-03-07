@@ -96,6 +96,7 @@ export async function POST(req: Request) {
 
         const toolCtx: ToolContext = {
           userId: user.mongoId,
+          clerkId: user.clerkId,
           sendEvent: send,
           dataChanged,
           toolCalls,

@@ -38,6 +38,7 @@ export async function executeAgent(options: {
 
   const toolCtx: ToolContext = {
     userId: user.mongoId,
+    clerkId: user.clerkId,
     sendEvent: () => {},
     dataChanged,
     toolCalls,

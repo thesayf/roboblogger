@@ -164,7 +164,7 @@ export function RoutinesTab() {
     dayOfMonth: 1,
     hour: 9,
     minute: 0,
-    maxCreditsPerRun: 1.0,
+    maxCreditsPerRun: 2.0,
   });
 
   useEffect(() => {
@@ -228,7 +228,7 @@ export function RoutinesTab() {
         setSaveMessage({ type: "success", text: "Routine created" });
         setShowCreate(false);
         setShowTemplates(false);
-        setForm({ name: "", prompt: "", frequency: "weekly", dayOfWeek: 1, dayOfMonth: 1, hour: 9, minute: 0, maxCreditsPerRun: 1.0 });
+        setForm({ name: "", prompt: "", frequency: "weekly", dayOfWeek: 1, dayOfMonth: 1, hour: 9, minute: 0, maxCreditsPerRun: 2.0 });
         fetchRoutines();
       } else {
         const err = await response.json();
@@ -297,7 +297,7 @@ export function RoutinesTab() {
       dayOfMonth: template.schedule.dayOfMonth ?? 1,
       hour: template.schedule.hour,
       minute: template.schedule.minute,
-      maxCreditsPerRun: 1.0,
+      maxCreditsPerRun: 2.0,
     });
     setShowTemplates(false);
     setShowCreate(true);
@@ -418,7 +418,7 @@ export function RoutinesTab() {
                 className="mt-1.5"
               />
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
                 <Label className="text-[13px] font-medium text-[#444444]">Frequency</Label>
                 <Select value={form.frequency} onValueChange={(v) => setForm((f) => ({ ...f, frequency: v }))}>
@@ -458,27 +458,16 @@ export function RoutinesTab() {
                 </div>
               )}
               <div>
-                <Label className="text-[13px] font-medium text-[#444444]">Hour (UTC)</Label>
-                <Select value={String(form.hour)} onValueChange={(v) => setForm((f) => ({ ...f, hour: parseInt(v) }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <SelectItem key={i} value={String(i)}>{String(i).padStart(2, "0")}:00</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-[13px] font-medium text-[#444444]">Max Credits</Label>
-                <Select value={String(form.maxCreditsPerRun)} onValueChange={(v) => setForm((f) => ({ ...f, maxCreditsPerRun: parseFloat(v) }))}>
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0.5">0.5</SelectItem>
-                    <SelectItem value="1">1.0</SelectItem>
-                    <SelectItem value="2">2.0</SelectItem>
-                    <SelectItem value="5">5.0</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="text-[13px] font-medium text-[#444444]">Time (UTC)</Label>
+                <Input
+                  type="time"
+                  value={`${String(form.hour).padStart(2, "0")}:${String(form.minute).padStart(2, "0")}`}
+                  onChange={(e) => {
+                    const [h, m] = e.target.value.split(":").map(Number);
+                    setForm((f) => ({ ...f, hour: h, minute: m }));
+                  }}
+                  className="mt-1.5"
+                />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
