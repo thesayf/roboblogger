@@ -46,13 +46,26 @@ export async function GET() {
     successfulRuns: r.successfulRuns,
     totalCreditsUsed: r.totalCreditsUsed,
     createdAt: r.createdAt,
-    lastExecution: executionMap.get(r._id.toString()) ? {
-      status: (executionMap.get(r._id.toString()) as any).status,
-      response: (executionMap.get(r._id.toString()) as any).response?.slice(0, 500),
-      toolCalls: (executionMap.get(r._id.toString()) as any).toolCalls?.length || 0,
-      creditsUsed: (executionMap.get(r._id.toString()) as any).creditsUsed,
-      completedAt: (executionMap.get(r._id.toString()) as any).completedAt,
-    } : null,
+    lastExecution: executionMap.get(r._id.toString()) ? (() => {
+      const exec = executionMap.get(r._id.toString()) as any;
+      return {
+        id: exec._id.toString(),
+        status: exec.status,
+        phase: exec.phase || 'queued',
+        phaseDetail: exec.phaseDetail,
+        response: exec.response?.slice(0, 500),
+        toolCalls: exec.toolCalls?.length || 0,
+        creditsUsed: exec.creditsUsed,
+        completedAt: exec.completedAt,
+        startedAt: exec.startedAt,
+        error: exec.error,
+        liveLog: (exec.liveLog || []).slice(-5).map((entry: any) => ({
+          timestamp: entry.timestamp,
+          type: entry.type,
+          message: entry.message,
+        })),
+      };
+    })() : null,
   }));
 
   return NextResponse.json({ routines: result });

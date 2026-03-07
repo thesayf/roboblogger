@@ -46,11 +46,18 @@ export async function GET(
       startedAt: e.startedAt,
       completedAt: e.completedAt,
       status: e.status,
+      phase: e.phase || 'queued',
+      phaseDetail: e.phaseDetail,
       response: e.response?.slice(0, 1000),
       toolCalls: e.toolCalls?.map((tc: any) => ({ name: tc.name, success: tc.success })),
       dataChanged: e.dataChanged,
       creditsUsed: e.creditsUsed,
       error: e.error,
+      liveLog: (e.liveLog || []).map((entry: any) => ({
+        timestamp: entry.timestamp,
+        type: entry.type,
+        message: entry.message,
+      })),
     })),
   });
 }

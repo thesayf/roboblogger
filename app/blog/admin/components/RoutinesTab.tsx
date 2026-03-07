@@ -15,6 +15,11 @@ import {
   Zap,
   Calendar,
   RefreshCw,
+  Search,
+  Wrench,
+  Brain,
+  CircleDot,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +32,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+interface LiveLogEntry {
+  timestamp: string;
+  type: "phase" | "tool_start" | "tool_end" | "text" | "error";
+  message: string;
+}
+
+interface LastExecution {
+  id: string;
+  status: string;
+  phase: string;
+  phaseDetail?: string;
+  response: string;
+  toolCalls: number;
+  creditsUsed: number;
+  completedAt: string;
+  startedAt: string;
+  error?: string;
+  liveLog: LiveLogEntry[];
+}
 
 interface Routine {
   id: string;
@@ -49,13 +74,7 @@ interface Routine {
   successfulRuns: number;
   totalCreditsUsed: number;
   createdAt: string;
-  lastExecution?: {
-    status: string;
-    response: string;
-    toolCalls: number;
-    creditsUsed: number;
-    completedAt: string;
-  } | null;
+  lastExecution?: LastExecution | null;
 }
 
 interface RoutineExecution {
@@ -63,11 +82,14 @@ interface RoutineExecution {
   startedAt: string;
   completedAt?: string;
   status: string;
+  phase: string;
+  phaseDetail?: string;
   response: string;
   toolCalls: Array<{ name: string; success: boolean }>;
   dataChanged: string[];
   creditsUsed: number;
   error?: string;
+  liveLog: LiveLogEntry[];
 }
 
 const TEMPLATES = [
@@ -144,6 +166,166 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
+function PhaseIcon({ phase }: { phase: string }) {
+  switch (phase) {
+    case "queued":
+      return <Clock className="h-3 w-3 text-amber-500" />;
+    case "loading_context":
+      return <Search className="h-3 w-3 text-blue-500" />;
+    case "thinking":
+      return <Brain className="h-3 w-3 text-purple-500" />;
+    case "calling_tool":
+      return <Wrench className="h-3 w-3 text-orange-500" />;
+    case "completed":
+      return <CheckCircle className="h-3 w-3 text-green-500" />;
+    case "failed":
+      return <XCircle className="h-3 w-3 text-red-500" />;
+    default:
+      return <CircleDot className="h-3 w-3 text-gray-400" />;
+  }
+}
+
+function phaseLabel(phase: string): string {
+  switch (phase) {
+    case "queued": return "Queued";
+    case "loading_context": return "Loading context";
+    case "thinking": return "Thinking";
+    case "calling_tool": return "Running tool";
+    case "completed": return "Completed";
+    case "failed": return "Failed";
+    default: return phase;
+  }
+}
+
+function LogEntryIcon({ type }: { type: string }) {
+  switch (type) {
+    case "tool_start":
+      return <Wrench className="h-2.5 w-2.5 text-orange-400" />;
+    case "tool_end":
+      return <CheckCircle className="h-2.5 w-2.5 text-green-400" />;
+    case "error":
+      return <AlertCircle className="h-2.5 w-2.5 text-red-400" />;
+    case "phase":
+      return <CircleDot className="h-2.5 w-2.5 text-blue-400" />;
+    default:
+      return <CircleDot className="h-2.5 w-2.5 text-gray-300" />;
+  }
+}
+
+// Live execution monitor for a running routine
+function LiveExecutionMonitor({
+  executionId,
+  routineName,
+}: {
+  executionId: string;
+  routineName: string;
+}) {
+  const [execution, setExecution] = useState<{
+    status: string;
+    phase: string;
+    phaseDetail?: string;
+    liveLog: LiveLogEntry[];
+    error?: string;
+  } | null>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/blog/routines/executions/${executionId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active) setExecution(data);
+        // Keep polling if still running
+        if (data.status === "running" && active) {
+          setTimeout(poll, 2000);
+        }
+      } catch {
+        if (active) setTimeout(poll, 3000);
+      }
+    };
+
+    poll();
+    return () => { active = false; };
+  }, [executionId]);
+
+  // Auto-scroll log
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [execution?.liveLog?.length]);
+
+  if (!execution) {
+    return (
+      <div className="flex items-center gap-2 py-3 px-4">
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+        <span className="text-[12px] text-[#888888]">Connecting...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t border-[#F0EEE8] bg-[#FAFAF8]">
+      {/* Phase indicator */}
+      <div className="px-4 py-2.5 flex items-center gap-2 border-b border-[#F0EEE8]">
+        {execution.status === "running" ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+        ) : (
+          <PhaseIcon phase={execution.phase} />
+        )}
+        <span className="text-[12px] font-medium text-[#444444]">
+          {execution.status === "running" ? phaseLabel(execution.phase) : execution.status === "success" ? "Completed" : "Failed"}
+        </span>
+        {execution.phaseDetail && execution.status === "running" && (
+          <span className="text-[11px] text-[#888888]">
+            — {execution.phaseDetail}
+          </span>
+        )}
+      </div>
+
+      {/* Live log */}
+      <div className="px-4 py-2 max-h-[200px] overflow-y-auto">
+        {execution.liveLog.length === 0 ? (
+          <div className="flex items-center gap-2 py-1">
+            <Loader2 className="h-2.5 w-2.5 animate-spin text-[#AAAAAA]" />
+            <span className="text-[11px] text-[#AAAAAA]">Waiting for first update...</span>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {execution.liveLog.map((entry, i) => (
+              <div key={i} className="flex items-start gap-2 py-0.5">
+                <div className="mt-0.5 flex-shrink-0">
+                  <LogEntryIcon type={entry.type} />
+                </div>
+                <span className={`text-[11px] leading-tight ${
+                  entry.type === "error" ? "text-red-500" : "text-[#666666]"
+                }`}>
+                  {entry.message}
+                </span>
+                <span className="text-[10px] text-[#CCCCCC] ml-auto flex-shrink-0">
+                  {new Date(entry.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div ref={logEndRef} />
+      </div>
+
+      {/* Error display */}
+      {execution.error && (
+        <div className="px-4 py-2 border-t border-red-100 bg-red-50">
+          <div className="flex items-center gap-1.5">
+            <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />
+            <span className="text-[11px] text-red-600">{execution.error}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function RoutinesTab() {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -152,6 +334,7 @@ export function RoutinesTab() {
   const [expandedRoutine, setExpandedRoutine] = useState<string | null>(null);
   const [executionHistory, setExecutionHistory] = useState<Record<string, RoutineExecution[]>>({});
   const [executingRoutines, setExecutingRoutines] = useState<Set<string>>(new Set());
+  const [activeExecutionIds, setActiveExecutionIds] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
@@ -174,9 +357,7 @@ export function RoutinesTab() {
     const now = Date.now();
     return routines.some((r) => {
       if (!r.enabled) return false;
-      // Has a running execution
       if (r.lastExecution?.status === "running") return true;
-      // Is overdue (nextRunAt in the past)
       if (r.nextRunAt && new Date(r.nextRunAt).getTime() <= now) return true;
       return false;
     });
@@ -191,15 +372,21 @@ export function RoutinesTab() {
         const newRoutines: Routine[] = data.routines || [];
         setRoutines(newRoutines);
 
-        // Auto-expand and track running routines
+        // Track running routines and their execution IDs
         const runningIds = new Set<string>();
+        const execIds: Record<string, string> = {};
         for (const r of newRoutines) {
           if (r.lastExecution?.status === "running") {
             runningIds.add(r.id);
+            if (r.lastExecution.id) {
+              execIds[r.id] = r.lastExecution.id;
+            }
           }
         }
+
         if (runningIds.size > 0) {
           setExecutingRoutines(runningIds);
+          setActiveExecutionIds((prev) => ({ ...prev, ...execIds }));
           // Auto-expand the first running routine
           const firstRunning = newRoutines.find((r) => r.lastExecution?.status === "running");
           if (firstRunning) {
@@ -227,7 +414,7 @@ export function RoutinesTab() {
     fetchRoutines();
   }, []);
 
-  // Auto-poll when needed
+  // Auto-poll when needed (slower interval — live monitor handles fast updates)
   useEffect(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
@@ -237,7 +424,7 @@ export function RoutinesTab() {
     if (needsPolling()) {
       pollRef.current = setInterval(() => {
         fetchRoutines(true);
-      }, 3000);
+      }, 5000);
     }
 
     return () => {
@@ -329,12 +516,26 @@ export function RoutinesTab() {
     setExecutingRoutines((prev) => new Set(prev).add(id));
     setExpandedRoutine(id);
     try {
-      // Fire and forget - polling will pick up the running state
-      fetch(`/api/blog/routines/${id}/execute`, { method: "POST" });
-      // Quick refresh to show running state
-      setTimeout(() => fetchRoutines(true), 1000);
+      const res = await fetch(`/api/blog/routines/${id}/execute`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.executionId) {
+          setActiveExecutionIds((prev) => ({ ...prev, [id]: data.executionId }));
+        }
+      } else {
+        const err = await res.json().catch(() => ({ error: "Failed to start routine" }));
+        setSaveMessage({ type: "error", text: err.error || "Failed to start routine" });
+        setExecutingRoutines((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+      // Refresh to pick up new execution
+      setTimeout(() => fetchRoutines(true), 1500);
     } catch (error) {
       console.error("Error executing routine:", error);
+      setSaveMessage({ type: "error", text: "Failed to start routine" });
       setExecutingRoutines((prev) => {
         const next = new Set(prev);
         next.delete(id);
@@ -576,219 +777,257 @@ export function RoutinesTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          {routines.map((routine) => (
-            <div
-              key={routine.id}
-              className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden"
-            >
-              {/* Routine Header */}
-              <div className="px-5 py-4 flex items-center justify-between">
-                <div
-                  className="flex-1 cursor-pointer"
-                  onClick={() => toggleExpand(routine.id)}
-                >
-                  {(() => {
-                    const isRunning = executingRoutines.has(routine.id) || routine.lastExecution?.status === "running";
-                    const isOverdue = routine.enabled && routine.nextRunAt && new Date(routine.nextRunAt).getTime() <= Date.now();
-                    return (
-                      <>
-                        <div className="flex items-center gap-2.5">
-                          {isRunning ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
-                          ) : (
-                            <div className={`w-2 h-2 rounded-full ${routine.enabled ? "bg-green-500" : "bg-[#CCCCCC]"}`} />
-                          )}
-                          <span className="font-medium text-[14px] text-[#111111]">{routine.name}</span>
-                          {isRunning && (
-                            <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full animate-pulse">
-                              Running...
-                            </span>
-                          )}
-                          {!isRunning && isOverdue && (
-                            <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                              Due
-                            </span>
-                          )}
-                          {!isRunning && routine.lastRunStatus === "failed" && (
-                            <AlertCircle className="h-3.5 w-3.5 text-red-500" />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 mt-1.5 ml-4">
-                          <span className="text-[12px] text-[#888888] flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatSchedule(routine.schedule)}
-                          </span>
-                          {isRunning && routine.lastExecution && (
-                            <span className="text-[12px] text-blue-500 flex items-center gap-1">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              Started {timeAgo(routine.lastExecution.completedAt || new Date().toISOString())}
-                            </span>
-                          )}
-                          {!isRunning && routine.lastRunAt && (
-                            <span className="text-[12px] text-[#AAAAAA]">
-                              Last run: {timeAgo(routine.lastRunAt)}
-                            </span>
-                          )}
-                          {routine.totalRuns > 0 && (
-                            <span className="text-[12px] text-[#AAAAAA]">
-                              {routine.successfulRuns}/{routine.totalRuns} runs
-                            </span>
-                          )}
-                          {!isRunning && routine.nextRunAt && routine.enabled && !isOverdue && (
-                            <span className="text-[12px] text-[#AAAAAA] flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              Next: {new Date(routine.nextRunAt).toLocaleDateString()} {new Date(routine.nextRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          )}
-                          {!isRunning && isOverdue && (
-                            <span className="text-[12px] text-amber-500 flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              Waiting for next scheduled check...
-                            </span>
-                          )}
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => executeRoutine(routine.id)}
-                    disabled={executingRoutines.has(routine.id)}
-                    title="Run now"
-                  >
-                    {executingRoutines.has(routine.id) ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Play className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => toggleRoutine(routine.id, !routine.enabled)}
-                    title={routine.enabled ? "Pause" : "Enable"}
-                  >
-                    {routine.enabled ? (
-                      <Pause className="h-3.5 w-3.5 text-[#666666]" />
-                    ) : (
-                      <RefreshCw className="h-3.5 w-3.5 text-[#888888]" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-red-400 hover:text-red-600"
-                    onClick={() => deleteRoutine(routine.id)}
-                    title="Delete"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
+          {routines.map((routine) => {
+            const isRunning = executingRoutines.has(routine.id) || routine.lastExecution?.status === "running";
+            const isOverdue = routine.enabled && routine.nextRunAt && new Date(routine.nextRunAt).getTime() <= Date.now();
+            const executionId = activeExecutionIds[routine.id] || routine.lastExecution?.id;
+
+            return (
+              <div
+                key={routine.id}
+                className={`bg-white rounded-xl border overflow-hidden transition-colors ${
+                  isRunning ? "border-blue-200 shadow-sm shadow-blue-50" : "border-[#E0DED8]"
+                }`}
+              >
+                {/* Routine Header */}
+                <div className="px-5 py-4 flex items-center justify-between">
+                  <div
+                    className="flex-1 cursor-pointer"
                     onClick={() => toggleExpand(routine.id)}
                   >
-                    {expandedRoutine === routine.id ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Running progress bar */}
-              {(executingRoutines.has(routine.id) || routine.lastExecution?.status === "running") && (
-                <div className="h-1 bg-blue-100 overflow-hidden">
-                  <div className="h-full bg-blue-500 animate-[shimmer_2s_ease-in-out_infinite] w-1/3" style={{
-                    animation: "shimmer 2s ease-in-out infinite",
-                  }} />
-                  <style jsx>{`
-                    @keyframes shimmer {
-                      0% { transform: translateX(-100%); }
-                      100% { transform: translateX(400%); }
-                    }
-                  `}</style>
-                </div>
-              )}
-
-              {/* Expanded Detail */}
-              {expandedRoutine === routine.id && (
-                <div className="border-t border-[#F0EEE8]">
-                  {/* Prompt */}
-                  <div className="px-5 py-3 bg-[#FAFAF8]">
-                    <div className="text-[11px] font-medium text-[#888888] uppercase tracking-wide mb-1">Prompt</div>
-                    <div className="text-[13px] text-[#444444] whitespace-pre-wrap">{routine.prompt}</div>
+                    <div className="flex items-center gap-2.5">
+                      {isRunning ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+                      ) : (
+                        <div className={`w-2 h-2 rounded-full ${routine.enabled ? "bg-green-500" : "bg-[#CCCCCC]"}`} />
+                      )}
+                      <span className="font-medium text-[14px] text-[#111111]">{routine.name}</span>
+                      {isRunning && (
+                        <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                          {routine.lastExecution?.phase
+                            ? phaseLabel(routine.lastExecution.phase)
+                            : "Starting..."}
+                        </span>
+                      )}
+                      {!isRunning && isOverdue && (
+                        <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                          Due
+                        </span>
+                      )}
+                      {!isRunning && routine.lastRunStatus === "failed" && (
+                        <span className="text-[11px] font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          Failed
+                        </span>
+                      )}
+                      {!isRunning && routine.lastRunStatus === "success" && routine.lastRunAt && (
+                        <span className="text-[11px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          {timeAgo(routine.lastRunAt)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 mt-1.5 ml-4">
+                      <span className="text-[12px] text-[#888888] flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatSchedule(routine.schedule)}
+                      </span>
+                      {isRunning && routine.lastExecution?.startedAt && (
+                        <span className="text-[12px] text-blue-500 flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Started {timeAgo(routine.lastExecution.startedAt)}
+                        </span>
+                      )}
+                      {routine.totalRuns > 0 && (
+                        <span className="text-[12px] text-[#AAAAAA]">
+                          {routine.successfulRuns}/{routine.totalRuns} runs
+                        </span>
+                      )}
+                      {!isRunning && routine.nextRunAt && routine.enabled && !isOverdue && (
+                        <span className="text-[12px] text-[#AAAAAA] flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Next: {new Date(routine.nextRunAt).toLocaleDateString()} {new Date(routine.nextRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      )}
+                      {!isRunning && isOverdue && (
+                        <span className="text-[12px] text-amber-500 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Waiting for next cron check...
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => executeRoutine(routine.id)}
+                      disabled={!!isRunning}
+                      title="Run now"
+                    >
+                      {isRunning ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => toggleRoutine(routine.id, !routine.enabled)}
+                      title={routine.enabled ? "Pause" : "Enable"}
+                    >
+                      {routine.enabled ? (
+                        <Pause className="h-3.5 w-3.5 text-[#666666]" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5 text-[#888888]" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-red-400 hover:text-red-600"
+                      onClick={() => deleteRoutine(routine.id)}
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => toggleExpand(routine.id)}
+                    >
+                      {expandedRoutine === routine.id ? (
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
 
-                  {/* Execution History */}
-                  <div className="px-5 py-3">
-                    <div className="text-[11px] font-medium text-[#888888] uppercase tracking-wide mb-2">Recent Executions</div>
-                    {!executionHistory[routine.id] ? (
-                      <div className="flex items-center gap-2 py-2">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-[#888888]" />
-                        <span className="text-[12px] text-[#888888]">Loading...</span>
-                      </div>
-                    ) : executionHistory[routine.id].length === 0 ? (
-                      <div className="text-[12px] text-[#AAAAAA] py-2">No executions yet</div>
-                    ) : (
-                      <div className="space-y-2">
-                        {executionHistory[routine.id].map((exec) => (
-                          <div
-                            key={exec.id}
-                            className="rounded-lg border border-[#E0DED8] p-3"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                {exec.status === "success" ? (
-                                  <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                                ) : exec.status === "running" ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
-                                ) : (
-                                  <AlertCircle className="h-3.5 w-3.5 text-red-500" />
-                                )}
-                                <span className="text-[12px] font-medium text-[#444444]">
-                                  {exec.status === "success" ? "Completed" : exec.status === "running" ? "Running" : "Failed"}
-                                </span>
-                                <span className="text-[11px] text-[#AAAAAA]">
-                                  {timeAgo(exec.startedAt)}
-                                </span>
+                {/* Running progress bar */}
+                {isRunning && (
+                  <div className="h-1 bg-blue-100 overflow-hidden">
+                    <div className="h-full bg-blue-500 w-1/3" style={{
+                      animation: "shimmer 2s ease-in-out infinite",
+                    }} />
+                    <style jsx>{`
+                      @keyframes shimmer {
+                        0% { transform: translateX(-100%); }
+                        100% { transform: translateX(400%); }
+                      }
+                    `}</style>
+                  </div>
+                )}
+
+                {/* Live execution monitor — shown when running and expanded */}
+                {isRunning && expandedRoutine === routine.id && executionId && (
+                  <LiveExecutionMonitor
+                    executionId={executionId}
+                    routineName={routine.name}
+                  />
+                )}
+
+                {/* Expanded Detail — shown when NOT running or when running (below monitor) */}
+                {expandedRoutine === routine.id && (
+                  <div className="border-t border-[#F0EEE8]">
+                    {/* Prompt */}
+                    <div className="px-5 py-3 bg-[#FAFAF8]">
+                      <div className="text-[11px] font-medium text-[#888888] uppercase tracking-wide mb-1">Prompt</div>
+                      <div className="text-[13px] text-[#444444] whitespace-pre-wrap">{routine.prompt}</div>
+                    </div>
+
+                    {/* Execution History */}
+                    <div className="px-5 py-3">
+                      <div className="text-[11px] font-medium text-[#888888] uppercase tracking-wide mb-2">Recent Executions</div>
+                      {!executionHistory[routine.id] ? (
+                        <div className="flex items-center gap-2 py-2">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-[#888888]" />
+                          <span className="text-[12px] text-[#888888]">Loading...</span>
+                        </div>
+                      ) : executionHistory[routine.id].length === 0 ? (
+                        <div className="text-[12px] text-[#AAAAAA] py-2">No executions yet</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {executionHistory[routine.id].map((exec) => (
+                            <div
+                              key={exec.id}
+                              className="rounded-lg border border-[#E0DED8] p-3"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {exec.status === "success" ? (
+                                    <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                                  ) : exec.status === "running" ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+                                  ) : (
+                                    <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                                  )}
+                                  <span className="text-[12px] font-medium text-[#444444]">
+                                    {exec.status === "success" ? "Completed" : exec.status === "running" ? phaseLabel(exec.phase) : "Failed"}
+                                  </span>
+                                  <span className="text-[11px] text-[#AAAAAA]">
+                                    {timeAgo(exec.startedAt)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3 text-[11px] text-[#AAAAAA]">
+                                  {exec.toolCalls?.length > 0 && (
+                                    <span>{exec.toolCalls.length} tools</span>
+                                  )}
+                                  {exec.creditsUsed > 0 && (
+                                    <span>{exec.creditsUsed.toFixed(1)} credits</span>
+                                  )}
+                                  {exec.dataChanged?.length > 0 && (
+                                    <span className="text-blue-500">Changed: {exec.dataChanged.join(", ")}</span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="flex items-center gap-3 text-[11px] text-[#AAAAAA]">
-                                {exec.toolCalls?.length > 0 && (
-                                  <span>{exec.toolCalls.length} tools</span>
-                                )}
-                                {exec.creditsUsed > 0 && (
-                                  <span>{exec.creditsUsed.toFixed(1)} credits</span>
-                                )}
-                                {exec.dataChanged?.length > 0 && (
-                                  <span className="text-blue-500">Changed: {exec.dataChanged.join(", ")}</span>
-                                )}
-                              </div>
+                              {exec.response && (
+                                <div className="mt-2 text-[12px] text-[#666666] whitespace-pre-wrap line-clamp-4">
+                                  {exec.response}
+                                </div>
+                              )}
+                              {exec.error && (
+                                <div className="mt-2 text-[12px] text-red-500 flex items-center gap-1.5">
+                                  <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                                  {exec.error}
+                                </div>
+                              )}
+
+                              {/* Show log entries for completed/failed executions */}
+                              {exec.liveLog && exec.liveLog.length > 0 && exec.status !== "running" && (
+                                <details className="mt-2">
+                                  <summary className="text-[11px] text-[#AAAAAA] cursor-pointer hover:text-[#666666]">
+                                    Show execution log ({exec.liveLog.length} entries)
+                                  </summary>
+                                  <div className="mt-1.5 pl-2 border-l-2 border-[#E0DED8] space-y-0.5">
+                                    {exec.liveLog.map((entry, i) => (
+                                      <div key={i} className="flex items-start gap-1.5 py-0.5">
+                                        <LogEntryIcon type={entry.type} />
+                                        <span className={`text-[10px] ${
+                                          entry.type === "error" ? "text-red-500" : "text-[#888888]"
+                                        }`}>
+                                          {entry.message}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </details>
+                              )}
                             </div>
-                            {exec.response && (
-                              <div className="mt-2 text-[12px] text-[#666666] whitespace-pre-wrap line-clamp-4">
-                                {exec.response}
-                              </div>
-                            )}
-                            {exec.error && (
-                              <div className="mt-2 text-[12px] text-red-500">{exec.error}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

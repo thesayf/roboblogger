@@ -7,6 +7,13 @@ export interface IRoutineExecution extends Document {
   startedAt: Date;
   completedAt?: Date;
   status: 'running' | 'success' | 'failed';
+  phase: 'queued' | 'loading_context' | 'thinking' | 'calling_tool' | 'completed' | 'failed';
+  phaseDetail?: string;
+  liveLog: Array<{
+    timestamp: Date;
+    type: 'phase' | 'tool_start' | 'tool_end' | 'text' | 'error';
+    message: string;
+  }>;
   prompt: string;
   response: string;
   toolCalls: Array<{
@@ -49,6 +56,19 @@ const RoutineExecutionSchema = new Schema<IRoutineExecution>({
     default: 'running',
     required: true,
   },
+  phase: {
+    type: String,
+    enum: ['queued', 'loading_context', 'thinking', 'calling_tool', 'completed', 'failed'],
+    default: 'queued',
+  },
+  phaseDetail: {
+    type: String,
+  },
+  liveLog: [{
+    timestamp: { type: Date, default: Date.now },
+    type: { type: String, enum: ['phase', 'tool_start', 'tool_end', 'text', 'error'] },
+    message: String,
+  }],
   prompt: {
     type: String,
     required: true,

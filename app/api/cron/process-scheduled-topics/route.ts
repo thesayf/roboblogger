@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
 import Routine, { calculateNextRun } from '@/models/Routine';
+import RoutineExecution from '@/models/RoutineExecution';
 
 export const maxDuration = 60;
 
@@ -137,49 +138,108 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Process due routines
+    // ── ROUTINES ──────────────────────────────────────────
+    console.log(`[Cron] ── Checking routines ──`);
     const dueRoutines = await Routine.find({
       enabled: true,
       nextRunAt: { $lte: now },
     }).limit(5);
 
+    console.log(`[Cron] Found ${dueRoutines.length} due routines`);
+    if (dueRoutines.length === 0) {
+      // Log next scheduled routines for debugging
+      const nextRoutines = await Routine.find({ enabled: true, nextRunAt: { $exists: true } })
+        .sort({ nextRunAt: 1 })
+        .limit(3)
+        .lean() as any[];
+      if (nextRoutines.length > 0) {
+        console.log(`[Cron] Next scheduled routines:`);
+        for (const r of nextRoutines) {
+          const diff = r.nextRunAt ? Math.round((new Date(r.nextRunAt).getTime() - now.getTime()) / 60000) : '?';
+          console.log(`[Cron]   "${r.name}" → ${r.nextRunAt?.toISOString()} (in ${diff} min)`);
+        }
+      }
+    }
+
     const routineResults: Array<{ id: string; name: string }> = [];
 
     for (const routine of dueRoutines) {
+      const rtag = `[Cron:Routine:${routine._id.toString().slice(-6)}]`;
       try {
+        console.log(`${rtag} Processing: "${routine.name}"`);
+        console.log(`${rtag}   Schedule: ${routine.schedule.frequency} at ${routine.schedule.hour}:${String(routine.schedule.minute).padStart(2, '0')} UTC`);
+        console.log(`${rtag}   Was due at: ${routine.nextRunAt?.toISOString()}`);
+
         // Immediately update nextRunAt to prevent double-fire
+        const oldNextRun = routine.nextRunAt;
         routine.nextRunAt = calculateNextRun(routine.schedule);
         await routine.save();
+        console.log(`${rtag}   nextRunAt updated: ${oldNextRun?.toISOString()} → ${routine.nextRunAt?.toISOString() || 'null'}`);
 
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
-        // Await the thin trigger — it creates the execution record and
-        // fires the Upstash Workflow via QStash, then returns immediately
+        const triggerUrl = `${baseUrl}/api/blog/routines/${routine._id}/execute`;
+        console.log(`${rtag}   Triggering: ${triggerUrl}`);
+
         try {
-          const res = await fetch(`${baseUrl}/api/blog/routines/${routine._id}/execute`, {
+          const triggerStart = Date.now();
+          const res = await fetch(triggerUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
           });
+          const triggerElapsed = Date.now() - triggerStart;
+
           if (!res.ok) {
-            console.error(`[Cron] Routine trigger failed for ${routine._id}: ${res.status}`);
+            const errBody = await res.text().catch(() => 'no body');
+            console.error(`${rtag}   TRIGGER FAILED: HTTP ${res.status} (${triggerElapsed}ms)`);
+            console.error(`${rtag}   Response: ${errBody.slice(0, 300)}`);
           } else {
             const result = await res.json();
-            console.log(`[Cron] Routine trigger sent for ${routine._id}: workflowRunId=${result.workflowRunId}`);
+            console.log(`${rtag}   TRIGGER OK (${triggerElapsed}ms)`);
+            console.log(`${rtag}   executionId: ${result.executionId}`);
+            console.log(`${rtag}   workflowRunId: ${result.workflowRunId}`);
           }
-        } catch (error) {
-          console.error(`[Cron] Failed to trigger routine ${routine._id}:`, error);
+        } catch (error: any) {
+          console.error(`${rtag}   TRIGGER NETWORK ERROR: ${error.message}`);
+          if (error.cause) console.error(`${rtag}   Cause: ${error.cause}`);
         }
 
         routineResults.push({ id: routine._id.toString(), name: routine.name });
-        console.log(`[Cron] Triggered routine: ${routine.name}`);
-      } catch (error) {
-        console.error(`[Cron] Error processing routine ${routine._id}:`, error);
+      } catch (error: any) {
+        console.error(`${rtag}   PROCESSING ERROR: ${error.message}`);
+        if (error.stack) console.error(`${rtag}   Stack: ${error.stack.split('\n').slice(0, 3).join(' | ')}`);
       }
     }
 
     if (dueRoutines.length > 0) {
-      console.log(`[Cron] Triggered ${dueRoutines.length} routines`);
+      console.log(`[Cron] ── Routines summary: ${routineResults.length}/${dueRoutines.length} triggered ──`);
+    }
+
+    // ── STUCK EXECUTION CLEANUP ──────────────────────────
+    const stuckExecutionTimeout = new Date(Date.now() - 15 * 60 * 1000);
+    const stuckExecutions = await RoutineExecution.find({
+      status: 'running',
+      startedAt: { $lt: stuckExecutionTimeout },
+    });
+
+    if (stuckExecutions.length > 0) {
+      console.warn(`[Cron] ── Stuck execution cleanup: ${stuckExecutions.length} found ──`);
+      for (const exec of stuckExecutions) {
+        const stuckFor = Math.round((Date.now() - new Date(exec.startedAt).getTime()) / 60000);
+        console.warn(`[Cron]   Execution ${exec._id} stuck for ${stuckFor}min (routine: ${exec.routine})`);
+        exec.status = 'failed';
+        exec.phase = 'failed';
+        exec.completedAt = new Date();
+        exec.error = 'Execution timed out (stuck for over 15 minutes)';
+        exec.liveLog.push({
+          timestamp: new Date(),
+          type: 'error',
+          message: `Execution timed out after ${stuckFor} minutes — marked as failed by system cleanup`,
+        });
+        await exec.save();
+        console.warn(`[Cron]   → Marked as failed`);
+      }
     }
 
     return NextResponse.json({
