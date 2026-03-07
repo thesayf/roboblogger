@@ -216,9 +216,11 @@ function LogEntryIcon({ type }: { type: string }) {
 function LiveExecutionMonitor({
   executionId,
   routineName,
+  onComplete,
 }: {
   executionId: string;
   routineName: string;
+  onComplete?: () => void;
 }) {
   const [execution, setExecution] = useState<{
     status: string;
@@ -228,6 +230,7 @@ function LiveExecutionMonitor({
     error?: string;
   } | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
+  const completeFiredRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -238,8 +241,21 @@ function LiveExecutionMonitor({
         if (!res.ok) return;
         const data = await res.json();
         if (active) setExecution(data);
-        // Keep polling if still running
-        if (data.status === "running" && active) {
+
+        const isDone =
+          data.status === "success" ||
+          data.status === "failed" ||
+          data.phase === "completed" ||
+          data.phase === "failed";
+
+        if (isDone) {
+          // Notify parent so it can clear the running state
+          if (!completeFiredRef.current && onComplete) {
+            completeFiredRef.current = true;
+            // Small delay to let the user see the final log entry
+            setTimeout(() => onComplete(), 2000);
+          }
+        } else if (active) {
           setTimeout(poll, 2000);
         }
       } catch {
@@ -249,7 +265,7 @@ function LiveExecutionMonitor({
 
     poll();
     return () => { active = false; };
-  }, [executionId]);
+  }, [executionId, onComplete]);
 
   // Auto-scroll log
   useEffect(() => {
@@ -269,15 +285,21 @@ function LiveExecutionMonitor({
     <div className="border-t border-[#F0EEE8] bg-[#FAFAF8]">
       {/* Phase indicator */}
       <div className="px-4 py-2.5 flex items-center gap-2 border-b border-[#F0EEE8]">
-        {execution.status === "running" ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+        {execution.phase === "completed" || execution.status === "success" ? (
+          <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+        ) : execution.phase === "failed" || execution.status === "failed" ? (
+          <AlertCircle className="h-3.5 w-3.5 text-red-500" />
         ) : (
-          <PhaseIcon phase={execution.phase} />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
         )}
         <span className="text-[12px] font-medium text-[#444444]">
-          {execution.status === "running" ? phaseLabel(execution.phase) : execution.status === "success" ? "Completed" : "Failed"}
+          {execution.phase === "completed" || execution.status === "success"
+            ? "Completed"
+            : execution.phase === "failed" || execution.status === "failed"
+              ? "Failed"
+              : phaseLabel(execution.phase)}
         </span>
-        {execution.phaseDetail && execution.status === "running" && (
+        {execution.phaseDetail && execution.status === "running" && execution.phase !== "completed" && (
           <span className="text-[11px] text-[#888888]">
             — {execution.phaseDetail}
           </span>
@@ -929,6 +951,14 @@ export function RoutinesTab() {
                   <LiveExecutionMonitor
                     executionId={executionId}
                     routineName={routine.name}
+                    onComplete={() => {
+                      setExecutingRoutines((prev) => {
+                        const next = new Set(prev);
+                        next.delete(routine.id);
+                        return next;
+                      });
+                      fetchRoutines(true);
+                    }}
                   />
                 )}
 
