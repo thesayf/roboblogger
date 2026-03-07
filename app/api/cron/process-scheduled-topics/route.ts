@@ -154,22 +154,22 @@ export async function GET(request: NextRequest) {
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
-        // Fire and forget — the execute endpoint is a thin trigger that
-        // starts an Upstash Workflow and returns immediately
-        fetch(`${baseUrl}/api/blog/routines/${routine._id}/execute`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        })
-          .then((res) => {
-            if (!res.ok) {
-              console.error(`[Cron] Routine trigger failed for ${routine._id}: ${res.status}`);
-            } else {
-              console.log(`[Cron] Routine trigger sent for ${routine._id}`);
-            }
-          })
-          .catch((error) => {
-            console.error(`[Cron] Failed to trigger routine ${routine._id}:`, error);
+        // Await the thin trigger — it creates the execution record and
+        // fires the Upstash Workflow via QStash, then returns immediately
+        try {
+          const res = await fetch(`${baseUrl}/api/blog/routines/${routine._id}/execute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
           });
+          if (!res.ok) {
+            console.error(`[Cron] Routine trigger failed for ${routine._id}: ${res.status}`);
+          } else {
+            const result = await res.json();
+            console.log(`[Cron] Routine trigger sent for ${routine._id}: workflowRunId=${result.workflowRunId}`);
+          }
+        } catch (error) {
+          console.error(`[Cron] Failed to trigger routine ${routine._id}:`, error);
+        }
 
         routineResults.push({ id: routine._id.toString(), name: routine.name });
         console.log(`[Cron] Triggered routine: ${routine.name}`);
