@@ -86,11 +86,13 @@ export const { POST } = serve<{ routineId: string; executionId: string }>(
         routine.totalRuns += 1;
         routine.successfulRuns += 1;
         routine.totalCreditsUsed += result.body.creditsUsed || 0;
-        routine.nextRunAt = calculateNextRun(routine.schedule);
 
         if (routine.schedule.frequency === 'once') {
           routine.enabled = false;
-          console.log(`${tag} Routine is 'once' — disabling`);
+          routine.nextRunAt = null;
+          console.log(`${tag} Routine is 'once' — disabling, nextRunAt=null`);
+        } else {
+          routine.nextRunAt = calculateNextRun(routine.schedule);
         }
 
         await routine.save();

@@ -120,11 +120,31 @@ RoutineSchema.index({ owner: 1, createdAt: -1 });
 RoutineSchema.index({ enabled: 1, nextRunAt: 1 });
 RoutineSchema.index({ ownerClerkId: 1 });
 
-export function calculateNextRun(schedule: IRoutine['schedule'], from?: Date): Date | null {
+/**
+ * Calculate the next run time for a routine.
+ *
+ * For 'once' routines: returns the next occurrence of the specified hour:minute.
+ * Pass `afterCompletion: true` after a successful run to return null (disabling it).
+ */
+export function calculateNextRun(
+  schedule: IRoutine['schedule'],
+  from?: Date,
+  afterCompletion?: boolean,
+): Date | null {
   const now = from || new Date();
 
   if (schedule.frequency === 'once') {
-    return null;
+    // After a "once" routine completes, return null so it won't run again
+    if (afterCompletion) {
+      return null;
+    }
+    // Before completion, schedule it for the specified time (today or tomorrow)
+    const next = new Date(now);
+    next.setUTCHours(schedule.hour, schedule.minute, 0, 0);
+    if (next <= now) {
+      next.setUTCDate(next.getUTCDate() + 1);
+    }
+    return next;
   }
 
   const next = new Date(now);

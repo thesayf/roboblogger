@@ -172,7 +172,11 @@ export async function GET(request: NextRequest) {
 
         // Immediately update nextRunAt to prevent double-fire
         const oldNextRun = routine.nextRunAt;
-        routine.nextRunAt = calculateNextRun(routine.schedule);
+        // For 'once' routines, set to null so they can't fire again from cron
+        // (the workflow will disable them after completion)
+        routine.nextRunAt = routine.schedule.frequency === 'once'
+          ? null
+          : calculateNextRun(routine.schedule);
         await routine.save();
         console.log(`${rtag}   nextRunAt updated: ${oldNextRun?.toISOString()} → ${routine.nextRunAt?.toISOString() || 'null'}`);
 
