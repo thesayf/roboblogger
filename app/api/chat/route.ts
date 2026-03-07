@@ -1,7 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import dbConnect from '@/lib/mongo';
-import User from '@/models/User';
 import Conversation from '@/models/Conversation';
 import ChatMessage from '@/models/ChatMessage';
 import { loadAgentContext } from '@/lib/agent/context-loader';
@@ -10,8 +9,10 @@ import { buildTools } from '@/lib/agent/tools';
 import { ToolContext, ToolCallInfo } from '@/lib/agent/types';
 import { generateChatEmbedding } from '@/lib/agent/embeddings';
 import { createMemoryClient, addMemory } from '@/lib/agent/memory';
+import { calculateChatCredits, deductCredits } from '@/lib/billing/credit-service';
 
-const CREDITS_PER_EXCHANGE = 0.1;
+const CHAT_MODEL = 'claude-sonnet-4-6';
+const MIN_CREDITS_PREFLIGHT = 0.1; // Minimum credits to start a chat
 
 export async function POST(req: Request) {
   try {
@@ -26,8 +27,8 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: 'Message is required' }), { status: 400 });
     }
 
-    // Credits pre-flight check
-    if (user.credits < CREDITS_PER_EXCHANGE) {
+    // Credits pre-flight check (minimum to start — actual cost calculated after)
+    if (user.credits < MIN_CREDITS_PREFLIGHT) {
       return new Response(
         JSON.stringify({ error: 'Insufficient credits', code: 'INSUFFICIENT_CREDITS' }),
         { status: 402 }
@@ -115,6 +116,9 @@ export async function POST(req: Request) {
 
           let assistantContent = '';
 
+          // Track token usage across all toolRunner iterations
+          const tokenUsage = { inputTokens: 0, outputTokens: 0 };
+
           for await (const messageStream of runner) {
             for await (const event of messageStream) {
               if (
@@ -124,8 +128,23 @@ export async function POST(req: Request) {
                 send('text_delta', { text: event.delta.text });
                 assistantContent += event.delta.text;
               }
+              // Accumulate token usage from each iteration
+              if (event.type === 'message_start' && event.message?.usage) {
+                tokenUsage.inputTokens += event.message.usage.input_tokens || 0;
+              }
+              if (event.type === 'message_delta' && (event as any).usage) {
+                tokenUsage.outputTokens += (event as any).usage.output_tokens || 0;
+              }
             }
           }
+
+          // Calculate actual credit cost based on usage
+          const billing = calculateChatCredits({
+            model: CHAT_MODEL,
+            inputTokens: tokenUsage.inputTokens,
+            outputTokens: tokenUsage.outputTokens,
+            toolCalls,
+          });
 
           // Save user message
           await ChatMessage.create({
@@ -150,15 +169,28 @@ export async function POST(req: Request) {
             })),
           });
 
-          // Deduct credits
-          await User.findByIdAndUpdate(user.mongoId, {
-            $inc: { credits: -CREDITS_PER_EXCHANGE, lifetimeCreditsUsed: CREDITS_PER_EXCHANGE },
-          });
+          // Deduct calculated credits with audit trail
+          const creditsUsed = billing.credits;
+          const deductResult = await deductCredits(
+            user.mongoId,
+            creditsUsed,
+            'chat',
+            `Chat exchange${toolCalls.length > 0 ? ` (${toolCalls.length} tool calls)` : ''}`,
+            {
+              conversationId: conv._id.toString(),
+              toolCalls: toolCalls.map(tc => tc.name),
+              claudeInputTokens: tokenUsage.inputTokens,
+              claudeOutputTokens: tokenUsage.outputTokens,
+              claudeCost: billing.claudeCost,
+              toolCost: billing.toolCost,
+              totalApiCost: billing.totalApiCost,
+            },
+          );
 
           // Update conversation
           const uniqueDataChanged = Array.from(new Set(dataChanged));
           await Conversation.findByIdAndUpdate(conv._id, {
-            $inc: { creditsUsed: CREDITS_PER_EXCHANGE },
+            $inc: { creditsUsed },
             $addToSet: { dataChanged: { $each: uniqueDataChanged } },
           });
 
@@ -171,7 +203,15 @@ export async function POST(req: Request) {
 
           send('done', {
             conversationId: conv._id.toString(),
-            creditsUsed: CREDITS_PER_EXCHANGE,
+            creditsUsed,
+            newBalance: deductResult.success ? deductResult.newBalance : undefined,
+            costBreakdown: {
+              claudeTokens: { input: tokenUsage.inputTokens, output: tokenUsage.outputTokens },
+              toolCalls: toolCalls.map(tc => tc.name),
+              claudeCost: Math.round(billing.claudeCost * 10000) / 10000,
+              toolCost: Math.round(billing.toolCost * 10000) / 10000,
+              totalApiCost: Math.round(billing.totalApiCost * 10000) / 10000,
+            },
             dataChanged: uniqueDataChanged,
           });
 

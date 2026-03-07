@@ -5,6 +5,8 @@ import { auth } from '@clerk/nextjs/server';
 export const dynamic = 'force-dynamic';
 import connectDB from '@/lib/mongo';
 import Topic from '@/models/Topic';
+import User from '@/models/User';
+import { BLOG_GENERATION_CREDITS } from '@/lib/billing/credit-service';
 
 export const maxDuration = 300; // 5 minutes max for Vercel Pro plan
 
@@ -43,6 +45,23 @@ export async function POST(request: NextRequest) {
         { message: 'No valid topics found for generation' },
         { status: 400 }
       );
+    }
+
+    // Check user has enough credits for all topics
+    // (individual deductions happen in each topic's generate route)
+    if (userId) {
+      const user = await User.findOne({ clerkId: userId });
+      const requiredCredits = topics.length * BLOG_GENERATION_CREDITS;
+      if (user && user.credits < requiredCredits) {
+        return NextResponse.json(
+          {
+            message: `Insufficient credits. Need ${requiredCredits} credits for ${topics.length} posts, but you have ${user.credits}.`,
+            required: requiredCredits,
+            available: user.credits,
+          },
+          { status: 402 }
+        );
+      }
     }
 
     const results = {

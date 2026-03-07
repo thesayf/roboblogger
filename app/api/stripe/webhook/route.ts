@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { stripe, PRICING } from '@/lib/stripe';
 import dbConnect from '@/lib/mongo';
 import User from '@/models/User';
+import CreditTransaction from '@/models/CreditTransaction';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -54,9 +55,25 @@ export async function POST(request: NextRequest) {
           // Add credits to user's wallet
           const creditsAmount = parseInt(session.metadata?.creditsAmount || '0', 10);
           if (creditsAmount > 0) {
+            const balanceBefore = user.credits;
             user.credits += creditsAmount;
             user.lifetimeCreditsPurchased += creditsAmount;
             await user.save();
+
+            // Log to transaction ledger
+            await CreditTransaction.create({
+              user: user._id,
+              amount: creditsAmount,
+              balanceBefore,
+              balanceAfter: user.credits,
+              action: 'topup_purchase',
+              description: `Purchased ${creditsAmount} credits (${session.metadata?.creditPack || 'unknown'} pack)`,
+              metadata: {
+                stripePaymentId: session.payment_intent as string,
+                creditPack: session.metadata?.creditPack,
+              },
+            }).catch((err: Error) => console.error('Failed to log credit transaction:', err));
+
             console.log(`Added ${creditsAmount} credits to user ${clerkId}`);
           }
         } else if (checkoutType === 'subscription') {
@@ -117,8 +134,19 @@ export async function POST(request: NextRequest) {
           !user.freeCreditsUsed &&
           event.type === 'customer.subscription.created'
         ) {
+          const balanceBefore = user.credits;
           user.credits += PRICING.freeTrialCredits;
           user.freeCreditsUsed = true;
+
+          await CreditTransaction.create({
+            user: user._id,
+            amount: PRICING.freeTrialCredits,
+            balanceBefore,
+            balanceAfter: user.credits,
+            action: 'trial_grant',
+            description: `Free trial: ${PRICING.freeTrialCredits} credits granted`,
+          }).catch((err: Error) => console.error('Failed to log trial credit transaction:', err));
+
           console.log(`Granted ${PRICING.freeTrialCredits} free trial credits to user`);
         }
 

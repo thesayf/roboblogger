@@ -71,7 +71,7 @@ export function SubscriptionPrompt({
             Start Your Free Trial
           </DialogTitle>
           <DialogDescription className="text-[15px] text-[#666666] text-center">
-            5-day free trial with 10 credits included
+            5-day free trial with $20 free credits included
           </DialogDescription>
         </DialogHeader>
 
@@ -100,7 +100,7 @@ export function SubscriptionPrompt({
             <ul className="space-y-2">
               <li className="flex items-center gap-2 text-[14px] text-emerald-700">
                 <Check className="h-4 w-4 text-emerald-500" />
-                10 free credits ($50 value)
+                $20 free credits to get started
               </li>
               <li className="flex items-center gap-2 text-[14px] text-emerald-700">
                 <Check className="h-4 w-4 text-emerald-500" />

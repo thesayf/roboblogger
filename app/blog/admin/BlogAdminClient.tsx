@@ -74,9 +74,11 @@ import { RoutinesTab } from "./components/RoutinesTab";
 import { SubscriptionBanner } from "./components/SubscriptionBanner";
 import { TopicDetailSheet } from "./components/TopicDetailSheet";
 import { localDateTimeToUTC, utcToLocalDateTime } from "@/lib/timezone-utils";
+import { useCredits } from "@/lib/contexts/CreditsContext";
 
 export default function BlogAdminClient() {
   const router = useRouter();
+  const { credits, canGenerate, refreshCredits } = useCredits();
   const [selectedTab, setSelectedTab] = useState("posts");
   const [showNewPostDialog, setShowNewPostDialog] = useState(false);
   const [newPostMethod, setNewPostMethod] = useState<
@@ -529,13 +531,21 @@ export default function BlogAdminClient() {
 
   // Topic management functions
   const handleGenerateTopic = async (topicId: string) => {
+    if (!canGenerate) {
+      alert("You need credits to generate blog posts. Please top up your credits.");
+      return;
+    }
     try {
       const response = await fetch(`/api/blog/topics/${topicId}/generate`, {
         method: "POST",
       });
 
       if (response.ok) {
+        refreshCredits(); // Update credit balance after deduction
         fetchTopics(); // Refresh the list to show "Generating" status
+      } else if (response.status === 402) {
+        const error = await response.json();
+        alert(`Insufficient credits: need ${error.required}, have ${error.available}. Please top up.`);
       } else {
         const error = await response.json();
         alert(`Failed to generate blog post: ${error.message}`);
@@ -1225,7 +1235,18 @@ export default function BlogAdminClient() {
       return;
     }
 
-    const confirmMessage = `Generate ${selectedTopics.length} blog posts? This may take several minutes.`;
+    if (!canGenerate) {
+      alert("You need credits to generate blog posts. Please top up your credits.");
+      return;
+    }
+
+    const requiredCredits = selectedTopics.length;
+    if (credits < requiredCredits) {
+      alert(`Insufficient credits. You need ${requiredCredits} credit(s) for ${selectedTopics.length} post(s), but you have ${credits}. Please top up.`);
+      return;
+    }
+
+    const confirmMessage = `Generate ${selectedTopics.length} blog posts? This will use ${requiredCredits} credit(s) and may take several minutes.`;
     if (!confirm(confirmMessage)) return;
 
     try {
@@ -1244,11 +1265,15 @@ export default function BlogAdminClient() {
 
       if (response.ok) {
         const result = await response.json();
+        refreshCredits(); // Update credit balance
         alert(
           `Batch generation completed! Successful: ${result.results.successful}, Failed: ${result.results.failed}`
         );
         setSelectedTopics([]);
         await fetchTopics(); // Refresh the list
+      } else if (response.status === 402) {
+        const error = await response.json();
+        alert(`Insufficient credits: ${error.message}`);
       } else {
         const error = await response.json();
         alert(`Batch generation failed: ${error.message}`);
@@ -1497,6 +1522,7 @@ export default function BlogAdminClient() {
                     )}
                   </Button>
                 )}
+                {/* AI Generate button hidden — feature available via chat agent
                 <Button
                   variant="outline"
                   onClick={() => router.push("/blog/admin/bulk/generate")}
@@ -1504,6 +1530,7 @@ export default function BlogAdminClient() {
                   <Brain className="h-4 w-4 mr-2" />
                   AI Generate
                 </Button>
+                */}
 
                 <Dialog
                   open={showAddTopicDialog}

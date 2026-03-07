@@ -35,8 +35,8 @@ export const PRICING = {
       credits: 22, // 2 bonus credits
     },
   },
-  // Free trial credits
-  freeTrialCredits: 10,
+  // Free trial credits ($20 value at $5/credit)
+  freeTrialCredits: 4,
   // Cost per credit (for display)
   costPerCredit: 500, // $5.00
 };

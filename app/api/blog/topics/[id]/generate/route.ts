@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Client } from '@upstash/workflow';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
+import { deductCredits, BLOG_GENERATION_CREDITS } from '@/lib/billing/credit-service';
 
 // POST /api/blog/topics/[id]/generate - Trigger blog generation workflow
 export async function POST(
@@ -25,6 +26,29 @@ export async function POST(
         { message: 'Topic has already been generated. Blog post ID: ' + topic.generatedPostId },
         { status: 400 }
       );
+    }
+
+    // Deduct credits before starting generation
+    const ownerId = topic.owner?.toString();
+    if (ownerId) {
+      const result = await deductCredits(
+        ownerId,
+        BLOG_GENERATION_CREDITS,
+        'blog_generation',
+        `Blog generation: "${topic.topic}"`,
+        { topicId: topic._id.toString() },
+      );
+
+      if (!result.success) {
+        return NextResponse.json(
+          {
+            message: 'Insufficient credits for blog generation',
+            required: BLOG_GENERATION_CREDITS,
+            available: result.available,
+          },
+          { status: 402 }
+        );
+      }
     }
 
     // Mark as generating if not already
