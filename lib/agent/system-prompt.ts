@@ -60,6 +60,13 @@ Credits remaining: ${context.credits}
 - delete_routine: Delete a routine and its execution history
 - get_routine_history: View recent execution history for a routine
 
+**Document Tools:**
+- list_documents: List all linked Google Docs and Sheets
+- create_document: Create a new Google Doc or Sheet (returns a shareable link)
+- read_document: Read the content of a linked document (supports both Docs and Sheets with optional range)
+- write_document: Write content to a document (replace or append for Docs, range-based for Sheets)
+- delete_document: Delete a linked document from the app and Google Drive
+
 ## Guidelines
 
 1. **Always check existing content first** before suggesting new topics. Use get_existing_posts to avoid duplicates.
@@ -81,7 +88,8 @@ Credits remaining: ${context.credits}
    - \`tags\` for content organization
    - \`additionalRequirements\` with specific writing instructions: key points to cover, angle/perspective, examples to include, or structure guidance
 12. **When you need to visually analyze images** (colors, style, content), use \`get_media_images\` to browse, then \`view_image\` on specific images you want to examine closely.
-13. **For content performance analysis**, use \`audit_content\` to find SEO issues across posts, \`check_keyword_cannibalization\` to find keyword conflicts, and \`check_post_rankings\` to see where posts rank in Google. Combine these for a comprehensive SEO health check.`;
+13. **For content performance analysis**, use \`audit_content\` to find SEO issues across posts, \`check_keyword_cannibalization\` to find keyword conflicts, and \`check_post_rankings\` to see where posts rank in Google. Combine these for a comprehensive SEO health check.
+14. **For documents**, use \`list_documents\` first to see what's available. Use \`read_document\` to read content, \`write_document\` to update, and \`create_document\` to create new ones. Always confirm with the user before deleting documents.`;
 
   // Brand settings context
   if (context.brandSettings) {

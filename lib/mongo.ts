@@ -9,6 +9,8 @@ import BlogComponent from "@/models/BlogComponent";
 import Topic from "@/models/Topic";
 import Conversation from "@/models/Conversation";
 import ChatMessage from "@/models/ChatMessage";
+import GoogleIntegration from "@/models/GoogleIntegration";
+import LinkedDocument from "@/models/LinkedDocument";
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Invalid/Missing environment variable: "MONGODB_URI"');

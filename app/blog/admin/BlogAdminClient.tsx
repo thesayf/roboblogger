@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { blogApi } from "@/lib/blogApi";
 import {
   Brain,
@@ -71,6 +71,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SchedulerTab } from "./components/SchedulerTabNew";
 import { BrandTab } from "./components/BrandTab";
 import { RoutinesTab } from "./components/RoutinesTab";
+import { DocumentsTab } from "./components/DocumentsTab";
 import { SubscriptionBanner } from "./components/SubscriptionBanner";
 import { TopicDetailSheet } from "./components/TopicDetailSheet";
 import { localDateTimeToUTC, utcToLocalDateTime } from "@/lib/timezone-utils";
@@ -78,8 +79,17 @@ import { useCredits } from "@/lib/contexts/CreditsContext";
 
 export default function BlogAdminClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { credits, canGenerate, refreshCredits } = useCredits();
-  const [selectedTab, setSelectedTab] = useState("posts");
+  const [selectedTab, setSelectedTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const tab = new URLSearchParams(window.location.search).get("tab");
+      if (tab && ["posts", "pipeline", "media", "routines", "documents", "settings"].includes(tab)) {
+        return tab;
+      }
+    }
+    return "posts";
+  });
   const [showNewPostDialog, setShowNewPostDialog] = useState(false);
   const [newPostMethod, setNewPostMethod] = useState<
     "ai" | "manual" | "import" | null
@@ -1320,6 +1330,7 @@ export default function BlogAdminClient() {
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="media">Media</TabsTrigger>
             <TabsTrigger value="routines">Routines</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -2604,6 +2615,11 @@ export default function BlogAdminClient() {
           {/* Routines Tab */}
           <TabsContent value="routines" className="space-y-6">
             <RoutinesTab />
+          </TabsContent>
+
+          {/* Documents Tab */}
+          <TabsContent value="documents" className="space-y-6">
+            <DocumentsTab />
           </TabsContent>
 
           {/* Settings Tab */}
