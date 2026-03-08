@@ -21,7 +21,10 @@ export const metadata: Metadata = {
   description:
     "AI that researches, writes, and publishes SEO-optimized blog posts for your app. Headless API. Beautiful components. Zero effort.",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/V.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: "/V.png",
   },
   openGraph: {
     type: "website",
