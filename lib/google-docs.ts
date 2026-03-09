@@ -2,7 +2,6 @@ import { google } from 'googleapis';
 
 const SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/userinfo.email',
 ];
 
@@ -171,13 +170,18 @@ export async function createGoogleSheet(
   title: string
 ): Promise<{ sheetId: string; sheetUrl: string }> {
   const auth = getAuthenticatedClient(refreshToken);
-  const sheets = google.sheets({ version: 'v4', auth });
+  const drive = google.drive({ version: 'v3', auth });
 
-  const spreadsheet = await sheets.spreadsheets.create({
-    requestBody: { properties: { title } },
+  // Create via Drive API (covered by drive.file scope) instead of Sheets API
+  const file = await drive.files.create({
+    requestBody: {
+      name: title,
+      mimeType: 'application/vnd.google-apps.spreadsheet',
+    },
+    fields: 'id',
   });
 
-  const sheetId = spreadsheet.data.spreadsheetId!;
+  const sheetId = file.data.id!;
   const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
 
   return { sheetId, sheetUrl };
