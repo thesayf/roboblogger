@@ -1,5 +1,27 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-namespace */
+declare global {
+  interface Window {
+    gapi: any;
+    google: any;
+  }
+}
+
+function loadGooglePickerScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.gapi) {
+      resolve();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://apis.google.com/js/api.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Google API"));
+    document.head.appendChild(script);
+  });
+}
+
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -17,6 +39,7 @@ import {
   CheckCircle,
   AlertCircle,
   RefreshCw,
+  Link,
 } from "lucide-react";
 import {
   Dialog,
@@ -64,6 +87,7 @@ export function DocumentsTab() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isPickerLoading, setIsPickerLoading] = useState(false);
 
   // Check for google=connected param from OAuth callback
   useEffect(() => {
@@ -164,6 +188,94 @@ export function DocumentsTab() {
       setError("Failed to create document");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function openPicker() {
+    setIsPickerLoading(true);
+    setError(null);
+    try {
+      // Get access token from our backend
+      const tokenRes = await fetch("/api/integrations/google/token");
+      if (!tokenRes.ok) {
+        setError("Failed to get Google access token");
+        return;
+      }
+      const { accessToken } = await tokenRes.json();
+
+      // Load the Google Picker API script if not already loaded
+      await loadGooglePickerScript();
+
+      // Wait for gapi to be ready
+      await new Promise<void>((resolve, reject) => {
+        window.gapi.load("picker", { callback: resolve, onerror: reject });
+      });
+
+      const docsView = new window.google.picker.DocsView()
+        .setIncludeFolders(true)
+        .setMimeTypes(
+          "application/vnd.google-apps.document,application/vnd.google-apps.spreadsheet"
+        )
+        .setMode(window.google.picker.DocsViewMode.LIST);
+
+      const sharedView = new window.google.picker.DocsView()
+        .setIncludeFolders(true)
+        .setMimeTypes(
+          "application/vnd.google-apps.document,application/vnd.google-apps.spreadsheet"
+        )
+        .setOwnedByMe(false)
+        .setMode(window.google.picker.DocsViewMode.LIST);
+
+      const picker = new window.google.picker.PickerBuilder()
+        .addView(docsView)
+        .addView(sharedView)
+        .setOAuthToken(accessToken)
+        .setCallback(async (data: any) => {
+          if (data.action === "picked" && data.docs?.length > 0) {
+            const picked = data.docs[0];
+            await linkExistingDocument(picked.id, picked.name, picked.url, picked.mimeType);
+          }
+        })
+        .setTitle("Select a Google Doc or Sheet")
+        .build();
+
+      picker.setVisible(true);
+    } catch (err) {
+      console.error("Picker error:", err);
+      setError("Failed to open Google Picker");
+    } finally {
+      setIsPickerLoading(false);
+    }
+  }
+
+  async function linkExistingDocument(
+    googleId: string,
+    name: string,
+    url: string,
+    mimeType: string
+  ) {
+    setError(null);
+    try {
+      const res = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "link",
+          name,
+          googleId,
+          googleUrl: url,
+          mimeType,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to link document");
+        return;
+      }
+      setDocuments((prev) => [data, ...prev]);
+      setSuccessMsg(`Linked "${data.name}"`);
+    } catch {
+      setError("Failed to link document");
     }
   }
 
@@ -283,6 +395,19 @@ export function DocumentsTab() {
               >
                 <RefreshCw className="h-4 w-4 mr-1" />
                 Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openPicker}
+                disabled={isPickerLoading}
+              >
+                {isPickerLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <Link className="h-4 w-4 mr-1" />
+                )}
+                Link Existing
               </Button>
               <Button
                 size="sm"

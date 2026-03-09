@@ -71,8 +71,48 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, type: createType, content } = body;
+    const { name, type: createType, content, mode, googleId: existingGoogleId, googleUrl: existingGoogleUrl, mimeType } = body;
 
+    // ── Link existing document (from Picker) ──
+    if (mode === 'link') {
+      if (!existingGoogleId || !name) {
+        return NextResponse.json({ error: 'googleId and name are required' }, { status: 400 });
+      }
+
+      // Check if already linked
+      const existing = await LinkedDocument.findOne({ owner: user.mongoId, googleId: existingGoogleId });
+      if (existing) {
+        return NextResponse.json({ error: 'This document is already linked' }, { status: 400 });
+      }
+
+      const isSheet = mimeType === 'application/vnd.google-apps.spreadsheet';
+      const docType = isSheet ? 'google_sheet' : 'google_doc';
+      const googleUrl = isSheet
+        ? `https://docs.google.com/spreadsheets/d/${existingGoogleId}/edit`
+        : `https://docs.google.com/document/d/${existingGoogleId}/edit`;
+
+      const doc = new LinkedDocument({
+        owner: user.mongoId,
+        ownerClerkId: user.clerkId,
+        name,
+        type: docType,
+        googleId: existingGoogleId,
+        googleUrl: existingGoogleUrl || googleUrl,
+        metadata: { title: name },
+      });
+      await doc.save();
+
+      return NextResponse.json({
+        id: doc._id.toString(),
+        name: doc.name,
+        type: doc.type,
+        googleId: existingGoogleId,
+        googleUrl: doc.googleUrl,
+        metadata: doc.metadata,
+      });
+    }
+
+    // ── Create new document ──
     if (!name) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 });
     }
