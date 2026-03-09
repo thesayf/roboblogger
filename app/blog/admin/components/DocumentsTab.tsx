@@ -117,21 +117,9 @@ export function DocumentsTab() {
     }
   }
 
-  async function connectGoogle() {
+  function connectGoogle() {
     setIsConnecting(true);
-    try {
-      const res = await fetch("/api/integrations/google/auth");
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setError("Failed to start Google connection");
-        setIsConnecting(false);
-      }
-    } catch {
-      setError("Failed to connect Google");
-      setIsConnecting(false);
-    }
+    window.location.href = "/api/integrations/google/auth";
   }
 
   async function disconnectGoogle() {
