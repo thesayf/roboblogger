@@ -8,6 +8,24 @@ declare global {
   }
 }
 
+function parseGoogleUrl(url: string): { id: string; type: "google_doc" | "google_sheet"; mimeType: string } | null {
+  try {
+    // Match Google Docs: https://docs.google.com/document/d/XXXX/...
+    const docMatch = url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+    if (docMatch) {
+      return { id: docMatch[1], type: "google_doc", mimeType: "application/vnd.google-apps.document" };
+    }
+    // Match Google Sheets: https://docs.google.com/spreadsheets/d/XXXX/...
+    const sheetMatch = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (sheetMatch) {
+      return { id: sheetMatch[1], type: "google_sheet", mimeType: "application/vnd.google-apps.spreadsheet" };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function loadGooglePickerScript(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (window.gapi) {
@@ -88,6 +106,10 @@ export function DocumentsTab() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isPickerLoading, setIsPickerLoading] = useState(false);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkName, setLinkName] = useState("");
+  const [isLinking, setIsLinking] = useState(false);
 
   // Check for google=connected param from OAuth callback
   useEffect(() => {
@@ -279,6 +301,47 @@ export function DocumentsTab() {
     }
   }
 
+  async function linkByUrl() {
+    const parsed = parseGoogleUrl(linkUrl.trim());
+    if (!parsed) {
+      setError("Invalid URL. Paste a Google Docs or Sheets URL.");
+      return;
+    }
+    if (!linkName.trim()) {
+      setError("Please enter a name for the document.");
+      return;
+    }
+    setIsLinking(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "link",
+          name: linkName.trim(),
+          googleId: parsed.id,
+          googleUrl: linkUrl.trim(),
+          mimeType: parsed.mimeType,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to link document");
+        return;
+      }
+      setDocuments((prev) => [data, ...prev]);
+      setShowLinkDialog(false);
+      setLinkUrl("");
+      setLinkName("");
+      setSuccessMsg(`Linked "${data.name}"`);
+    } catch {
+      setError("Failed to link document");
+    } finally {
+      setIsLinking(false);
+    }
+  }
+
   async function deleteDoc(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This will also remove it from Google Drive.`)) return;
     setDeletingId(id);
@@ -399,14 +462,9 @@ export function DocumentsTab() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={openPicker}
-                disabled={isPickerLoading}
+                onClick={() => setShowLinkDialog(true)}
               >
-                {isPickerLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                ) : (
-                  <Link className="h-4 w-4 mr-1" />
-                )}
+                <Link className="h-4 w-4 mr-1" />
                 Link Existing
               </Button>
               <Button
@@ -495,6 +553,96 @@ export function DocumentsTab() {
           )}
         </>
       )}
+
+      {/* Link Existing Document Dialog */}
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link Existing Document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Google Docs/Sheets URL</Label>
+              <Input
+                value={linkUrl}
+                onChange={(e) => {
+                  setLinkUrl(e.target.value);
+                  // Auto-detect type from URL for visual feedback
+                  const parsed = parseGoogleUrl(e.target.value);
+                  if (parsed && !linkName) {
+                    // Don't override name if user already typed one
+                  }
+                }}
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                className="mt-1"
+              />
+              {linkUrl && parseGoogleUrl(linkUrl) && (
+                <div className="flex items-center gap-1 mt-1.5">
+                  {parseGoogleUrl(linkUrl)?.type === "google_sheet" ? (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      <Sheet className="h-3 w-3 mr-1 text-green-500" />
+                      Google Sheet detected
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      <FileText className="h-3 w-3 mr-1 text-blue-500" />
+                      Google Doc detected
+                    </Badge>
+                  )}
+                </div>
+              )}
+              {linkUrl && !parseGoogleUrl(linkUrl) && linkUrl.length > 10 && (
+                <p className="text-xs text-red-500 mt-1">Not a valid Google Docs or Sheets URL</p>
+              )}
+            </div>
+            <div>
+              <Label>Display Name</Label>
+              <Input
+                value={linkName}
+                onChange={(e) => setLinkName(e.target.value)}
+                placeholder="e.g. SEO Research - Keywords"
+                className="mt-1"
+              />
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowLinkDialog(false);
+                  openPicker();
+                }}
+                disabled={isPickerLoading}
+                className="text-[#888888]"
+              >
+                {isPickerLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                )}
+                Browse Drive instead
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowLinkDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={linkByUrl}
+                  disabled={!linkUrl.trim() || !linkName.trim() || isLinking}
+                  className="bg-[#8B7355] hover:bg-[#7A6548]"
+                >
+                  {isLinking ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <Link className="h-4 w-4 mr-1" />
+                  )}
+                  Link
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Document Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
