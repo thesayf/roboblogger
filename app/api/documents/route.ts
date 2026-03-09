@@ -159,8 +159,13 @@ export async function POST(req: NextRequest) {
       googleUrl,
       metadata,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating document:', error);
-    return NextResponse.json({ error: 'Failed to create document' }, { status: 500 });
+    // Surface the actual error message for debugging
+    const message = error?.response?.data?.error?.message
+      || error?.errors?.[0]?.message
+      || error?.message
+      || 'Failed to create document';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

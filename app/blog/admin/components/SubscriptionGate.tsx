@@ -34,6 +34,15 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasSynced = useRef(false);
+  const hasRefreshed = useRef(false);
+
+  // Always refresh credits on mount to prevent stale state from a previous session
+  useEffect(() => {
+    if (!hasRefreshed.current) {
+      hasRefreshed.current = true;
+      refreshCredits();
+    }
+  }, [refreshCredits]);
 
   // Proactively sync subscription status from Stripe if gate would show paywall
   useEffect(() => {
