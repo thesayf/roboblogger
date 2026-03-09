@@ -459,6 +459,7 @@ export function DocumentsTab() {
                 <RefreshCw className="h-4 w-4 mr-1" />
                 Refresh
               </Button>
+              {/* TODO: Re-enable once Google verification is complete and broader scopes are added
               <Button
                 variant="outline"
                 size="sm"
@@ -467,6 +468,7 @@ export function DocumentsTab() {
                 <Link className="h-4 w-4 mr-1" />
                 Link Existing
               </Button>
+              */}
               <Button
                 size="sm"
                 onClick={() => setShowCreateDialog(true)}
