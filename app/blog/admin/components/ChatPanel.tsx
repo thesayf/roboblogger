@@ -11,6 +11,7 @@ export default function ChatPanel() {
   const {
     messages,
     isStreaming,
+    streamingStatus,
     error,
     conversationId,
     conversations,
@@ -146,11 +147,7 @@ export default function ChatPanel() {
             {isStreaming && (
               <div className="flex items-center gap-2 text-xs text-[#999999]">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                <span>
-                  {messages[messages.length - 1]?.content === ''
-                    ? 'Thinking...'
-                    : 'Generating...'}
-                </span>
+                <span>{streamingStatus || 'Thinking...'}</span>
               </div>
             )}
           </div>

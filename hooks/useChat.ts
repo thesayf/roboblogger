@@ -24,6 +24,7 @@ export interface ConversationInfo {
 interface UseChatReturn {
   messages: ChatMessageUI[];
   isStreaming: boolean;
+  streamingStatus: string;
   error: string | null;
   conversationId: string | null;
   conversations: ConversationInfo[];
@@ -38,6 +39,7 @@ interface UseChatReturn {
 export function useChat(): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingStatus, setStreamingStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationInfo[]>([]);
@@ -109,6 +111,7 @@ export function useChat(): UseChatReturn {
 
       setError(null);
       setIsStreaming(true);
+      setStreamingStatus('Thinking...');
 
       // Add user message immediately
       const userMsg: ChatMessageUI = {
@@ -194,9 +197,49 @@ export function useChat(): UseChatReturn {
     [isStreaming, conversationId]
   );
 
+  function friendlyToolName(toolName: string): string {
+    const map: Record<string, string> = {
+      create_topic: 'Creating topic...',
+      create_topics_bulk: 'Creating topics...',
+      update_topic: 'Updating topic...',
+      get_existing_posts: 'Searching posts...',
+      get_blog_stats: 'Loading blog stats...',
+      get_brand_settings: 'Loading brand settings...',
+      get_topics_queue: 'Loading topics queue...',
+      get_post: 'Reading post...',
+      get_internal_link_map: 'Mapping internal links...',
+      get_media_images: 'Loading images...',
+      view_image: 'Viewing image...',
+      edit_post: 'Editing post...',
+      edit_post_component: 'Editing post content...',
+      update_post_status: 'Updating post status...',
+      update_brand_settings: 'Updating brand settings...',
+      search_keyword_data: 'Researching keywords...',
+      search_related_keywords: 'Finding related keywords...',
+      search_trending_topics: 'Searching trends...',
+      search_competitor_content: 'Analysing competitors...',
+      search_content_gaps: 'Finding content gaps...',
+      search_chat_history: 'Searching chat history...',
+      audit_content: 'Auditing content...',
+      check_keyword_cannibalization: 'Checking keyword overlap...',
+      check_post_rankings: 'Checking rankings...',
+      web_search: 'Searching the web...',
+      list_documents: 'Loading documents...',
+      read_document: 'Reading document...',
+      create_document: 'Creating document...',
+      write_document: 'Writing document...',
+      delete_document: 'Deleting document...',
+      list_routines: 'Loading routines...',
+      create_routine: 'Creating routine...',
+      update_routine: 'Updating routine...',
+    };
+    return map[toolName] || `Running ${toolName}...`;
+  }
+
   function handleSSEEvent(event: string, data: any, assistantId: string) {
     switch (event) {
       case 'text_delta':
+        setStreamingStatus('Writing response...');
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
@@ -207,6 +250,7 @@ export function useChat(): UseChatReturn {
         break;
 
       case 'tool_start':
+        setStreamingStatus(friendlyToolName(data.toolName));
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
@@ -227,6 +271,7 @@ export function useChat(): UseChatReturn {
         break;
 
       case 'tool_end':
+        setStreamingStatus('Thinking...');
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
@@ -265,6 +310,7 @@ export function useChat(): UseChatReturn {
   return {
     messages,
     isStreaming,
+    streamingStatus,
     error,
     conversationId,
     conversations,
