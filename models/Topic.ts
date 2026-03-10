@@ -125,6 +125,14 @@ export interface ITopic extends Document {
   tags?: string[]; // for organization and filtering
   notes?: string; // user notes about this topic
   
+  // Pre-planned internal links
+  internalLinks?: Array<{
+    postId: string;
+    slug: string;
+    title: string;
+    description?: string;
+  }>;
+
   // Estimated completion
   estimatedDuration?: number; // estimated generation time in minutes
 
@@ -391,6 +399,14 @@ const TopicSchema = new Schema<ITopic>({
     maxlength: 2000
   },
   
+  // Pre-planned internal links
+  internalLinks: [{
+    postId: { type: String, required: true },
+    slug: { type: String, required: true },
+    title: { type: String, required: true },
+    description: { type: String, maxlength: 300 },
+  }],
+
   // Estimated completion
   estimatedDuration: {
     type: Number, // minutes

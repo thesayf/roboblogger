@@ -52,6 +52,7 @@ export const { POST } = serve<{ topicId: string }>(
         brandExamples: t.brandExamples || '',
         seo: t.seo ? JSON.parse(JSON.stringify(t.seo)) : null,
         researchData: t.researchData ? JSON.parse(JSON.stringify(t.researchData)) : null,
+        internalLinks: t.internalLinks ? JSON.parse(JSON.stringify(t.internalLinks)) : [],
         owner: t.owner.toString(),
       };
     });
@@ -142,6 +143,7 @@ export const { POST } = serve<{ topicId: string }>(
         brandExamples: topic.brandExamples,
         seo: topic.seo,
         researchData,
+        internalLinks: topic.internalLinks,
         returnOnly: true,
       }),
       headers: { 'Content-Type': 'application/json' },

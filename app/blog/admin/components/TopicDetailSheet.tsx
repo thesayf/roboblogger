@@ -35,6 +35,7 @@ import {
   ImageIcon,
   AlertCircle,
   Sparkles,
+  Link2,
 } from "lucide-react";
 import { utcToLocalDateTime, localDateTimeToUTC } from "@/lib/timezone-utils";
 
@@ -63,6 +64,7 @@ const defaultForm = {
   priority: "medium",
   tags: [] as string[],
   notes: "",
+  internalLinks: [] as Array<{ postId: string; slug: string; title: string; description?: string }>,
   estimatedDuration: 5,
   seo: {
     primaryKeyword: "",
@@ -95,6 +97,7 @@ function populateForm(topic: any) {
     priority: topic.priority || "medium",
     tags: topic.tags || [],
     notes: topic.notes || "",
+    internalLinks: topic.internalLinks || [],
     estimatedDuration: topic.estimatedDuration || 5,
     scheduledAt: topic.scheduledAt ? utcToLocalDateTime(topic.scheduledAt) : "",
     seo: {
@@ -167,6 +170,9 @@ export function TopicDetailSheet({
   const [newSecondaryKeyword, setNewSecondaryKeyword] = useState("");
   const [newLongTailKeyword, setNewLongTailKeyword] = useState("");
   const [newLsiKeyword, setNewLsiKeyword] = useState("");
+  const [linkSearchQuery, setLinkSearchQuery] = useState("");
+  const [linkSearchResults, setLinkSearchResults] = useState<any[]>([]);
+  const [isSearchingLinks, setIsSearchingLinks] = useState(false);
 
   // Reset edit state when topic changes or sheet closes
   useEffect(() => {
@@ -177,8 +183,35 @@ export function TopicDetailSheet({
       setNewSecondaryKeyword("");
       setNewLongTailKeyword("");
       setNewLsiKeyword("");
+      setLinkSearchQuery("");
+      setLinkSearchResults([]);
     }
   }, [topic, open]);
+
+  const searchLinkedPosts = async (query: string) => {
+    if (!query.trim()) {
+      setLinkSearchResults([]);
+      return;
+    }
+    setIsSearchingLinks(true);
+    try {
+      const res = await fetch('/api/blog/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'searchRelatedBlogs', topic: query, limit: 8 }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Filter out posts already in internalLinks
+        const existingSlugs = new Set(formData.internalLinks.map((l) => l.slug));
+        setLinkSearchResults((data.results || []).filter((r: any) => !existingSlugs.has(r.slug)));
+      }
+    } catch (err) {
+      console.error("Link search error:", err);
+    } finally {
+      setIsSearchingLinks(false);
+    }
+  };
 
   if (!topic) return null;
 
@@ -339,6 +372,22 @@ export function TopicDetailSheet({
             <Field label="Requirements" value={topic.additionalRequirements} />
             <Field label="Brand Context" value={topic.brandContext} />
             <Field label="Image Context" value={topic.imageContext} />
+          </div>
+        </div>
+      )}
+
+      {/* Internal Links (read-only) */}
+      {topic.internalLinks && topic.internalLinks.length > 0 && (
+        <div className="bg-white rounded-xl border border-[#E0DED8] p-5">
+          <h3 className="text-[13px] font-semibold text-[#111111] uppercase tracking-wider mb-3">Internal Links</h3>
+          <div className="space-y-1.5">
+            {topic.internalLinks.map((link: any, i: number) => (
+              <div key={i} className="flex items-center gap-2">
+                <Link2 className="h-3.5 w-3.5 text-[#888888] shrink-0" />
+                <span className="text-[13px] text-[#111111]">{link.title}</span>
+                <span className="text-[11px] text-[#888888]">/blog/{link.slug}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -763,6 +812,104 @@ export function TopicDetailSheet({
               className="bg-white border-[#E0DED8] focus:border-[#111111] text-[14px] resize-none"
             />
           </div>
+        </div>
+      </details>
+
+      {/* Internal Links */}
+      <details className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden group">
+        <summary className="px-4 py-3 cursor-pointer text-[13px] font-medium text-[#111111] hover:bg-[#FAFAF8] transition-colors flex items-center justify-between list-none">
+          <span className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-[#888888]" />
+            Internal Links
+            {formData.internalLinks.length > 0 && (
+              <span className="text-[11px] text-[#888888]">({formData.internalLinks.length})</span>
+            )}
+          </span>
+          <ChevronDown className="h-4 w-4 text-[#888888] transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="px-4 pb-4 pt-2 space-y-3 border-t border-[#E0DED8] bg-[#FAFAF8]">
+          <p className="text-[12px] text-[#888888]">
+            Select existing posts to link to. These will be woven into the generated content.
+          </p>
+
+          {/* Search */}
+          <div className="flex gap-2">
+            <Input
+              value={linkSearchQuery}
+              onChange={(e) => setLinkSearchQuery(e.target.value)}
+              placeholder="Search published posts..."
+              onKeyDown={(e) => e.key === "Enter" && searchLinkedPosts(linkSearchQuery)}
+              className="flex-1 h-9 bg-white border-[#E0DED8] focus:border-[#111111] text-[13px]"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => searchLinkedPosts(linkSearchQuery)}
+              disabled={!linkSearchQuery.trim() || isSearchingLinks}
+              className="h-9 border-[#E0DED8]"
+            >
+              {isSearchingLinks ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+            </Button>
+          </div>
+
+          {/* Search results */}
+          {linkSearchResults.length > 0 && (
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {linkSearchResults.map((post: any) => (
+                <button
+                  key={post.slug}
+                  type="button"
+                  onClick={() => {
+                    if (formData.internalLinks.length >= 6) return;
+                    setFormData((prev) => ({
+                      ...prev,
+                      internalLinks: [...prev.internalLinks, {
+                        postId: post._id || post.slug,
+                        slug: post.slug,
+                        title: post.title,
+                        description: post.description?.slice(0, 200) || '',
+                      }],
+                    }));
+                    setLinkSearchResults((prev) => prev.filter((r) => r.slug !== post.slug));
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-white border border-transparent hover:border-[#E0DED8] transition-colors"
+                >
+                  <p className="text-[13px] font-medium text-[#111111] truncate">{post.title}</p>
+                  <p className="text-[11px] text-[#888888] truncate">/blog/{post.slug}</p>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Selected links */}
+          {formData.internalLinks.length > 0 && (
+            <div className="space-y-1.5">
+              {formData.internalLinks.map((link, i) => (
+                <div key={link.slug} className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-[#E0DED8]">
+                  <Link2 className="h-3.5 w-3.5 text-[#888888] shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-medium text-[#111111] truncate">{link.title}</p>
+                    <p className="text-[11px] text-[#888888] truncate">/blog/{link.slug}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({
+                      ...prev,
+                      internalLinks: prev.internalLinks.filter((_, j) => j !== i),
+                    }))}
+                    className="text-[#888888] hover:text-red-500 transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {formData.internalLinks.length >= 6 && (
+            <p className="text-[11px] text-[#888888]">Maximum 6 internal links reached.</p>
+          )}
         </div>
       </details>
 

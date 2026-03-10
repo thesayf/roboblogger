@@ -324,6 +324,7 @@ export async function POST(request: NextRequest) {
     brandExamples,
     seo,
     researchData, // Pre-researched data from agentic research phase
+    internalLinks, // Pre-planned internal links
     returnOnly = false // New parameter to control whether to save or just return
   } = body;
 
@@ -552,13 +553,19 @@ CONTENT CREATION GUIDELINES:
    - AVOID duplicating the main blog title anywhere in component content
 
 10. Internal Linking Strategy:
-   - BEFORE writing the blog content, search for related posts using the available tools
+${internalLinks && internalLinks.length > 0 ? `   The following posts have been pre-selected for internal linking. Weave 2-4 of these links naturally into your content where they add value for readers.
+   Format links as: [anchor text](/blog/slug)
+
+   Posts to link to:
+${internalLinks.map((link: any) => `   - "${link.title}" (/blog/${link.slug})${link.description ? ` — ${link.description}` : ''}`).join('\n')}
+
+   IMPORTANT: Do NOT use search tools. Links have already been selected for you.` : `   - BEFORE writing the blog content, search for related posts using the available tools
    - Call searchRelatedBlogs with your main topic to find relevant content
    - Call searchBlogsByKeywords with key terms from your topic
    - Use the results to include 2-4 strategic internal links naturally in your content
    - Format internal links as: [anchor text](/blog/slug)
    - Only link to posts that genuinely add value for readers
-   - IMPORTANT: You MUST use the search tools before generating content
+   - IMPORTANT: You MUST use the search tools before generating content`}
 
 11. Component Ordering:
    - Order components logically for content flow
@@ -589,21 +596,14 @@ RESPONSE LENGTH LIMITS:
 
 ${outputJsonFormat}`;
 
+  // When internal links are pre-planned, skip search tools entirely
+  const hasPrePlannedLinks = internalLinks && internalLinks.length > 0;
+
   try {
     console.log("Sending blog generation request to Anthropic API");
-    
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-opus-4-6",
-        max_tokens: 16384,
-        temperature: 0.7, // Slightly higher for creative content
-        tools: [
+    console.log("[blog/generate] Pre-planned internal links:", hasPrePlannedLinks ? internalLinks.length : 'none (will use search tools)');
+
+    const searchTools = [
           {
             name: "searchBlogsByKeywords",
             description: "Search for existing blog posts using keywords. Use this to find related content for internal linking.",
@@ -682,7 +682,20 @@ ${outputJsonFormat}`;
               required: ["tags"]
             }
           }
-        ],
+        ];
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-opus-4-6",
+        max_tokens: 16384,
+        temperature: 0.7,
+        ...(hasPrePlannedLinks ? {} : { tools: searchTools }),
         messages: [
           {
             role: "user",
@@ -786,86 +799,7 @@ ${outputJsonFormat}`;
               model: "claude-opus-4-6",
               max_tokens: 16384,
               temperature: 0.7,
-              tools: [
-                {
-                  name: "searchBlogsByKeywords",
-                  description: "Search for existing blog posts using keywords. Use this to find related content for internal linking.",
-                  input_schema: {
-                    type: "object",
-                    properties: {
-                      keywords: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Array of keywords to search for"
-                      },
-                      limit: {
-                        type: "number",
-                        description: "Maximum number of results to return (default: 5)",
-                        default: 5
-                      }
-                    },
-                    required: ["keywords"]
-                  }
-                },
-                {
-                  name: "searchBlogsByCategory",
-                  description: "Search for existing blog posts by category. Use this to find related content in the same category.",
-                  input_schema: {
-                    type: "object",
-                    properties: {
-                      category: {
-                        type: "string",
-                        description: "Category name to search for"
-                      },
-                      limit: {
-                        type: "number",
-                        description: "Maximum number of results to return (default: 5)",
-                        default: 5
-                      }
-                    },
-                    required: ["category"]
-                  }
-                },
-                {
-                  name: "searchRelatedBlogs",
-                  description: "Search for blog posts related to a specific topic. Use this to find content similar to what you're writing about.",
-                  input_schema: {
-                    type: "object",
-                    properties: {
-                      topic: {
-                        type: "string",
-                        description: "Topic or theme to find related content for"
-                      },
-                      limit: {
-                        type: "number",
-                        description: "Maximum number of results to return (default: 5)",
-                        default: 5
-                      }
-                    },
-                    required: ["topic"]
-                  }
-                },
-                {
-                  name: "getBlogsByTags",
-                  description: "Search for existing blog posts by tags. Use this to find content with specific tags for internal linking.",
-                  input_schema: {
-                    type: "object",
-                    properties: {
-                      tags: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Array of tags to search for"
-                      },
-                      limit: {
-                        type: "number",
-                        description: "Maximum number of results to return (default: 5)",
-                        default: 5
-                      }
-                    },
-                    required: ["tags"]
-                  }
-                }
-              ],
+              tools: searchTools,
               messages: messages,
             }),
           });

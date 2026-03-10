@@ -45,6 +45,12 @@ export function buildActionTools(ctx: ToolContext) {
         additionalRequirements: z.string().optional().describe('Additional instructions for content generation'),
         imageContext: z.string().optional().describe('Image style description for generated images (e.g., "Modern minimalist with blue corporate tones", "Warm watercolor illustrations")'),
         referenceImages: z.array(z.string()).optional().describe('URLs of reference images from the media library to guide image generation style'),
+        internalLinks: z.array(z.object({
+          postId: z.string().describe('Blog post ID to link to'),
+          slug: z.string().describe('Post slug for the link URL'),
+          title: z.string().describe('Post title'),
+          description: z.string().optional().describe('Context hint for how to reference this post'),
+        })).optional().describe('Pre-planned internal links to include in the generated post'),
       }),
       run: wrapTool(ctx, 'create_topic', async (input) => {
         await dbConnect();
@@ -62,6 +68,7 @@ export function buildActionTools(ctx: ToolContext) {
           additionalRequirements: input.additionalRequirements,
           imageContext: input.imageContext,
           referenceImages: input.referenceImages,
+          internalLinks: input.internalLinks,
           seo: (input.primaryKeyword || input.secondaryKeywords || input.searchIntent) ? {
             primaryKeyword: input.primaryKeyword,
             secondaryKeywords: input.secondaryKeywords,
@@ -97,6 +104,12 @@ export function buildActionTools(ctx: ToolContext) {
           additionalRequirements: z.string().optional().describe('Additional instructions for content generation'),
           imageContext: z.string().optional().describe('Image style description for generated images'),
           referenceImages: z.array(z.string()).optional().describe('URLs of reference images from the media library'),
+          internalLinks: z.array(z.object({
+            postId: z.string(),
+            slug: z.string(),
+            title: z.string(),
+            description: z.string().optional(),
+          })).optional().describe('Pre-planned internal links'),
         })).max(20).describe('Array of topics to add (max 20)'),
       }),
       run: wrapTool(ctx, 'create_topics_bulk', async (input) => {
@@ -115,6 +128,7 @@ export function buildActionTools(ctx: ToolContext) {
           additionalRequirements: t.additionalRequirements,
           imageContext: t.imageContext,
           referenceImages: t.referenceImages,
+          internalLinks: t.internalLinks,
           seo: (t.primaryKeyword || t.secondaryKeywords || t.searchIntent) ? {
             primaryKeyword: t.primaryKeyword,
             secondaryKeywords: t.secondaryKeywords,
@@ -151,6 +165,12 @@ export function buildActionTools(ctx: ToolContext) {
         additionalRequirements: z.string().optional().describe('Specific writing instructions: key points, angle, structure'),
         imageContext: z.string().optional().describe('Image style description for generated images (e.g., "Modern minimalist with blue corporate tones")'),
         referenceImages: z.array(z.string()).optional().describe('URLs of reference images from the media library to guide image generation style'),
+        internalLinks: z.array(z.object({
+          postId: z.string().describe('Blog post ID to link to'),
+          slug: z.string().describe('Post slug for the link URL'),
+          title: z.string().describe('Post title'),
+          description: z.string().optional().describe('Context hint for how to reference this post'),
+        })).optional().describe('Pre-planned internal links to include in the generated post'),
       }),
       run: wrapTool(ctx, 'update_topic', async (input) => {
         await dbConnect();
@@ -165,6 +185,7 @@ export function buildActionTools(ctx: ToolContext) {
         if (input.additionalRequirements) update.additionalRequirements = input.additionalRequirements;
         if (input.imageContext) update.imageContext = input.imageContext;
         if (input.referenceImages) update.referenceImages = input.referenceImages;
+        if (input.internalLinks) update.internalLinks = input.internalLinks;
         if (input.primaryKeyword || input.secondaryKeywords || input.searchIntent) {
           if (input.primaryKeyword) update['seo.primaryKeyword'] = input.primaryKeyword;
           if (input.secondaryKeywords) update['seo.secondaryKeywords'] = input.secondaryKeywords;
