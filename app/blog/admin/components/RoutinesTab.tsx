@@ -96,36 +96,67 @@ const TEMPLATES = [
   {
     id: "weekly-research",
     name: "Weekly Topic Research",
+    description: "Researches trending topics in your niche, finds content gaps, and queues 3-5 new topics with full SEO data.",
     prompt: "Research trending topics in my niche, check for content gaps against my existing posts, and queue 3-5 new topics with full SEO data (primary keyword, secondary keywords, search intent, audience, and additional requirements).",
     schedule: { frequency: "weekly" as const, dayOfWeek: 1, hour: 9, minute: 0 },
   },
   {
     id: "content-filler",
     name: "Content Calendar Filler",
+    description: "Keeps your queue topped up — if fewer than 5 topics are pending, researches and adds more to maintain your publishing schedule.",
     prompt: "Check my topic queue. If there are fewer than 5 pending topics, research my niche for opportunities and add enough topics to maintain a consistent publishing schedule. Include full SEO data for each.",
     schedule: { frequency: "weekly" as const, dayOfWeek: 3, hour: 9, minute: 0 },
   },
   {
     id: "seo-audit",
     name: "SEO Audit",
+    description: "Reviews your most recent posts for SEO issues — missing meta descriptions, weak titles, keyword gaps — and suggests fixes.",
     prompt: "Review my 5 most recent published posts. For each, check the title, meta description, keyword usage, and internal linking. Report any issues found and suggest specific improvements.",
     schedule: { frequency: "monthly" as const, dayOfMonth: 1, hour: 10, minute: 0 },
   },
   {
     id: "internal-links",
     name: "Internal Link Builder",
-    prompt: "Review my 3 most recent published posts. For each, search for older posts that are topically related and could be linked. Edit the posts to add 2-3 relevant internal links where they naturally fit.",
+    description: "Scans your entire blog for internal linking gaps and automatically adds relevant links between related posts to boost SEO.",
+    prompt: `You are an internal linking specialist. Your job is to strengthen the blog's SEO by ensuring all posts are well-connected with relevant internal links.
+
+STEP 1 — Get the full picture:
+Call get_internal_link_map to get every post's title, slug, description, tags, and existing internal links in one go. This is your starting point — it shows you the entire blog's link structure in a single call.
+
+STEP 2 — Identify linking gaps:
+Analyse the link map and find posts that should link to each other but don't. Look for:
+- Posts covering related topics that have zero links between them
+- Newer posts that aren't linked from any older posts yet
+- Pillar/cornerstone posts that should be linked from many supporting posts but aren't
+- Posts with no outbound internal links at all
+Prioritise the highest-impact gaps first (e.g. important posts with few inbound links).
+
+STEP 3 — Edit posts to add links:
+For each post that needs updating:
+1. Call get_post with the post ID to see the full content and get component IDs
+2. Call edit_post_component to update the relevant text component, adding natural internal links using markdown link syntax [anchor text](/blog/slug)
+3. Add 1-3 links per post — don't over-link. Links should feel natural in context, not forced.
+
+RULES:
+- Never add more than 5 internal links to a single post
+- Use descriptive anchor text (the topic name or a natural phrase), never "click here"
+- Don't link the same target post twice within one article
+- Only link where it's genuinely relevant — quality over quantity
+- Aim to update 5-10 posts per run, focusing on the biggest gaps first
+- Report a summary of what you changed at the end`,
     schedule: { frequency: "weekly" as const, dayOfWeek: 5, hour: 14, minute: 0 },
   },
   {
     id: "stale-refresh",
     name: "Stale Content Refresh",
+    description: "Finds your oldest posts and updates them with fresh information, better SEO, and improved content.",
     prompt: "Find my 3 oldest published posts. Evaluate whether they need updating with current information, better SEO, or improved content. If so, edit them with improvements.",
     schedule: { frequency: "monthly" as const, dayOfMonth: 15, hour: 10, minute: 0 },
   },
   {
     id: "competitor-watch",
     name: "Competitor Watch",
+    description: "Searches for recent competitor content in your niche and identifies topics they're covering that you haven't written about yet.",
     prompt: "Search for recent blog posts from competitors in my niche using web search. Identify topics they are covering that I have not written about yet. Report your findings with specific topic suggestions.",
     schedule: { frequency: "weekly" as const, dayOfWeek: 1, hour: 8, minute: 0 },
   },
@@ -661,7 +692,7 @@ export function RoutinesTab() {
                 className="text-left p-4 rounded-lg border border-[#E0DED8] hover:border-[#111111] hover:bg-[#FAFAF8] transition-colors"
               >
                 <div className="font-medium text-[14px] text-[#111111]">{template.name}</div>
-                <div className="text-[12px] text-[#888888] mt-1 line-clamp-2">{template.prompt}</div>
+                <div className="text-[12px] text-[#888888] mt-1 line-clamp-2">{template.description || template.prompt}</div>
                 <div className="text-[11px] text-[#AAAAAA] mt-2 flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   {formatSchedule(template.schedule)}
