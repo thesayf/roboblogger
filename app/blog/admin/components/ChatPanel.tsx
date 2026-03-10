@@ -143,10 +143,14 @@ export default function ChatPanel() {
               ))
             )}
 
-            {isStreaming && messages[messages.length - 1]?.content === '' && (
+            {isStreaming && (
               <div className="flex items-center gap-2 text-xs text-[#999999]">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                <span>Thinking...</span>
+                <span>
+                  {messages[messages.length - 1]?.content === ''
+                    ? 'Thinking...'
+                    : 'Generating...'}
+                </span>
               </div>
             )}
           </div>
