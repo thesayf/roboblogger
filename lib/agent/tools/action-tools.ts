@@ -89,7 +89,7 @@ export function buildActionTools(ctx: ToolContext) {
 
     betaZodTool({
       name: 'create_topics_bulk',
-      description: 'Add multiple topics to the generation queue at once (up to 20). Use this when building out a content calendar or batch-adding related topics.',
+      description: 'Add multiple topics to the generation queue in a single fast operation (up to 20). ALWAYS use this instead of calling create_topic multiple times — it is much faster and avoids timeouts. Use this whenever adding 2 or more topics.',
       inputSchema: z.object({
         topics: z.array(z.object({
           topic: z.string().describe('The blog topic/title'),
