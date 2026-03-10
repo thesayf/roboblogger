@@ -145,6 +145,9 @@ export function useChat(): UseChatReturn {
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
+          if (data.code === 'INSUFFICIENT_CREDITS' || res.status === 402) {
+            throw new Error('You\'ve run out of credits. Please top up to continue chatting.');
+          }
           throw new Error(data.error || `HTTP ${res.status}`);
         }
 
