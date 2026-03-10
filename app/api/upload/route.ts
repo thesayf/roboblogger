@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import ImageKit from "imagekit";
+import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 
 // Initialize ImageKit
 const imagekit = new ImageKit({
@@ -12,6 +13,8 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.formData();
     const file: File | null = data.get("file") as unknown as File;
+    // ownerId can be passed by system calls (e.g., image generation workflow)
+    const ownerIdParam = data.get("ownerId") as string | null;
 
     if (!file) {
       return NextResponse.json({ error: "No file received" }, { status: 400 });
@@ -37,18 +40,26 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    // Determine the owner for folder scoping
+    let ownerId = ownerIdParam;
+    if (!ownerId) {
+      const user = await getCurrentUser();
+      ownerId = user?.mongoId || null;
+    }
+
     // Generate unique filename
     const timestamp = Date.now();
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const fileName = `blog-images/${timestamp}-${sanitizedFileName}`;
+    const fileName = `${timestamp}-${sanitizedFileName}`;
 
-    // Upload to ImageKit
+    // Upload to user-scoped folder in ImageKit
+    const folder = ownerId ? `/blog-images/${ownerId}` : "/blog-images";
+
     const result = await imagekit.upload({
       file: buffer,
       fileName: fileName,
-      folder: "/blog-images",
+      folder,
       tags: ["blog", "upload"],
-      checks: '"request.folder" : "/blog-images"', // Security check
     });
 
     return NextResponse.json({

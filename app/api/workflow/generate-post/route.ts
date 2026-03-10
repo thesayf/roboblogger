@@ -195,6 +195,7 @@ export const { POST } = serve<{ topicId: string }>(
           components: finalBlogData.components || [],
           generateFeaturedImage: true,
           returnOnly: true,
+          ownerId: topic.owner,
         }),
         headers: { 'Content-Type': 'application/json' },
         retries: 1,

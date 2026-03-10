@@ -268,6 +268,7 @@ interface ImageGenerationRequest {
   }>;
   generateFeaturedImage: boolean;
   returnOnly?: boolean; // New flag to return URLs without saving
+  ownerId?: string; // Owner user ID for scoping uploads to user folder
 }
 
 export async function POST(request: NextRequest) {
@@ -284,7 +285,8 @@ export async function POST(request: NextRequest) {
       referenceImages,
       components,
       generateFeaturedImage,
-      returnOnly = false
+      returnOnly = false,
+      ownerId
     } = body;
 
     console.log(`[GenerateImages] Blog Post ID: ${blogPostId || 'Not saved yet'}`);
@@ -351,10 +353,11 @@ export async function POST(request: NextRequest) {
             const formData = new FormData();
             const fileName = `featured-${Date.now()}.png`;
             formData.append('file', imageBlob, fileName);
-            
+            if (ownerId) formData.append('ownerId', ownerId);
+
             // Upload to ImageKit using our existing upload endpoint
-            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+                           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
                            'http://localhost:3000');
             const uploadResponse = await fetch(`${baseUrl}/api/upload`, {
               method: 'POST',
@@ -420,10 +423,11 @@ export async function POST(request: NextRequest) {
               const formData = new FormData();
               const fileName = `ai-component-${Date.now()}.png`;
               formData.append('file', imageBlob, fileName);
-              
+              if (ownerId) formData.append('ownerId', ownerId);
+
               // Upload to ImageKit using our existing upload endpoint
-              const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                             (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+              const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+                             (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
                              'http://localhost:3000');
               const uploadResponse = await fetch(`${baseUrl}/api/upload`, {
                 method: 'POST',

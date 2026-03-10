@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import ImageKit from "imagekit";
+import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 
 const imagekit = new ImageKit({
   publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
@@ -7,18 +8,25 @@ const imagekit = new ImageKit({
   urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
 });
 
-// GET /api/images - Get all images from ImageKit
+// GET /api/images - Get images from ImageKit for current user
 export async function GET(request: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get("limit") || "50");
     const skip = parseInt(url.searchParams.get("skip") || "0");
 
-    // List files from ImageKit
+    // List files from user's folder only
+    const userFolder = `/blog-images/${user.mongoId}`;
     const results = await imagekit.listFiles({
       limit,
       skip,
-      sort: "DESC_CREATED", // Most recent first
+      sort: "DESC_CREATED",
+      path: userFolder,
     });
 
     // Filter only files (not folders) and transform ImageKit response to match our interface
