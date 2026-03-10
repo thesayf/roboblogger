@@ -153,6 +153,7 @@ export function useChat(): UseChatReturn {
 
         const decoder = new TextDecoder();
         let buffer = '';
+        let receivedDone = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -171,6 +172,7 @@ export function useChat(): UseChatReturn {
             } else if (line.startsWith('data: ') && currentEvent) {
               try {
                 const data = JSON.parse(line.slice(6));
+                if (currentEvent === 'done') receivedDone = true;
                 handleSSEEvent(currentEvent, data, assistantId);
               } catch {
                 // Skip malformed events
@@ -178,6 +180,11 @@ export function useChat(): UseChatReturn {
               currentEvent = '';
             }
           }
+        }
+
+        // Stream ended without a proper 'done' event — likely a timeout or crash
+        if (!receivedDone) {
+          setError('Connection lost — the response may be incomplete. Your message has been saved.');
         }
       } catch (err: any) {
         if (err.name !== 'AbortError') {
@@ -191,6 +198,7 @@ export function useChat(): UseChatReturn {
         }
       } finally {
         setIsStreaming(false);
+        setStreamingStatus('');
         abortRef.current = null;
       }
     },
