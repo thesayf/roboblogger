@@ -150,22 +150,18 @@ const TopicSchema = new Schema<ITopic>({
     type: String,
     required: true,
     trim: true,
-    maxlength: 500
   },
   audience: {
     type: String,
     trim: true,
-    maxlength: 1000
   },
   tone: {
     type: String,
     trim: true,
-    maxlength: 500
   },
   length: {
     type: String,
     trim: true,
-    maxlength: 200
   },
   includeImages: {
     type: Boolean,
@@ -182,12 +178,10 @@ const TopicSchema = new Schema<ITopic>({
   additionalRequirements: {
     type: String,
     trim: true,
-    maxlength: 1000
   },
   imageContext: {
     type: String,
     trim: true,
-    maxlength: 1000
   },
   referenceImages: [{
     type: String, // base64 encoded images or file IDs
@@ -228,22 +222,18 @@ const TopicSchema = new Schema<ITopic>({
     primaryKeyword: {
       type: String,
       trim: true,
-      maxlength: 100
     },
     secondaryKeywords: [{
       type: String,
       trim: true,
-      maxlength: 100
     }],
     longTailKeywords: [{
       type: String,
       trim: true,
-      maxlength: 200
     }],
     lsiKeywords: [{
       type: String,
       trim: true,
-      maxlength: 100
     }],
     keywordDensity: {
       type: Number,
@@ -260,23 +250,19 @@ const TopicSchema = new Schema<ITopic>({
     metaTitle: {
       type: String,
       trim: true,
-      maxlength: 60
     },
     metaDescription: {
       type: String,
       trim: true,
-      maxlength: 155
     },
     openGraph: {
       title: {
         type: String,
         trim: true,
-        maxlength: 100
       },
       description: {
         type: String,
         trim: true,
-        maxlength: 200
       },
       image: {
         type: String,
