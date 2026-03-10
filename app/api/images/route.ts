@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import ImageKit from "imagekit";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
+import dbConnect from "@/lib/mongo";
+import User from "@/models/User";
 
 const imagekit = new ImageKit({
   publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
@@ -20,29 +22,42 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(url.searchParams.get("limit") || "50");
     const skip = parseInt(url.searchParams.get("skip") || "0");
 
-    // List files from user's scoped folder
-    const userFolder = `/blog-images/${user.mongoId}`;
-    const results = await imagekit.listFiles({
-      limit,
-      skip,
-      sort: "DESC_CREATED",
-      path: userFolder,
-    });
+    // Find all mongoIds for this user's email (handles duplicate accounts)
+    await dbConnect();
+    const userRecord = await User.findById(user.mongoId).lean() as any;
+    const allUserRecords = userRecord?.email
+      ? await User.find({ email: userRecord.email }).select('_id').lean()
+      : [{ _id: user.mongoId }];
+    const mongoIds = allUserRecords.map((u: any) => u._id.toString());
 
-    // If user folder is empty, also check legacy root folder (pre-scoping uploads)
-    let legacyResults: any[] = [];
-    const userFiles = results.filter((item) => item.type === "file");
-    if (userFiles.length === 0 && skip === 0) {
-      const rootResults = await imagekit.listFiles({
-        limit,
-        sort: "DESC_CREATED",
-        path: "/blog-images",
-      });
-      legacyResults = rootResults.filter((item) => item.type === "file");
+    // List files from all user folders + legacy root
+    const folderPaths = [
+      ...mongoIds.map((id: string) => `/blog-images/${id}`),
+      '/blog-images',  // legacy uploads (no user subfolder)
+    ];
+
+    const allResults = await Promise.all(
+      folderPaths.map((path) =>
+        imagekit.listFiles({ limit, skip, sort: "DESC_CREATED", path })
+      )
+    );
+
+    // Deduplicate by fileId
+    const seen = new Set<string>();
+    const files: any[] = [];
+    for (const results of allResults) {
+      for (const item of results) {
+        if (item.type === "file" && !seen.has((item as any).fileId)) {
+          seen.add((item as any).fileId);
+          files.push(item);
+        }
+      }
     }
 
-    const files = [...userFiles, ...legacyResults] as any[];
-    const transformedImages = files.map((image: any) => ({
+    // Sort by createdAt descending and limit
+    files.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const limited = files.slice(0, limit);
+    const transformedImages = limited.map((image: any) => ({
       fileId: image.fileId,
       name: image.name,
       url: image.url,
@@ -58,7 +73,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       images: transformedImages,
-      total: transformedImages.length,
+      total: files.length,
     });
   } catch (error) {
     console.error("Error fetching images from ImageKit:", error);

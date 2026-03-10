@@ -11,6 +11,7 @@ import BlogPost from '@/models/BlogPost';
 import BlogComponent from '@/models/BlogComponent';
 import Topic from '@/models/Topic';
 import BrandSettings from '@/models/BrandSettings';
+import User from '@/models/User';
 
 function wrapTool(ctx: ToolContext, toolName: string, fn: (input: any) => Promise<string>) {
   return async (input: any): Promise<string> => {
@@ -211,31 +212,40 @@ export function buildReadTools(ctx: ToolContext) {
           urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
         });
 
-        const userFolder = `/blog-images/${ctx.userId}`;
-        const skip = input.skip || 0;
-        const results = await imagekit.listFiles({
-          limit: input.limit || 20,
-          skip,
-          sort: 'DESC_CREATED',
-          path: userFolder,
-        });
+        await dbConnect();
+        const userRecord = await User.findById(ctx.userId).lean() as any;
+        const allUserRecords = userRecord?.email
+          ? await User.find({ email: userRecord.email }).select('_id').lean()
+          : [{ _id: ctx.userId }];
+        const mongoIds = allUserRecords.map((u: any) => u._id.toString());
 
-        // If user folder is empty, also check legacy root folder (pre-scoping uploads)
-        const userFiles = results.filter((item) => item.type === 'file');
-        let legacyResults: any[] = [];
-        if (userFiles.length === 0 && skip === 0) {
-          const rootResults = await imagekit.listFiles({
-            limit: input.limit || 20,
-            sort: 'DESC_CREATED',
-            path: '/blog-images',
-          });
-          legacyResults = rootResults.filter((item) => item.type === 'file');
+        const lim = input.limit || 20;
+        const folderPaths = [
+          ...mongoIds.map((id: string) => `/blog-images/${id}`),
+          '/blog-images',
+        ];
+
+        const allResults = await Promise.all(
+          folderPaths.map((path) =>
+            imagekit.listFiles({ limit: lim, skip: input.skip || 0, sort: 'DESC_CREATED', path })
+          )
+        );
+
+        const seen = new Set<string>();
+        const files: any[] = [];
+        for (const results of allResults) {
+          for (const item of results) {
+            if (item.type === 'file' && !seen.has((item as any).fileId)) {
+              seen.add((item as any).fileId);
+              files.push(item);
+            }
+          }
         }
-
-        const files = [...userFiles, ...legacyResults] as any[];
+        files.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const limited = files.slice(0, lim);
         return JSON.stringify({
           total: files.length,
-          images: files.map((img: any) => ({
+          images: limited.map((img: any) => ({
             name: img.name,
             url: img.url,
             thumbnailUrl: img.thumbnailUrl || img.url,
