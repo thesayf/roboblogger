@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
@@ -69,7 +70,7 @@ export function buildReadTools(ctx: ToolContext) {
             .select('title slug publishedAt tags')
             .lean(),
           Topic.aggregate([
-            { $match: { owner: { $exists: true } } },
+            { $match: { owner: new mongoose.Types.ObjectId(ctx.userId) } },
             {
               $group: {
                 _id: '$status',
