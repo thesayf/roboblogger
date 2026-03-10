@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongo';
 import BlogPost from '@/models/BlogPost';
 import Topic from '@/models/Topic';
@@ -75,7 +76,7 @@ async function loadRecentPosts(mongoId: string) {
 
 async function loadQueueStats(mongoId: string): Promise<Record<string, number>> {
   const stats = await Topic.aggregate([
-    { $match: { owner: { $exists: true } } },
+    { $match: { owner: new mongoose.Types.ObjectId(mongoId) } },
     { $group: { _id: '$status', count: { $sum: 1 } } },
   ]);
 
