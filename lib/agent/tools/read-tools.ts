@@ -220,10 +220,7 @@ export function buildReadTools(ctx: ToolContext) {
         const mongoIds = allUserRecords.map((u: any) => u._id.toString());
 
         const lim = input.limit || 20;
-        const folderPaths = [
-          ...mongoIds.map((id: string) => `/blog-images/${id}`),
-          '/blog-images',
-        ];
+        const folderPaths = mongoIds.map((id: string) => `/blog-images/${id}`);
 
         const allResults = await Promise.all(
           folderPaths.map((path) =>

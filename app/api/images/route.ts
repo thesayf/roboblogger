@@ -30,11 +30,8 @@ export async function GET(request: NextRequest) {
       : [{ _id: user.mongoId }];
     const mongoIds = allUserRecords.map((u: any) => u._id.toString());
 
-    // List files from all user folders + legacy root
-    const folderPaths = [
-      ...mongoIds.map((id: string) => `/blog-images/${id}`),
-      '/blog-images',  // legacy uploads (no user subfolder)
-    ];
+    // List files from all user folders (scoped to this user only)
+    const folderPaths = mongoIds.map((id: string) => `/blog-images/${id}`);
 
     const allResults = await Promise.all(
       folderPaths.map((path) =>
