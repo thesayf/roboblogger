@@ -319,6 +319,70 @@ export function buildReadTools(ctx: ToolContext) {
     }),
 
     betaZodTool({
+      name: 'get_internal_link_map',
+      description: 'Get a compact overview of ALL published posts with their titles, slugs, descriptions, keywords, tags, and which other posts they currently link to. Use this to plan internal linking strategy without reading every post individually. Returns enough context to identify linking opportunities across the whole blog.',
+      inputSchema: z.object({}),
+      run: wrapTool(ctx, 'get_internal_link_map', async () => {
+        await dbConnect();
+
+        // Get all published posts with metadata
+        const posts = await BlogPost.find({ owner: ctx.userId, status: { $in: ['published', 'draft'] } })
+          .sort({ publishedAt: -1 })
+          .select('title slug description tags category seoTitle seoDescription status publishedAt')
+          .lean() as any[];
+
+        // For each post, get text components and extract existing internal links
+        const postIds = posts.map((p: any) => p._id);
+        const allComponents = await BlogComponent.find({
+          blogPost: { $in: postIds },
+          type: 'text',
+        })
+          .select('blogPost content')
+          .lean() as any[];
+
+        // Group components by post
+        const componentsByPost = new Map<string, string[]>();
+        for (const comp of allComponents) {
+          const pid = comp.blogPost.toString();
+          if (!componentsByPost.has(pid)) componentsByPost.set(pid, []);
+          componentsByPost.get(pid)!.push(comp.content || '');
+        }
+
+        const linkMap = posts.map((p: any) => {
+          const pid = p._id.toString();
+          const textBlocks = componentsByPost.get(pid) || [];
+          const fullText = textBlocks.join(' ');
+
+          // Extract internal links (href containing blog slug patterns)
+          const linkRegex = /href=["'](?:https?:\/\/[^"']*)?\/blog\/([a-z0-9-]+)["']/gi;
+          const existingLinks: string[] = [];
+          let match;
+          while ((match = linkRegex.exec(fullText)) !== null) {
+            existingLinks.push(match[1]);
+          }
+
+          return {
+            id: pid,
+            title: p.title,
+            slug: p.slug,
+            description: p.description?.substring(0, 200),
+            tags: p.tags,
+            category: p.category,
+            seoKeyword: p.seoTitle,
+            status: p.status,
+            publishedAt: p.publishedAt,
+            linksTo: [...new Set(existingLinks)],
+          };
+        });
+
+        return JSON.stringify({
+          totalPosts: linkMap.length,
+          posts: linkMap,
+        });
+      }),
+    }),
+
+    betaZodTool({
       name: 'get_post',
       description: 'Read a single blog post with all its components. Use this before editing a post to see its full content and component IDs.',
       inputSchema: z.object({

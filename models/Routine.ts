@@ -95,7 +95,7 @@ const RoutineSchema = new Schema<IRoutine>({
     type: Number,
     default: 1.0,
     min: 0.1,
-    max: 10.0,
+    max: 50.0,
   },
   templateId: {
     type: String,
