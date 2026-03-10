@@ -160,12 +160,12 @@ const TopicSchema = new Schema<ITopic>({
   tone: {
     type: String,
     trim: true,
-    maxlength: 100
+    maxlength: 500
   },
   length: {
     type: String,
     trim: true,
-    maxlength: 100
+    maxlength: 200
   },
   includeImages: {
     type: Boolean,
