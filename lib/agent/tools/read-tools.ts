@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Anthropic from '@anthropic-ai/sdk';
+import ImageKit from 'imagekit';
 import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
 import { ToolContext, ToolCallInfo } from '../types';
@@ -126,6 +127,7 @@ export function buildReadTools(ctx: ToolContext) {
           topicsWeCover: (settings as any).topicsWeCover,
           thingsToAvoid: (settings as any).thingsToAvoid,
           industryNiche: (settings as any).industryNiche,
+          referenceImages: (settings as any).referenceImages || [],
         });
       }),
     }),
@@ -203,28 +205,30 @@ export function buildReadTools(ctx: ToolContext) {
         skip: z.number().optional().describe('Number of images to skip for pagination (default 0)'),
       }),
       run: wrapTool(ctx, 'get_media_images', async (input) => {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
-          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+        const imagekit = new ImageKit({
+          publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
+          privateKey: process.env.IMAGEKIT_PRIVATE_KEY!,
+          urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
+        });
 
-        const params = new URLSearchParams();
-        params.set('limit', String(input.limit || 20));
-        params.set('skip', String(input.skip || 0));
+        const userFolder = `/blog-images/${ctx.userId}`;
+        const results = await imagekit.listFiles({
+          limit: input.limit || 20,
+          skip: input.skip || 0,
+          sort: 'DESC_CREATED',
+          path: userFolder,
+        });
 
-        const response = await fetch(`${baseUrl}/api/images?${params.toString()}`);
-        if (!response.ok) {
-          return JSON.stringify({ error: 'Failed to fetch images from media library' });
-        }
-
-        const data = await response.json();
+        const files = results.filter((item) => item.type === 'file') as any[];
         return JSON.stringify({
-          total: data.total,
-          images: (data.images || []).map((img: any) => ({
+          total: files.length,
+          images: files.map((img: any) => ({
             name: img.name,
             url: img.url,
-            thumbnailUrl: img.thumbnailUrl,
-            width: img.width,
-            height: img.height,
-            format: img.format,
+            thumbnailUrl: img.thumbnailUrl || img.url,
+            width: img.width || 0,
+            height: img.height || 0,
+            format: img.fileType?.split('/')[1] || 'unknown',
             createdAt: img.createdAt,
           })),
         });
