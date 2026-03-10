@@ -212,7 +212,7 @@ export default function BlogAdminClient() {
 
   // Fetch images when Images tab is selected
   useEffect(() => {
-    if (selectedTab === "images") {
+    if (selectedTab === "media") {
       fetchImages();
     }
   }, [selectedTab]);
