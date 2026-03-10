@@ -114,6 +114,52 @@ export async function POST(req: Request) {
         });
 
         let assistantContent = '';
+        let assistantMsgId: string | null = null;
+        let lastSavedLength = 0;
+
+        // Periodically flush assistant content to DB so it survives crashes/timeouts
+        const flushAssistantContent = async () => {
+          if (assistantContent.length === 0 || assistantContent.length === lastSavedLength) return;
+          try {
+            if (!assistantMsgId) {
+              // Create the message on first flush
+              const msg = await ChatMessage.create({
+                conversationId: conv._id,
+                owner: user.mongoId,
+                date: today,
+                role: 'assistant',
+                content: assistantContent,
+                toolCalls: toolCalls.map((tc) => ({
+                  name: tc.name,
+                  input: tc.input,
+                  result: tc.result?.slice(0, 1000),
+                })),
+              });
+              assistantMsgId = msg._id.toString();
+            } else {
+              // Update existing message
+              await ChatMessage.updateOne(
+                { _id: assistantMsgId },
+                {
+                  $set: {
+                    content: assistantContent,
+                    toolCalls: toolCalls.map((tc) => ({
+                      name: tc.name,
+                      input: tc.input,
+                      result: tc.result?.slice(0, 1000),
+                    })),
+                  },
+                }
+              );
+            }
+            lastSavedLength = assistantContent.length;
+          } catch (err) {
+            console.error('[Chat] Failed to flush assistant content:', err);
+          }
+        };
+
+        // Flush every 5 seconds while streaming
+        const flushInterval = setInterval(flushAssistantContent, 5000);
 
         try {
           const client = new Anthropic({ maxRetries: 5 });
@@ -146,7 +192,11 @@ export async function POST(req: Request) {
                 tokenUsage.outputTokens += (event as any).usage.output_tokens || 0;
               }
             }
+            // Flush after each toolRunner iteration (after tool calls complete)
+            await flushAssistantContent();
           }
+
+          clearInterval(flushInterval);
 
           // Calculate actual credit cost based on usage
           const billing = calculateChatCredits({
@@ -156,19 +206,8 @@ export async function POST(req: Request) {
             toolCalls,
           });
 
-          // Save assistant message (user message already saved above)
-          await ChatMessage.create({
-            conversationId: conv._id,
-            owner: user.mongoId,
-            date: today,
-            role: 'assistant',
-            content: assistantContent,
-            toolCalls: toolCalls.map((tc) => ({
-              name: tc.name,
-              input: tc.input,
-              result: tc.result?.slice(0, 1000),
-            })),
-          });
+          // Final save of assistant message (may already exist from periodic flushes)
+          await flushAssistantContent();
 
           // Deduct calculated credits with audit trail
           const creditsUsed = billing.credits;
@@ -264,27 +303,11 @@ export async function POST(req: Request) {
           })();
 
         } catch (error: any) {
+          clearInterval(flushInterval);
           console.error('[Chat] Agent error:', error);
 
-          // Save partial assistant response so it's not lost
-          if (assistantContent.length > 0) {
-            try {
-              await ChatMessage.create({
-                conversationId: conv._id,
-                owner: user.mongoId,
-                date: today,
-                role: 'assistant',
-                content: assistantContent,
-                toolCalls: toolCalls.map((tc) => ({
-                  name: tc.name,
-                  input: tc.input,
-                  result: tc.result?.slice(0, 1000),
-                })),
-              });
-            } catch (saveErr) {
-              console.error('[Chat] Failed to save partial assistant message:', saveErr);
-            }
-          }
+          // Save whatever assistant content we have so far
+          await flushAssistantContent();
 
           const isOverloaded = error?.status === 529 || error?.error?.type === 'overloaded_error';
           const message = isOverloaded
