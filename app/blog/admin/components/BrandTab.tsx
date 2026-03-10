@@ -186,6 +186,30 @@ export function BrandTab() {
     setSaveStatus('idle');
   };
 
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        // Add to media list and auto-select
+        setMediaImages(prev => [{ fileId: data.fileId, name: data.name, url: data.url, thumbnailUrl: data.thumbnailUrl || data.url }, ...prev]);
+        addReferenceImage(data.url);
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const removeReferenceImage = (index: number) => {
     setSettings(prev => ({
       ...prev,
@@ -518,9 +542,16 @@ Example:
               <div className="bg-white rounded-xl max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
                 <div className="px-6 py-4 border-b border-[#F0EEE8] flex items-center justify-between">
                   <h4 className="text-[16px] font-semibold text-[#111111]">Select Reference Images</h4>
-                  <button onClick={() => setShowMediaPicker(false)} className="text-[#888888] hover:text-[#111111]">
-                    <X className="h-5 w-5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium border border-[#E0DED8] hover:bg-[#F5F4F0] transition-colors cursor-pointer ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                      {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                      Upload
+                      <input type="file" accept="image/*" onChange={handleUploadImage} className="hidden" />
+                    </label>
+                    <button onClick={() => setShowMediaPicker(false)} className="text-[#888888] hover:text-[#111111]">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
                 <div className="p-6 overflow-y-auto flex-1">
                   {isLoadingMedia ? (
