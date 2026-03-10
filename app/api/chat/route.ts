@@ -104,6 +104,17 @@ export async function POST(req: Request) {
 
         const tools = buildTools(toolCtx);
 
+        // Save user message immediately so it's never lost
+        await ChatMessage.create({
+          conversationId: conv._id,
+          owner: user.mongoId,
+          date: today,
+          role: 'user',
+          content: message,
+        });
+
+        let assistantContent = '';
+
         try {
           const client = new Anthropic({ maxRetries: 5 });
           const runner = client.beta.messages.toolRunner({
@@ -114,8 +125,6 @@ export async function POST(req: Request) {
             messages: claudeMessages,
             stream: true,
           });
-
-          let assistantContent = '';
 
           // Track token usage across all toolRunner iterations
           const tokenUsage = { inputTokens: 0, outputTokens: 0 };
@@ -147,16 +156,7 @@ export async function POST(req: Request) {
             toolCalls,
           });
 
-          // Save user message
-          await ChatMessage.create({
-            conversationId: conv._id,
-            owner: user.mongoId,
-            date: today,
-            role: 'user',
-            content: message,
-          });
-
-          // Save assistant message
+          // Save assistant message (user message already saved above)
           await ChatMessage.create({
             conversationId: conv._id,
             owner: user.mongoId,
@@ -265,6 +265,27 @@ export async function POST(req: Request) {
 
         } catch (error: any) {
           console.error('[Chat] Agent error:', error);
+
+          // Save partial assistant response so it's not lost
+          if (assistantContent.length > 0) {
+            try {
+              await ChatMessage.create({
+                conversationId: conv._id,
+                owner: user.mongoId,
+                date: today,
+                role: 'assistant',
+                content: assistantContent,
+                toolCalls: toolCalls.map((tc) => ({
+                  name: tc.name,
+                  input: tc.input,
+                  result: tc.result?.slice(0, 1000),
+                })),
+              });
+            } catch (saveErr) {
+              console.error('[Chat] Failed to save partial assistant message:', saveErr);
+            }
+          }
+
           const isOverloaded = error?.status === 529 || error?.error?.type === 'overloaded_error';
           const message = isOverloaded
             ? 'Claude is currently overloaded. Please try again in a few seconds.'
