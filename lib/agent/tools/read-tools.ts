@@ -212,14 +212,27 @@ export function buildReadTools(ctx: ToolContext) {
         });
 
         const userFolder = `/blog-images/${ctx.userId}`;
+        const skip = input.skip || 0;
         const results = await imagekit.listFiles({
           limit: input.limit || 20,
-          skip: input.skip || 0,
+          skip,
           sort: 'DESC_CREATED',
           path: userFolder,
         });
 
-        const files = results.filter((item) => item.type === 'file') as any[];
+        // If user folder is empty, also check legacy root folder (pre-scoping uploads)
+        const userFiles = results.filter((item) => item.type === 'file');
+        let legacyResults: any[] = [];
+        if (userFiles.length === 0 && skip === 0) {
+          const rootResults = await imagekit.listFiles({
+            limit: input.limit || 20,
+            sort: 'DESC_CREATED',
+            path: '/blog-images',
+          });
+          legacyResults = rootResults.filter((item) => item.type === 'file');
+        }
+
+        const files = [...userFiles, ...legacyResults] as any[];
         return JSON.stringify({
           total: files.length,
           images: files.map((img: any) => ({

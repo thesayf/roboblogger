@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(url.searchParams.get("limit") || "50");
     const skip = parseInt(url.searchParams.get("skip") || "0");
 
-    // List files from user's folder only
+    // List files from user's scoped folder
     const userFolder = `/blog-images/${user.mongoId}`;
     const results = await imagekit.listFiles({
       limit,
@@ -29,8 +29,19 @@ export async function GET(request: NextRequest) {
       path: userFolder,
     });
 
-    // Filter only files (not folders) and transform ImageKit response to match our interface
-    const files = results.filter((item) => item.type === "file") as any[];
+    // If user folder is empty, also check legacy root folder (pre-scoping uploads)
+    let legacyResults: any[] = [];
+    const userFiles = results.filter((item) => item.type === "file");
+    if (userFiles.length === 0 && skip === 0) {
+      const rootResults = await imagekit.listFiles({
+        limit,
+        sort: "DESC_CREATED",
+        path: "/blog-images",
+      });
+      legacyResults = rootResults.filter((item) => item.type === "file");
+    }
+
+    const files = [...userFiles, ...legacyResults] as any[];
     const transformedImages = files.map((image: any) => ({
       fileId: image.fileId,
       name: image.name,
