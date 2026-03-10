@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ToolContext, ToolCallInfo } from '../types';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
+import BrandSettings from '@/models/BrandSettings';
 import BlogPost from '@/models/BlogPost';
 import BlogComponent from '@/models/BlogComponent';
 
@@ -350,6 +351,62 @@ export function buildActionTools(ctx: ToolContext) {
         return JSON.stringify({
           success: true,
           message: `Component ${input.componentId} updated.`,
+        });
+      }),
+    }),
+
+    betaZodTool({
+      name: 'update_brand_settings',
+      description: 'Update the user\'s brand settings. Use get_brand_settings first to see current values. All fields are optional — only provided fields will be updated.',
+      inputSchema: z.object({
+        blogName: z.string().optional().describe('Blog name/title'),
+        blogDescription: z.string().optional().describe('Blog description'),
+        targetAudience: z.string().optional().describe('Description of the target audience'),
+        tone: z.enum(['professional', 'casual', 'technical', 'conversational', 'authoritative', 'friendly', 'custom']).optional().describe('Writing tone/voice'),
+        customTone: z.string().optional().describe('Custom tone description (used when tone is "custom")'),
+        styleGuidelines: z.string().optional().describe('Writing style guidelines'),
+        topicsWeCover: z.string().optional().describe('Topics the blog covers'),
+        thingsToAvoid: z.string().optional().describe('Content to avoid'),
+        exampleContent: z.string().optional().describe('Sample posts or writing examples for voice matching'),
+        industryNiche: z.string().optional().describe('Industry/niche for SEO research context'),
+      }),
+      run: wrapTool(ctx, 'update_brand_settings', async (input) => {
+        await dbConnect();
+
+        const update: any = {};
+        if (input.blogName !== undefined) update.blogName = input.blogName;
+        if (input.blogDescription !== undefined) update.blogDescription = input.blogDescription;
+        if (input.targetAudience !== undefined) update.targetAudience = input.targetAudience;
+        if (input.tone !== undefined) update.tone = input.tone;
+        if (input.customTone !== undefined) update.customTone = input.customTone;
+        if (input.styleGuidelines !== undefined) update.styleGuidelines = input.styleGuidelines;
+        if (input.topicsWeCover !== undefined) update.topicsWeCover = input.topicsWeCover;
+        if (input.thingsToAvoid !== undefined) update.thingsToAvoid = input.thingsToAvoid;
+        if (input.exampleContent !== undefined) update.exampleContent = input.exampleContent;
+        if (input.industryNiche !== undefined) update.industryNiche = input.industryNiche;
+
+        const settings = await BrandSettings.findOneAndUpdate(
+          { userId: ctx.clerkId },
+          { $set: update },
+          { new: true, upsert: true }
+        );
+
+        ctx.dataChanged.push('brand');
+
+        return JSON.stringify({
+          success: true,
+          message: 'Brand settings updated.',
+          settings: {
+            blogName: settings.blogName,
+            blogDescription: settings.blogDescription,
+            targetAudience: settings.targetAudience,
+            tone: settings.tone,
+            customTone: settings.customTone,
+            styleGuidelines: settings.styleGuidelines,
+            topicsWeCover: settings.topicsWeCover,
+            thingsToAvoid: settings.thingsToAvoid,
+            industryNiche: settings.industryNiche,
+          },
         });
       }),
     }),

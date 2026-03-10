@@ -87,6 +87,16 @@ export function BrandTab() {
     fetchSettings();
   }, []);
 
+  // Refresh when chat agent updates brand settings
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.collections?.includes('brand')) fetchSettings();
+    };
+    window.addEventListener('chat-data-changed', handler);
+    return () => window.removeEventListener('chat-data-changed', handler);
+  }, []);
+
   const fetchSettings = async () => {
     try {
       setIsLoading(true);

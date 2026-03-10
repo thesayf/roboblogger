@@ -110,7 +110,7 @@ export function buildReadTools(ctx: ToolContext) {
       inputSchema: z.object({}),
       run: wrapTool(ctx, 'get_brand_settings', async () => {
         await dbConnect();
-        const settings = await BrandSettings.findOne({ userId: ctx.userId }).lean();
+        const settings = await BrandSettings.findOne({ userId: ctx.clerkId }).lean();
 
         if (!settings) {
           return JSON.stringify({ error: 'No brand settings configured yet. Suggest the user set up their brand settings in the Brand tab.' });
