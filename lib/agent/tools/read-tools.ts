@@ -91,6 +91,7 @@ export function buildReadTools(ctx: ToolContext) {
           publishedPosts,
           draftPosts,
           recentPosts: recentPosts.map((p: any) => ({
+            id: p._id.toString(),
             title: p.title,
             slug: p.slug,
             publishedAt: p.publishedAt?.toISOString(),
@@ -384,14 +385,22 @@ export function buildReadTools(ctx: ToolContext) {
 
     betaZodTool({
       name: 'get_post',
-      description: 'Read a single blog post with all its components. Use this before editing a post to see its full content and component IDs.',
+      description: 'Read a single blog post with all its components. Use this before editing a post to see its full content and component IDs. Accepts either a post ID or slug.',
       inputSchema: z.object({
-        postId: z.string().describe('The blog post ID to read'),
+        postId: z.string().optional().describe('The blog post ID to read'),
+        slug: z.string().optional().describe('The blog post slug to read (alternative to postId)'),
       }),
       run: wrapTool(ctx, 'get_post', async (input) => {
+        if (!input.postId && !input.slug) {
+          return JSON.stringify({ error: 'Either postId or slug is required.' });
+        }
         await dbConnect();
 
-        const post = await BlogPost.findOne({ _id: input.postId, owner: ctx.userId })
+        const query: any = { owner: ctx.userId };
+        if (input.postId) query._id = input.postId;
+        else query.slug = input.slug;
+
+        const post = await BlogPost.findOne(query)
           .select('title description slug status tags category seoTitle seoDescription featuredImage featuredImageThumbnail readTime publishedAt createdAt')
           .lean();
 
