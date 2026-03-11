@@ -243,6 +243,8 @@ export function useChat(): UseChatReturn {
       list_routines: 'Loading routines...',
       create_routine: 'Creating routine...',
       update_routine: 'Updating routine...',
+      update_topics_bulk: 'Updating topics...',
+      edit_posts_bulk: 'Editing posts...',
     };
     return map[toolName] || `Running ${toolName}...`;
   }

@@ -213,6 +213,86 @@ export function buildActionTools(ctx: ToolContext) {
     }),
 
     betaZodTool({
+      name: 'update_topics_bulk',
+      description: 'Update multiple topics in a single operation (up to 20). ALWAYS use this instead of calling update_topic multiple times — it is much faster and avoids timeouts. Use this whenever updating 2 or more topics.',
+      inputSchema: z.object({
+        updates: z.array(z.object({
+          topicId: z.string().describe('The topic ID to update'),
+          audience: z.string().optional(),
+          tone: z.string().optional(),
+          length: z.string().optional(),
+          priority: z.enum(['low', 'medium', 'high']).optional(),
+          scheduledAt: z.string().optional().describe('ISO date string'),
+          primaryKeyword: z.string().optional(),
+          secondaryKeywords: z.array(z.string()).optional(),
+          searchIntent: z.enum(['informational', 'commercial', 'navigational', 'transactional']).optional(),
+          tags: z.array(z.string()).optional(),
+          additionalRequirements: z.string().optional(),
+          imageContext: z.string().optional(),
+          referenceImages: z.array(z.string()).optional(),
+          internalLinks: z.array(z.object({
+            postId: z.string(),
+            slug: z.string(),
+            title: z.string(),
+            description: z.string().optional(),
+          })).optional(),
+        })).max(20).describe('Array of topic updates (max 20)'),
+      }),
+      run: wrapTool(ctx, 'update_topics_bulk', async (input) => {
+        await dbConnect();
+
+        const results: { topicId: string; success: boolean; error?: string }[] = [];
+
+        await Promise.all(input.updates.map(async (t: any) => {
+          try {
+            const update: any = {};
+            if (t.audience) update.audience = t.audience;
+            if (t.tone) update.tone = t.tone;
+            if (t.length) update.length = t.length;
+            if (t.priority) update.priority = t.priority;
+            if (t.scheduledAt) update.scheduledAt = new Date(t.scheduledAt);
+            if (t.tags) update.tags = t.tags;
+            if (t.additionalRequirements) update.additionalRequirements = t.additionalRequirements;
+            if (t.imageContext) update.imageContext = t.imageContext;
+            if (t.referenceImages) update.referenceImages = t.referenceImages;
+            if (t.internalLinks) update.internalLinks = t.internalLinks;
+            if (t.primaryKeyword || t.secondaryKeywords || t.searchIntent) {
+              if (t.primaryKeyword) update['seo.primaryKeyword'] = t.primaryKeyword;
+              if (t.secondaryKeywords) update['seo.secondaryKeywords'] = t.secondaryKeywords;
+              if (t.searchIntent) update['seo.searchIntent'] = t.searchIntent;
+            }
+
+            const topic = await Topic.findOneAndUpdate(
+              { _id: t.topicId, owner: ctx.userId },
+              { $set: update },
+              { new: true }
+            );
+
+            if (!topic) {
+              results.push({ topicId: t.topicId, success: false, error: 'Not found' });
+            } else {
+              results.push({ topicId: t.topicId, success: true });
+            }
+          } catch (err: any) {
+            results.push({ topicId: t.topicId, success: false, error: err.message });
+          }
+        }));
+
+        ctx.dataChanged.push('topics');
+
+        const succeeded = results.filter(r => r.success).length;
+        const failed = results.filter(r => !r.success);
+
+        return JSON.stringify({
+          success: failed.length === 0,
+          updated: succeeded,
+          failed: failed.length > 0 ? failed : undefined,
+          message: `${succeeded}/${input.updates.length} topics updated.`,
+        });
+      }),
+    }),
+
+    betaZodTool({
       name: 'update_post_status',
       description: 'Change the status of a blog post (publish, archive, or set to draft).',
       inputSchema: z.object({
@@ -351,6 +431,115 @@ export function buildActionTools(ctx: ToolContext) {
         return JSON.stringify({
           success: true,
           message: `Component ${input.componentId} updated.`,
+        });
+      }),
+    }),
+
+    betaZodTool({
+      name: 'edit_posts_bulk',
+      description: 'Edit multiple blog posts and/or their components in a single operation (up to 20 edits). ALWAYS use this instead of calling edit_post or edit_post_component multiple times — it is much faster and avoids timeouts. Perfect for bulk updates like adding internal links across posts, updating descriptions, or fixing SEO data.',
+      inputSchema: z.object({
+        edits: z.array(z.object({
+          postId: z.string().describe('The blog post ID to edit'),
+          // Post-level fields (optional)
+          title: z.string().optional().describe('New post title'),
+          description: z.string().optional().describe('New post description'),
+          seoTitle: z.string().optional().describe('New SEO title'),
+          seoDescription: z.string().optional().describe('New SEO meta description'),
+          tags: z.array(z.string()).optional().describe('New tags array'),
+          category: z.string().optional().describe('New category'),
+          featuredImage: z.string().optional().describe('New featured image URL'),
+          featuredImageThumbnail: z.string().optional().describe('New featured image thumbnail URL'),
+          // Component edits (optional)
+          components: z.array(z.object({
+            componentId: z.string().describe('The component ID to edit'),
+            content: z.string().optional(),
+            url: z.string().optional(),
+            alt: z.string().optional(),
+            caption: z.string().optional(),
+            variant: z.enum(['info', 'success', 'warning', 'error']).optional(),
+            title: z.string().optional(),
+            author: z.string().optional(),
+            citation: z.string().optional(),
+            text: z.string().optional(),
+            link: z.string().optional(),
+            style: z.enum(['primary', 'secondary', 'outline']).optional(),
+            data: z.any().optional(),
+          })).optional().describe('Component-level edits for this post'),
+        })).max(20).describe('Array of post edits (max 20)'),
+      }),
+      run: wrapTool(ctx, 'edit_posts_bulk', async (input) => {
+        await dbConnect();
+
+        const results: { postId: string; success: boolean; componentsUpdated?: number; error?: string }[] = [];
+
+        await Promise.all(input.edits.map(async (edit: any) => {
+          try {
+            // Verify user owns the post
+            const post = await BlogPost.findOne({ _id: edit.postId, owner: ctx.userId }).select('_id title').lean();
+            if (!post) {
+              results.push({ postId: edit.postId, success: false, error: 'Not found' });
+              return;
+            }
+
+            // Apply post-level updates
+            const postUpdate: any = {};
+            if (edit.title) postUpdate.title = edit.title;
+            if (edit.description) postUpdate.description = edit.description;
+            if (edit.seoTitle) postUpdate.seoTitle = edit.seoTitle;
+            if (edit.seoDescription) postUpdate.seoDescription = edit.seoDescription;
+            if (edit.tags) postUpdate.tags = edit.tags;
+            if (edit.category) postUpdate.category = edit.category;
+            if (edit.featuredImage) postUpdate.featuredImage = edit.featuredImage;
+            if (edit.featuredImageThumbnail) postUpdate.featuredImageThumbnail = edit.featuredImageThumbnail;
+
+            if (Object.keys(postUpdate).length > 0) {
+              await BlogPost.findByIdAndUpdate(edit.postId, { $set: postUpdate });
+            }
+
+            // Apply component-level updates
+            let componentsUpdated = 0;
+            if (edit.components?.length > 0) {
+              await Promise.all(edit.components.map(async (comp: any) => {
+                const compUpdate: any = {};
+                if (comp.content !== undefined) compUpdate.content = comp.content;
+                if (comp.url !== undefined) compUpdate.url = comp.url;
+                if (comp.alt !== undefined) compUpdate.alt = comp.alt;
+                if (comp.caption !== undefined) compUpdate.caption = comp.caption;
+                if (comp.variant !== undefined) compUpdate.variant = comp.variant;
+                if (comp.title !== undefined) compUpdate.title = comp.title;
+                if (comp.author !== undefined) compUpdate.author = comp.author;
+                if (comp.citation !== undefined) compUpdate.citation = comp.citation;
+                if (comp.text !== undefined) compUpdate.text = comp.text;
+                if (comp.link !== undefined) compUpdate.link = comp.link;
+                if (comp.style !== undefined) compUpdate.style = comp.style;
+                if (comp.data !== undefined) compUpdate.data = comp.data;
+
+                const result = await BlogComponent.findOneAndUpdate(
+                  { _id: comp.componentId, blogPost: edit.postId },
+                  { $set: compUpdate }
+                );
+                if (result) componentsUpdated++;
+              }));
+            }
+
+            results.push({ postId: edit.postId, success: true, componentsUpdated });
+          } catch (err: any) {
+            results.push({ postId: edit.postId, success: false, error: err.message });
+          }
+        }));
+
+        ctx.dataChanged.push('posts');
+
+        const succeeded = results.filter(r => r.success).length;
+        const failed = results.filter(r => !r.success);
+
+        return JSON.stringify({
+          success: failed.length === 0,
+          updated: succeeded,
+          results,
+          failed: failed.length > 0 ? failed : undefined,
+          message: `${succeeded}/${input.edits.length} posts updated.`,
         });
       }),
     }),
