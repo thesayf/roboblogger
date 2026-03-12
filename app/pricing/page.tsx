@@ -1,6 +1,21 @@
 import Link from 'next/link'
 import { SignUpButton } from '@clerk/nextjs'
 import { Check } from 'lucide-react'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: "Pricing",
+  description: "Simple, honest pricing for Vibeblogger. Start free, upgrade when you're ready. AI-generated blog posts starting at $0.",
+  alternates: {
+    canonical: "https://vibeblogger.io/pricing",
+  },
+  openGraph: {
+    title: "Pricing | Vibeblogger",
+    description: "Simple, honest pricing for Vibeblogger. Start free, upgrade when you're ready.",
+    url: "https://vibeblogger.io/pricing",
+    siteName: "Vibeblogger",
+  },
+}
 
 export default function PricingPage() {
   return (

@@ -67,35 +67,25 @@ async function getBlogPosts(): Promise<CleanBlogPost[]> {
 // Sets the metadata for SEO
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    metadataBase: new URL("https://roboblogger.com"),
-    title: "Blog - Productivity Tips & Scheduling Science",
+    title: "Blog - AI Blogging Tips & SEO Strategies",
     description:
-      "Productivity tips, scheduling science, and insights to help you make the most of your time.",
+      "AI blogging tips, SEO strategies, and insights to help you publish content that ranks — with zero effort.",
     openGraph: {
-      title: "Blog - Productivity Tips & Scheduling Science",
+      title: "Blog - AI Blogging Tips & SEO Strategies",
       description:
-        "Productivity tips, scheduling science, and insights to help you make the most of your time.",
+        "AI blogging tips, SEO strategies, and insights to help you publish content that ranks — with zero effort.",
       type: "website",
-      url: "https://roboblogger.com/blog",
-      images: [
-        {
-          url: "/homepage-og.jpg",
-          width: 1200,
-          height: 630,
-          alt: "RoboBlogger AI Productivity Tool",
-        },
-      ],
-      siteName: "RoboBlogger",
+      url: "https://vibeblogger.io/blog",
+      siteName: "Vibeblogger",
     },
     twitter: {
       card: "summary_large_image",
-      title: "Blog - Productivity Tips & Scheduling Science",
+      title: "Blog - AI Blogging Tips & SEO Strategies",
       description:
-        "Productivity tips, scheduling science, and insights to help you make the most of your time.",
-      images: ["https://roboblogger.com/images/og-blog.jpg"],
+        "AI blogging tips, SEO strategies, and insights to help you publish content that ranks — with zero effort.",
     },
     alternates: {
-      canonical: "https://roboblogger.com/blog",
+      canonical: "https://vibeblogger.io/blog",
     },
   };
 }
@@ -106,5 +96,13 @@ export default async function BlogPage() {
   const schema = generateBlogListSchema(posts);
 
   // Pass the pre-fetched data to client component
-  return <BlogPageClient initialPosts={posts} schema={schema} />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+      <BlogPageClient initialPosts={posts} schema={schema} />
+    </>
+  );
 }

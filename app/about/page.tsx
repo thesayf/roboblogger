@@ -1,75 +1,72 @@
-"use client"
-
 import Link from 'next/link'
+import { SignUpButton } from '@clerk/nextjs'
 
 export default function About() {
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#111111] flex flex-col">
       {/* Navigation */}
-      <nav className="border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-2xl text-gray-900" style={{ fontFamily: "Lora, Georgia, serif" }}>
-            RoboBlogger
+      <nav className="max-w-[1100px] mx-auto w-full px-8 py-6 flex items-center justify-between">
+        <Link href="/" className="font-lora text-2xl font-bold tracking-tight">
+          Vibeblogger
+        </Link>
+        <div className="flex items-center gap-8">
+          <Link href="/about" className="text-sm text-[#111111] font-medium hidden sm:block">
+            About
           </Link>
-          <div className="flex gap-6">
-            <Link href="/about" className="text-sm font-mono text-gray-900 hover:text-gray-900">
-              About
-            </Link>
-            <Link href="/pricing" className="text-sm font-mono text-gray-600 hover:text-gray-900">
-              Pricing
-            </Link>
-            <Link href="/blog-redesign" className="text-sm font-mono text-gray-600 hover:text-gray-900">
-              Blog
-            </Link>
-          </div>
+          <Link href="/docs" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            Docs
+          </Link>
+          <Link href="/pricing" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            Pricing
+          </Link>
+          <Link href="/blog" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            Blog
+          </Link>
         </div>
       </nav>
 
-      {/* Content - Centered */}
-      <section className="flex-1 flex items-center justify-center px-6 py-20">
-        <div className="max-w-3xl">
-          <h1 className="text-5xl text-gray-900 mb-12" style={{ fontFamily: "Lora, Georgia, serif" }}>
-            About RoboBlogger
+      <div className="mx-8 border-b border-[#E0DED8]" />
+
+      {/* Content */}
+      <section className="flex-1 flex items-center justify-center px-8 py-20">
+        <div className="max-w-[600px]">
+          <h1 className="font-lora text-[40px] sm:text-[56px] font-normal leading-[1.15] tracking-[-0.02em] mb-12">
+            About Vibeblogger
           </h1>
 
-          <div className="space-y-6 text-2xl text-gray-700 leading-relaxed mb-12" style={{ fontFamily: "Lora, Georgia, serif" }}>
+          <div className="space-y-6 text-lg text-[#444444] leading-relaxed">
             <p>
-              Organize your day fast. And I mean fast.
+              Most apps know they need a blog. SEO is the highest-ROI marketing channel for startups and SaaS products. But nobody has time to research keywords, write 2,000-word articles, generate images, and publish consistently.
             </p>
 
             <p>
-              Learn a couple commands and you can schedule your days and life in seconds.
+              Vibeblogger does all of that for you. Tell it your niche and audience. It researches real keywords, writes long-form content that reads like a human wrote it, generates matching images, and delivers everything through a headless API.
             </p>
 
             <p>
-              Two views: one to manage today, one to organize your goals and future.
+              No generic AI slop. Every post is built from 15+ structured components — callouts, comparison tables, charts, CTAs — so your content stands out and keeps readers engaged.
             </p>
 
             <p>
-              If you need help, you have a friendly AI assistant with ⌘A who can do everything for you.
-            </p>
-
-            <p>
-              It&apos;s hard to explain. Just try it. Free for 30 days, no credit card required.
+              Plug the API into whatever frontend you're building. Next.js, Remix, Astro, plain HTML — it doesn't matter. Your blog, your design, our content engine.
             </p>
           </div>
 
-          <div className="text-center">
-            <Link
-              href="/sign-up"
-              className="inline-block px-8 py-4 bg-gray-900 text-white font-mono text-lg hover:bg-gray-800 transition-colors"
-            >
-              Get Started
-            </Link>
+          <div className="mt-12">
+            <SignUpButton mode="modal">
+              <button className="text-[15px] font-semibold text-white bg-[#111111] px-9 py-3.5 rounded-full hover:bg-[#333333] transition-colors cursor-pointer">
+                Start publishing →
+              </button>
+            </SignUpButton>
           </div>
         </div>
       </section>
 
+      <div className="mx-8 border-b border-[#E0DED8]" />
+
       {/* Footer */}
-      <footer className="border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-gray-500 font-mono">
-          © 2025 RoboBlogger. Fast, keyboard-first productivity.
-        </div>
+      <footer className="px-8 py-8 text-center">
+        <p className="text-[13px] text-[#AAAAAA]">vibeblogger.io</p>
       </footer>
     </div>
   )

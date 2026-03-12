@@ -1,34 +1,35 @@
-// utils/schema.js
-
 interface PostData {
   title: string;
   description: string;
   featured_image?: {
-    url?: string; // url is now optional
-    alt?: string; // added alt field
+    url?: string;
+    alt?: string;
   };
   date: string;
   last_modified?: string;
   author?: string;
-  category?: string; // added category field
+  category?: string;
 }
 
 interface Post {
-  id?: string; // added optional id field
+  id?: string;
   uid: string;
   data: PostData;
 }
 
+const BASE_URL = "https://vibeblogger.io";
+const BRAND_NAME = "Vibeblogger";
+
 export function generateBlogListSchema(
   posts: Post[],
-  baseUrl = "https://schedulegenius.ai"
+  baseUrl = BASE_URL
 ): Record<string, any> {
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    headline: "The RoboBlogger Blog",
+    headline: `The ${BRAND_NAME} Blog`,
     description:
-      "Productivity tips, scheduling science, and insights to help you make the most of your time.",
+      "AI blogging tips, SEO strategies, and insights to help you publish content that ranks — with zero effort.",
     url: `${baseUrl}/blog`,
     mainEntity: {
       "@type": "ItemList",
@@ -44,7 +45,7 @@ export function generateBlogListSchema(
 
 export function generateBlogPostSchema(
   post: Post,
-  baseUrl = "https://schedulegenius.ai"
+  baseUrl = BASE_URL
 ) {
   return {
     "@context": "https://schema.org",
@@ -57,14 +58,14 @@ export function generateBlogPostSchema(
     dateModified: post.data.last_modified || post.data.date,
     author: {
       "@type": "Person",
-      name: post.data.author || "RoboBlogger Team",
+      name: post.data.author || `${BRAND_NAME} Team`,
     },
     publisher: {
       "@type": "Organization",
-      name: "RoboBlogger",
+      name: BRAND_NAME,
       logo: {
         "@type": "ImageObject",
-        url: `${baseUrl}/logo.jpg`,
+        url: `${baseUrl}/V.png`,
       },
     },
     mainEntityOfPage: {
@@ -97,79 +98,41 @@ export function generateBlogPostSchema(
   };
 }
 
-// utils/schema.js
-// Add this function alongside your other schema generators
-
-// utils/schema.js
-export function generateHomePageSchema(baseUrl = "https://schedulegenius.ai") {
+export function generateHomePageSchema(baseUrl = BASE_URL) {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "RoboBlogger",
+    name: BRAND_NAME,
     url: baseUrl,
     description:
-      "Optimize your schedule with AI and behavioral science principles to maximize productivity",
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${baseUrl}/search?q={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
+      "AI that researches, writes, and publishes SEO-optimized blog posts for your app. Headless API. Beautiful components. Zero effort.",
     publisher: {
       "@type": "Organization",
-      name: "RoboBlogger",
+      name: BRAND_NAME,
       logo: {
         "@type": "ImageObject",
-        url: `${baseUrl}/logo.jpg`,
+        url: `${baseUrl}/V.png`,
       },
-      sameAs: [
-        // Add your social media profiles here if applicable
-        // "https://twitter.com/RoboBlogger",
-        // "https://www.linkedin.com/company/RoboBlogger",
-      ],
     },
     mainEntity: {
       "@type": "SoftwareApplication",
-      name: "RoboBlogger",
-      applicationCategory: "ProductivityApplication",
-      applicationSubCategory: "Scheduling Software",
+      name: BRAND_NAME,
+      applicationCategory: "BusinessApplication",
+      applicationSubCategory: "Content Management",
       operatingSystem: "Web",
       offers: {
         "@type": "Offer",
-        price: "0", // If you have a free tier
+        price: "0",
         priceCurrency: "USD",
-        priceSpecification: {
-          "@type": "UnitPriceSpecification",
-          priceType: "https://schema.org/FreeTrial",
-          referenceQuantity: {
-            "@type": "QuantitativeValue",
-            value: "1",
-            unitCode: "MON", // Month
-          },
-          price: "0",
-        },
-      },
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "4.8", // If you have ratings
-        ratingCount: "250", // Number of ratings
       },
       featureList: [
-        "AI-powered schedule optimization",
-        "Behavioral science integration",
-        "Personalized productivity templates",
-        "Pomodoro technique integration",
-        "Deep work scheduling",
+        "AI-powered blog post generation",
+        "SEO keyword research and optimization",
+        "Headless API for any frontend",
+        "15+ content component types",
+        "AI-generated images",
+        "Auto-publish scheduling",
       ],
-      screenshot: `${baseUrl}/images/app-screenshot.jpg`,
-      softwareRequirements: "Works in any modern web browser",
-      softwareVersion: "1.0",
-      downloadUrl: baseUrl,
-    },
-    about: {
-      "@type": "Thing",
-      name: "Productivity Software",
-      description:
-        "Tools designed to help individuals and teams maximize their efficiency and output",
     },
   };
 }

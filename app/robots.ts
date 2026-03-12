@@ -5,8 +5,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin/", "/api/", "/blog/admin/"],
+      disallow: ["/admin/", "/api/", "/blog/admin/", "/mockup/", "/blog/component-showcase", "/super-admin"],
     },
-    sitemap: "https://roboblogger.com/sitemap.xml",
+    sitemap: "https://vibeblogger.io/sitemap.xml",
   };
 }

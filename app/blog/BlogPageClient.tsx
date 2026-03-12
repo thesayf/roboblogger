@@ -52,14 +52,17 @@ export default function BlogPageClient({
       <header className="border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
           <Link href="/" className="text-xl font-mono text-gray-900 tracking-tight">
-            RoboBlogger
+            Vibeblogger
           </Link>
           <nav className="flex items-center gap-6 text-sm font-mono">
             <Link href="/" className="text-gray-600 hover:text-gray-900">
               Home
             </Link>
-            <Link href="/app" className="text-gray-600 hover:text-gray-900">
-              Go to App
+            <Link href="/docs" className="text-gray-600 hover:text-gray-900">
+              Docs
+            </Link>
+            <Link href="/pricing" className="text-gray-600 hover:text-gray-900">
+              Pricing
             </Link>
           </nav>
         </div>
@@ -72,8 +75,8 @@ export default function BlogPageClient({
             Blog
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl font-mono">
-            Evidence-based productivity methods. No fluff, no hacks, no &quot;one weird trick.&quot;
-            Just research-backed approaches that actually work.
+            AI blogging tips, SEO strategies, and content automation insights.
+            Publish better content with less effort.
           </p>
         </div>
       </section>
@@ -157,11 +160,11 @@ export default function BlogPageClient({
       <section className="border-t border-gray-200 mt-24">
         <div className="max-w-5xl mx-auto px-6 py-16 text-center">
           <h2 className="text-2xl font-normal text-gray-900 mb-4 font-mono">
-            Ready to try time-blocking?
+            Ready to automate your blog?
           </h2>
           <p className="text-gray-600 mb-6 max-w-xl mx-auto font-mono">
-            RoboBlogger combines the best of GTD and time-blocking into a keyboard-first tool
-            that stays out of your way.
+            Vibeblogger researches, writes, and publishes SEO-optimized blog posts
+            so you can focus on building your product.
           </p>
           <Link
             href="/"
@@ -176,7 +179,7 @@ export default function BlogPageClient({
       <footer className="border-t border-gray-200">
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between text-sm text-gray-500 font-mono">
-            <p>© 2025 RoboBlogger</p>
+            <p>© 2025 Vibeblogger</p>
             <Link href="/" className="hover:text-gray-900">
               Back to Home
             </Link>

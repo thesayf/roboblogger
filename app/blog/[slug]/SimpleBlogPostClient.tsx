@@ -53,17 +53,17 @@ export default function SimpleBlogPostClient({
       <nav className="border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="text-2xl text-gray-900" style={{ fontFamily: "Lora, Georgia, serif" }}>
-            RoboBlogger
+            Vibeblogger
           </Link>
           <div className="flex gap-6">
-            <Link href="/about" className="text-sm font-mono text-gray-600 hover:text-gray-900">
-              About
+            <Link href="/blog" className="text-sm font-mono text-gray-600 hover:text-gray-900">
+              Blog
+            </Link>
+            <Link href="/docs" className="text-sm font-mono text-gray-600 hover:text-gray-900">
+              Docs
             </Link>
             <Link href="/pricing" className="text-sm font-mono text-gray-600 hover:text-gray-900">
               Pricing
-            </Link>
-            <Link href="/blog-redesign" className="text-sm font-mono text-gray-600 hover:text-gray-900">
-              Blog
             </Link>
           </div>
         </div>
@@ -75,6 +75,12 @@ export default function SimpleBlogPostClient({
         <header className="mb-16">
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-6 font-mono">
             <time dateTime={post.data.date}>{formatDate(post.data.date)}</time>
+            {post.data.last_modified && post.data.last_modified !== post.data.date && (
+              <>
+                <span>·</span>
+                <span>Updated {formatDate(post.data.last_modified)}</span>
+              </>
+            )}
             {post.data.read_in_minutes && (
               <>
                 <span>·</span>
@@ -88,6 +94,12 @@ export default function SimpleBlogPostClient({
               </>
             )}
           </div>
+
+          {post.data.author && (
+            <p className="text-sm text-gray-600 mb-6 font-mono">
+              By {post.data.author}
+            </p>
+          )}
 
           <h1 className="text-5xl text-gray-900 mb-8 leading-tight" style={{ fontFamily: 'Lora, Georgia, serif' }}>
             {post.data.title}
@@ -126,7 +138,7 @@ export default function SimpleBlogPostClient({
       {/* Footer */}
       <footer className="border-t border-gray-200 mt-20">
         <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-gray-500 font-mono">
-          © 2025 RoboBlogger. Fast, keyboard-first productivity.
+          © 2025 Vibeblogger. AI-powered blog content.
         </div>
       </footer>
     </div>

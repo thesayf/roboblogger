@@ -128,7 +128,7 @@ export default function BlogPostPageClient({
           <Link href="/" className="flex items-center gap-2">
             <Brain className="h-6 w-6 text-blue-600" />
             <span className="text-xl font-semibold text-[#1e293b]">
-              RoboBlogger
+              Vibeblogger
             </span>
           </Link>
 
@@ -368,27 +368,27 @@ export default function BlogPostPageClient({
                       </h3>
                       <p className="text-[#64748b] mb-4">
                         Want to apply these productivity principles to your
-                        daily life? RoboBlogger helps you create the perfect
+                        daily life? Vibeblogger helps you create the perfect
                         routine based on proven techniques from top performers.
                       </p>
                       <div className="flex gap-3 w-full">
                         <SignedOut>
                           <SignUpButton mode="modal">
                             <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
-                              Try RoboBlogger Free
+                              Try Vibeblogger Free
                             </Button>
                           </SignUpButton>
                         </SignedOut>
                         <SignedIn>
                           <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
-                            <Link href="/app">Go to Schedule</Link>
+                            <Link href="/blog/admin">Go to Dashboard</Link>
                           </Button>
                         </SignedIn>
                         <Button
                           variant="outline"
                           className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50"
                         >
-                          <Link href="/features">Learn More</Link>
+                          <Link href="/docs">Learn More</Link>
                         </Button>
                       </div>
                     </div>
@@ -476,11 +476,11 @@ export default function BlogPostPageClient({
             <div className="flex items-center gap-2 mb-4 md:mb-0">
               <Brain className="h-5 w-5 text-blue-600" />
               <span className="text-lg font-semibold text-[#1e293b]">
-                RoboBlogger
+                Vibeblogger
               </span>
             </div>
             <div className="text-sm text-[#64748b]">
-              © 2025 RoboBlogger. All rights reserved.
+              © 2025 Vibeblogger. All rights reserved.
             </div>
           </div>
         </div>

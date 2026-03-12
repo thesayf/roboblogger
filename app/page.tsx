@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { SignInButton, SignUpButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
+import { generateHomePageSchema } from '@/utils/schema'
 
 export default async function HomePage() {
   const { userId } = await auth()
@@ -10,22 +11,31 @@ export default async function HomePage() {
     redirect('/blog/admin')
   }
 
+  const schema = generateHomePageSchema()
+
   return (
     <div className="min-h-screen bg-[#FAFAF8] text-[#111111]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
       {/* Nav */}
       <nav className="max-w-[1100px] mx-auto px-8 py-6 flex items-center justify-between">
         <Link href="/" className="font-lora text-2xl font-bold tracking-tight">
           Vibeblogger
         </Link>
         <div className="flex items-center gap-8">
-          <Link href="/docs" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
-            Features
+          <Link href="/about" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            About
           </Link>
-          <Link href="/docs" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+          <Link href="/pricing" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
             Pricing
           </Link>
           <Link href="/docs" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
             Docs
+          </Link>
+          <Link href="/blog" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            Blog
           </Link>
           <SignInButton mode="modal">
             <button className="text-sm text-[#666666] hover:text-[#111111] transition-colors cursor-pointer hidden sm:block">

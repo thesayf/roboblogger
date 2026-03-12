@@ -29,6 +29,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Vibeblogger",
+    images: [
+      {
+        url: "/homepage-og.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Vibeblogger — Blog posts that rank. Zero effort.",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
