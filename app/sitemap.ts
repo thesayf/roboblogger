@@ -1,5 +1,6 @@
 import { MetadataRoute } from "next";
-import { blogApi } from "@/lib/blogApi";
+import dbConnect from "@/lib/mongo";
+import BlogPost from "@/models/BlogPost";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://vibeblogger.io";
@@ -38,15 +39,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Dynamic blog posts
-  let blogPosts: any[] = [];
+  // Dynamic blog posts - query MongoDB directly
+  let blogPosts: MetadataRoute.Sitemap = [];
   try {
-    const { posts } = await blogApi.getPosts({
-      status: "published",
-      limit: 1000, // Get all published posts
-    });
+    await dbConnect();
+    const posts = await BlogPost.find({ status: "published" })
+      .select("slug updatedAt")
+      .limit(1000)
+      .lean();
 
-    blogPosts = posts.map((post) => ({
+    blogPosts = posts.map((post: any) => ({
       url: `${baseUrl}/blog/${post.slug}`,
       lastModified: new Date(post.updatedAt),
       changeFrequency: "monthly" as const,
