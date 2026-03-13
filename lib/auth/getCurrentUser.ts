@@ -28,18 +28,33 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   // Try to find existing user
   let user = await User.findOne({ clerkId: userId });
 
-  // If user doesn't exist in MongoDB, create them
+  // If user doesn't exist by clerkId, check by email to prevent duplicates
+  // (e.g., same person signing in via different Clerk auth methods)
   if (!user) {
     const clerkUser = await currentUser();
+    const email = clerkUser?.emailAddresses?.[0]?.emailAddress;
 
-    user = await User.create({
-      clerkId: userId,
-      email: clerkUser?.emailAddresses?.[0]?.emailAddress,
-      name: clerkUser?.firstName
-        ? `${clerkUser.firstName}${clerkUser.lastName ? ' ' + clerkUser.lastName : ''}`
-        : undefined,
-      imageUrl: clerkUser?.imageUrl,
-    });
+    if (email) {
+      user = await User.findOne({ email });
+      if (user) {
+        // Link existing account to this Clerk ID
+        user.clerkId = userId;
+        if (clerkUser?.imageUrl) user.imageUrl = clerkUser.imageUrl;
+        await user.save();
+      }
+    }
+
+    // Truly new user — create them
+    if (!user) {
+      user = await User.create({
+        clerkId: userId,
+        email,
+        name: clerkUser?.firstName
+          ? `${clerkUser.firstName}${clerkUser.lastName ? ' ' + clerkUser.lastName : ''}`
+          : undefined,
+        imageUrl: clerkUser?.imageUrl,
+      });
+    }
   }
 
   return {
