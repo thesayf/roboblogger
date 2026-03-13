@@ -136,10 +136,11 @@ export function buildReadTools(ctx: ToolContext) {
 
     betaZodTool({
       name: 'get_topics_queue',
-      description: 'Get the current topic generation queue with statuses, priorities, and scheduling info.',
+      description: 'Get the current topic generation queue with statuses, priorities, and scheduling info. Supports pagination via offset — use offset to page through large queues (e.g., offset=0 for first batch, offset=50 for next 50).',
       inputSchema: z.object({
         status: z.enum(['pending', 'generating', 'completed', 'failed', 'all']).optional().describe('Filter by status (default: all)'),
-        limit: z.number().optional().describe('Max results (default 20)'),
+        limit: z.number().optional().describe('Max results per page (default 50, max 100)'),
+        offset: z.number().optional().describe('Number of topics to skip for pagination (default 0)'),
       }),
       run: wrapTool(ctx, 'get_topics_queue', async (input) => {
         await dbConnect();
@@ -148,14 +149,24 @@ export function buildReadTools(ctx: ToolContext) {
           filter.status = input.status;
         }
 
-        const topics = await Topic.find(filter)
-          .sort({ priority: -1, createdAt: -1 })
-          .limit(input.limit || 20)
-          .select('topic status priority scheduledAt seo.primaryKeyword tags createdAt')
-          .lean();
+        const limit = Math.min(input.limit || 50, 100);
+        const offset = input.offset || 0;
+
+        const [topics, total] = await Promise.all([
+          Topic.find(filter)
+            .sort({ priority: -1, createdAt: -1 })
+            .skip(offset)
+            .limit(limit)
+            .select('topic status priority scheduledAt seo.primaryKeyword tags createdAt')
+            .lean(),
+          Topic.countDocuments(filter),
+        ]);
 
         return JSON.stringify({
+          total,
           count: topics.length,
+          offset,
+          hasMore: offset + topics.length < total,
           topics: topics.map((t: any) => ({
             id: t._id.toString(),
             topic: t.topic,
