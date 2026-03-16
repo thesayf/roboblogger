@@ -11,8 +11,6 @@ import { generateChatEmbedding } from '@/lib/agent/embeddings';
 import { createMemoryClient, addMemory } from '@/lib/agent/memory';
 import { calculateChatCredits, deductCredits } from '@/lib/billing/credit-service';
 
-export const maxDuration = 800; // ~13 minutes — Pro plan with Fluid Compute
-
 const CHAT_MODEL = 'claude-sonnet-4-6';
 const MIN_CREDITS_PREFLIGHT = 0.02; // Minimum credits to start a chat
 

@@ -4,8 +4,6 @@ import Topic from '@/models/Topic';
 import Routine, { calculateNextRun } from '@/models/Routine';
 import RoutineExecution from '@/models/RoutineExecution';
 
-export const maxDuration = 60;
-
 export async function GET(request: NextRequest) {
   try {
     // Verify this is a Vercel Cron request
@@ -67,9 +65,7 @@ export async function GET(request: NextRequest) {
         await topic.save();
 
         // Trigger the generation endpoint
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                       'http://localhost:3000');
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
         
         const generateUrl = `${baseUrl}/api/blog/topics/${topic._id}/generate`;
         
@@ -180,8 +176,7 @@ export async function GET(request: NextRequest) {
         await routine.save();
         console.log(`${rtag}   nextRunAt updated: ${oldNextRun?.toISOString()} → ${routine.nextRunAt?.toISOString() || 'null'}`);
 
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
-          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
         const triggerUrl = `${baseUrl}/api/blog/routines/${routine._id}/execute`;
         console.log(`${rtag}   Triggering: ${triggerUrl}`);

@@ -3,8 +3,6 @@ import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 
-export const maxDuration = 300;
-
 // GET /api/blog/topics/[id] - Get a single topic by ID
 export async function GET(
   request: NextRequest,

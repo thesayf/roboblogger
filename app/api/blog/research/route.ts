@@ -18,8 +18,6 @@ import { researchTools, ResearchResult } from '@/lib/research/research-tools';
 import { generateResearchSystemPrompt, generateResearchUserPrompt } from '@/lib/research/research-prompts';
 import { cleanAndParseJSON } from '@/lib/utils/clean-json';
 
-export const maxDuration = 120; // 2 minutes for research phase
-
 const MAX_TURNS = 8;
 
 // Debug log entry type
@@ -239,7 +237,6 @@ export async function POST(request: NextRequest) {
     console.log(`│ Audience: ${audience || 'General'}`);
     console.log(`│ SEO Keywords: ${seoKeywords.length > 0 ? seoKeywords.join(', ') : 'None'}`);
     console.log(`│ Max Turns: ${MAX_TURNS}`);
-    console.log(`│ Timeout: ${maxDuration}s`);
     logSeparator('─');
 
     // Debug logs collection
@@ -279,18 +276,6 @@ export async function POST(request: NextRequest) {
     // Agentic loop - keep going until Claude gives a final answer without tool calls
     while (turn < MAX_TURNS) {
       turn++;
-
-      // Check if we're approaching the time limit (leave 10s margin for response formatting)
-      const elapsed = Date.now() - startTime;
-      if (elapsed > 50000) { // 50s soft limit - wrap up before the 60s abort from the caller
-        console.log(`\n   ⏰ Research approaching time limit (${(elapsed/1000).toFixed(1)}s elapsed), wrapping up...`);
-        addLog('complete', 'Research ended early due to time limit', {
-          totalTurns: turn - 1,
-          toolCalls: totalToolCalls,
-          durationSeconds: (elapsed / 1000).toFixed(1)
-        });
-        break;
-      }
 
       logSubsection(`🔄 TURN ${turn} of ${MAX_TURNS}`);
       console.log(`\n   Calling Claude (claude-sonnet-4-20250514)...`);

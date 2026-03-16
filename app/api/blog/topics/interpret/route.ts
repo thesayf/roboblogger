@@ -18,8 +18,6 @@ import {
   TopicResearchConfig,
 } from '@/lib/seo-research/topic-research-prompts';
 
-export const maxDuration = 300;
-
 const MAX_RESEARCH_TURNS = 8; // Reduced since we now have separate phases
 
 if (!process.env.ANTHROPIC_API_KEY) {

@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
 import BlogPost from '@/models/BlogPost';
 
-export const maxDuration = 300;
-
 // Helper function to check if a string is a URL
 function isValidUrl(string: string): boolean {
   try {
@@ -356,9 +354,7 @@ export async function POST(request: NextRequest) {
             if (ownerId) formData.append('ownerId', ownerId);
 
             // Upload to ImageKit using our existing upload endpoint
-            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
-                           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
-                           'http://localhost:3000');
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
             const uploadResponse = await fetch(`${baseUrl}/api/upload`, {
               method: 'POST',
               body: formData,
@@ -426,9 +422,7 @@ export async function POST(request: NextRequest) {
               if (ownerId) formData.append('ownerId', ownerId);
 
               // Upload to ImageKit using our existing upload endpoint
-              const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
-                             (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
-                             'http://localhost:3000');
+              const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
               const uploadResponse = await fetch(`${baseUrl}/api/upload`, {
                 method: 'POST',
                 body: formData,

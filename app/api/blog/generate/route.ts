@@ -3,8 +3,6 @@ import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import dbConnect from '@/lib/mongo';
 import User from '@/models/User';
 
-export const maxDuration = 300;
-
 // Image generation functions have been moved to /api/blog/generate-images/route.ts
 // This keeps the blog generation route focused on content creation only
 
@@ -234,9 +232,7 @@ CRITICAL: Return ONLY valid JSON. No explanatory text before or after. No markdo
 // Helper functions for internal linking
 async function searchBlogsByKeywords(keywords: string[], limit: number = 5) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                   'http://localhost:3000');
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/blog/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -252,9 +248,7 @@ async function searchBlogsByKeywords(keywords: string[], limit: number = 5) {
 
 async function searchBlogsByCategory(category: string, limit: number = 5) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                   'http://localhost:3000');
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/blog/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -270,9 +264,7 @@ async function searchBlogsByCategory(category: string, limit: number = 5) {
 
 async function searchRelatedBlogs(topic: string, limit: number = 5) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                   'http://localhost:3000');
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/blog/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -288,9 +280,7 @@ async function searchRelatedBlogs(topic: string, limit: number = 5) {
 
 async function getBlogsByTags(tags: string[], limit: number = 5) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                   'http://localhost:3000');
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/blog/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

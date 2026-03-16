@@ -19,8 +19,6 @@ import { cleanAndParseJSON } from '@/lib/utils/clean-json';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
 
-export const maxDuration = 300;
-
 const getAnthropicClient = () => {
   return new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY!,

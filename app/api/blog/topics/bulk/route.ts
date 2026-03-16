@@ -6,8 +6,6 @@ export const dynamic = 'force-dynamic';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
 
-export const maxDuration = 300;
-
 // POST /api/blog/topics/bulk - Import multiple topics from JSON
 export async function POST(request: NextRequest) {
   try {

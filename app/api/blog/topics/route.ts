@@ -6,8 +6,6 @@ export const dynamic = 'force-dynamic';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
 
-export const maxDuration = 300;
-
 // GET /api/blog/topics - Get all topics with filtering and pagination
 // For admin: pass ownerOnly=true to filter by current user
 export async function GET(request: NextRequest) {

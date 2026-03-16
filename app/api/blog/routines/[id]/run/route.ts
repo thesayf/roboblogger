@@ -14,7 +14,6 @@ import RoutineExecution from '@/models/RoutineExecution';
 import { executeAgent } from '@/lib/agent/execute-agent';
 import { CurrentUser } from '@/lib/auth/getCurrentUser';
 
-export const maxDuration = 800; // ~13 minutes — Pro plan with Fluid Compute
 export const dynamic = 'force-dynamic';
 
 export async function POST(

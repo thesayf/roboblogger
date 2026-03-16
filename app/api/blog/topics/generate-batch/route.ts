@@ -8,8 +8,6 @@ import Topic from '@/models/Topic';
 import User from '@/models/User';
 import { BLOG_GENERATION_CREDITS } from '@/lib/billing/credit-service';
 
-export const maxDuration = 300; // 5 minutes max for Vercel Pro plan
-
 // POST /api/blog/topics/generate-batch - Generate blog posts from multiple topics
 export async function POST(request: NextRequest) {
   try {

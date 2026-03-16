@@ -62,8 +62,7 @@ export async function POST(
     // Trigger the Upstash Workflow via QStash client (not direct fetch)
     const baseUrl = process.env.UPSTASH_WORKFLOW_URL ||
                    process.env.NEXT_PUBLIC_BASE_URL ||
-                   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
-                   'http://localhost:3000');
+                   'http://localhost:3000';
 
     const workflowUrl = `${baseUrl}/api/workflow/generate-post`;
 
@@ -117,9 +116,7 @@ export async function GET(
     let blogPost = null;
     if (topic.status === 'completed' && topic.generatedPostId) {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
-                       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
-                       'http://localhost:3000');
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
         const getPostResponse = await fetch(`${baseUrl}/api/blog/posts/${topic.generatedPostId}`);
         if (getPostResponse.ok) {
           blogPost = await getPostResponse.json();
