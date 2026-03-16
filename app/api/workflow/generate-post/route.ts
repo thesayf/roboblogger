@@ -12,7 +12,7 @@ import Topic from '@/models/Topic';
 import BrandSettings from '@/models/BrandSettings';
 import User from '@/models/User';
 
-const MAX_RESEARCH_TURNS = 15;
+const MAX_RESEARCH_TURNS = 30;
 
 function getBaseUrl(): string {
   return (
@@ -95,7 +95,7 @@ export const { POST } = serve<{ topicId: string }>(
           body: JSON.stringify({ topicId }),
           headers: { 'Content-Type': 'application/json' },
           retries: 1,
-          timeout: '300s',
+          timeout: '900s',
         });
 
         if (turnResult.status !== 200) {
@@ -148,7 +148,7 @@ export const { POST } = serve<{ topicId: string }>(
       }),
       headers: { 'Content-Type': 'application/json' },
       retries: 1,
-      timeout: '300s',
+      timeout: '900s',
     });
 
     if (generateResult.status !== 200 || !generateResult.body?.success) {
@@ -199,7 +199,7 @@ export const { POST } = serve<{ topicId: string }>(
         }),
         headers: { 'Content-Type': 'application/json' },
         retries: 1,
-        timeout: '300s',
+        timeout: '900s',
       });
 
       // Apply image results to blog data. IMPORTANT: We must return the updated
@@ -260,7 +260,7 @@ export const { POST } = serve<{ topicId: string }>(
         }),
         headers: { 'Content-Type': 'application/json' },
         retries: 2,
-        timeout: '60s',
+        timeout: '300s',
       }
     );
 

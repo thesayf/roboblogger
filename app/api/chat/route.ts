@@ -165,7 +165,7 @@ export async function POST(req: Request) {
           const client = new Anthropic({ maxRetries: 5 });
           const runner = client.beta.messages.toolRunner({
             model: 'claude-sonnet-4-6',
-            max_tokens: 8192,
+            max_tokens: 32000,
             system: systemPrompt,
             tools,
             messages: claudeMessages,

@@ -47,7 +47,7 @@ export const { POST } = serve<{ routineId: string; executionId: string }>(
       body: JSON.stringify({ executionId }),
       headers: { 'Content-Type': 'application/json' },
       retries: 1,
-      timeout: '300s',
+      timeout: '1800s',
     });
 
     console.log(`${tag} Step 1 result: status=${result.status}, success=${result.body?.success}`);
