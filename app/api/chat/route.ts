@@ -161,6 +161,11 @@ export async function POST(req: Request) {
         // Flush every 5 seconds while streaming
         const flushInterval = setInterval(flushAssistantContent, 5000);
 
+        // Send heartbeat every 15s to keep the connection alive during long tool calls
+        const heartbeatInterval = setInterval(() => {
+          send('heartbeat', { ts: Date.now() });
+        }, 15000);
+
         try {
           const client = new Anthropic({ maxRetries: 5 });
           const runner = client.beta.messages.toolRunner({
@@ -197,6 +202,7 @@ export async function POST(req: Request) {
           }
 
           clearInterval(flushInterval);
+          clearInterval(heartbeatInterval);
 
           // Calculate actual credit cost based on usage
           const billing = calculateChatCredits({
@@ -304,6 +310,7 @@ export async function POST(req: Request) {
 
         } catch (error: any) {
           clearInterval(flushInterval);
+          clearInterval(heartbeatInterval);
           console.error('[Chat] Agent error:', error);
 
           // Save whatever assistant content we have so far
