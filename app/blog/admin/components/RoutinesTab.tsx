@@ -531,17 +531,17 @@ export function RoutinesTab() {
       });
 
       if (response.ok) {
-        setSaveMessage({ type: "success", text: "Routine created" });
+        setSaveMessage({ type: "success", text: "Agent created" });
         setShowCreate(false);
         setShowTemplates(false);
         setForm({ name: "", prompt: "", frequency: "weekly", dayOfWeek: 1, dayOfMonth: 1, hour: 9, minute: 0, maxCreditsPerRun: 2.0 });
         fetchRoutines();
       } else {
         const err = await response.json();
-        setSaveMessage({ type: "error", text: err.error || "Failed to create routine" });
+        setSaveMessage({ type: "error", text: err.error || "Failed to create agent" });
       }
     } catch {
-      setSaveMessage({ type: "error", text: "Failed to create routine" });
+      setSaveMessage({ type: "error", text: "Failed to create agent" });
     } finally {
       setSaving(false);
       setTimeout(() => setSaveMessage(null), 3000);
@@ -581,8 +581,8 @@ export function RoutinesTab() {
           setActiveExecutionIds((prev) => ({ ...prev, [id]: data.executionId }));
         }
       } else {
-        const err = await res.json().catch(() => ({ error: "Failed to start routine" }));
-        setSaveMessage({ type: "error", text: err.error || "Failed to start routine" });
+        const err = await res.json().catch(() => ({ error: "Failed to start agent" }));
+        setSaveMessage({ type: "error", text: err.error || "Failed to start agent" });
         setExecutingRoutines((prev) => {
           const next = new Set(prev);
           next.delete(id);
@@ -593,7 +593,7 @@ export function RoutinesTab() {
       setTimeout(() => fetchRoutines(true), 1500);
     } catch (error) {
       console.error("Error executing routine:", error);
-      setSaveMessage({ type: "error", text: "Failed to start routine" });
+      setSaveMessage({ type: "error", text: "Failed to start agent" });
       setExecutingRoutines((prev) => {
         const next = new Set(prev);
         next.delete(id);
@@ -641,9 +641,9 @@ export function RoutinesTab() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-[20px] font-semibold text-[#111111]">Routines</h2>
+          <h2 className="text-[20px] font-semibold text-[#111111]">Agents</h2>
           <p className="text-[13px] text-[#888888] mt-1">
-            Automated recurring tasks powered by your AI agent
+            Autonomous AI agents that manage your blog on autopilot
           </p>
         </div>
         <div className="flex gap-2">
@@ -662,7 +662,7 @@ export function RoutinesTab() {
             onClick={() => { setShowCreate(!showCreate); setShowTemplates(false); }}
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" />
-            New Routine
+            New Agent
           </Button>
         </div>
       </div>
@@ -682,7 +682,7 @@ export function RoutinesTab() {
               <Zap className="h-5 w-5 text-[#666666]" />
               <h3 className="text-[16px] font-semibold text-[#111111]">Quick Start Templates</h3>
             </div>
-            <p className="text-[13px] text-[#888888] mt-1">Pre-configured routines you can add with one click</p>
+            <p className="text-[13px] text-[#888888] mt-1">Pre-configured agents you can add with one click</p>
           </div>
           <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
             {TEMPLATES.map((template) => (
@@ -709,7 +709,7 @@ export function RoutinesTab() {
           <div className="px-6 py-4 border-b border-[#F0EEE8]">
             <div className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-[#666666]" />
-              <h3 className="text-[16px] font-semibold text-[#111111]">Create Routine</h3>
+              <h3 className="text-[16px] font-semibold text-[#111111]">Create Agent</h3>
             </div>
           </div>
           <div className="p-6 space-y-5">
@@ -791,7 +791,7 @@ export function RoutinesTab() {
                 className="rounded-full text-[13px] bg-[#111111] hover:bg-[#333333] text-white"
               >
                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1.5" />}
-                Create Routine
+                Create Agent
               </Button>
               <Button
                 variant="outline"
@@ -805,13 +805,13 @@ export function RoutinesTab() {
         </section>
       )}
 
-      {/* Routines List */}
+      {/* Agents List */}
       {routines.length === 0 && !showCreate && !showTemplates ? (
         <div className="text-center py-16 bg-white rounded-xl border border-[#E0DED8]">
           <Clock className="h-10 w-10 text-[#CCCCCC] mx-auto mb-3" />
-          <h3 className="text-[16px] font-medium text-[#444444]">No routines yet</h3>
+          <h3 className="text-[16px] font-medium text-[#444444]">No agents yet</h3>
           <p className="text-[13px] text-[#888888] mt-1 max-w-md mx-auto">
-            Create automated routines to have your AI agent research topics, audit content, and manage your blog on autopilot.
+            Create AI agents to research topics, audit content, and manage your blog on autopilot.
           </p>
           <div className="flex gap-2 justify-center mt-4">
             <Button
@@ -848,7 +848,7 @@ export function RoutinesTab() {
                   isRunning ? "border-blue-200 shadow-sm shadow-blue-50" : "border-[#E0DED8]"
                 }`}
               >
-                {/* Routine Header */}
+                {/* Agent Header */}
                 <div className="px-5 py-4 flex items-center justify-between">
                   <div
                     className="flex-1 cursor-pointer"

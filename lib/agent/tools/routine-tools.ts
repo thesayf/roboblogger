@@ -31,7 +31,7 @@ export function buildRoutineTools(ctx: ToolContext) {
   return [
     betaZodTool({
       name: 'list_routines',
-      description: 'List all routines for the current user, including their schedule, status, and recent execution info.',
+      description: 'List all agents for the current user, including their schedule, status, and recent execution info.',
       inputSchema: z.object({}),
       run: wrapTool(ctx, 'list_routines', async () => {
         await dbConnect();
@@ -41,7 +41,7 @@ export function buildRoutineTools(ctx: ToolContext) {
           .lean();
 
         if (routines.length === 0) {
-          return JSON.stringify({ routines: [], message: 'No routines found.' });
+          return JSON.stringify({ routines: [], message: 'No agents found.' });
         }
 
         const result = routines.map((r: any) => ({
@@ -65,13 +65,13 @@ export function buildRoutineTools(ctx: ToolContext) {
 
     betaZodTool({
       name: 'create_routine',
-      description: 'Create a new automated routine that runs on a schedule. The routine will execute the given prompt using the AI agent at the specified time.',
+      description: 'Create a new automated agent that runs on a schedule. The agent will execute the given prompt at the specified time.',
       inputSchema: z.object({
-        name: z.string().describe('Name for the routine'),
-        prompt: z.string().describe('The prompt/instructions the agent should execute when the routine runs'),
-        frequency: z.enum(['daily', 'weekly', 'monthly', 'once']).describe('How often the routine runs'),
-        dayOfWeek: z.number().min(0).max(6).optional().describe('Day of week for weekly routines (0=Sunday, 1=Monday, ..., 6=Saturday)'),
-        dayOfMonth: z.number().min(1).max(28).optional().describe('Day of month for monthly routines (1-28)'),
+        name: z.string().describe('Name for the agent'),
+        prompt: z.string().describe('The prompt/instructions the agent should execute when it runs'),
+        frequency: z.enum(['daily', 'weekly', 'monthly', 'once']).describe('How often the agent runs'),
+        dayOfWeek: z.number().min(0).max(6).optional().describe('Day of week for weekly agents (0=Sunday, 1=Monday, ..., 6=Saturday)'),
+        dayOfMonth: z.number().min(1).max(28).optional().describe('Day of month for monthly agents (1-28)'),
         hour: z.number().min(0).max(23).describe('Hour to run (UTC, 0-23)'),
         minute: z.number().min(0).max(59).describe('Minute to run (UTC, 0-59)'),
         maxCreditsPerRun: z.number().min(0.1).max(10).optional().describe('Maximum credits allowed per execution (default: 1.0)'),
@@ -81,7 +81,7 @@ export function buildRoutineTools(ctx: ToolContext) {
 
         const count = await Routine.countDocuments({ owner: ctx.userId });
         if (count >= MAX_ROUTINES_PER_USER) {
-          return JSON.stringify({ error: `Maximum ${MAX_ROUTINES_PER_USER} routines allowed.` });
+          return JSON.stringify({ error: `Maximum ${MAX_ROUTINES_PER_USER} agents allowed.` });
         }
 
         const schedule = {
@@ -113,16 +113,16 @@ export function buildRoutineTools(ctx: ToolContext) {
           name: routine.name,
           schedule,
           nextRunAt,
-          message: `Routine "${input.name}" created and enabled.`,
+          message: `Agent "${input.name}" created and enabled.`,
         });
       }),
     }),
 
     betaZodTool({
       name: 'update_routine',
-      description: 'Update an existing routine. Can change the name, prompt, schedule, max credits, or enabled status.',
+      description: 'Update an existing agent. Can change the name, prompt, schedule, max credits, or enabled status.',
       inputSchema: z.object({
-        routineId: z.string().describe('The routine ID to update'),
+        routineId: z.string().describe('The agent ID to update'),
         name: z.string().optional().describe('New name'),
         prompt: z.string().optional().describe('New prompt/instructions'),
         frequency: z.enum(['daily', 'weekly', 'monthly', 'once']).optional().describe('New frequency'),
@@ -131,14 +131,14 @@ export function buildRoutineTools(ctx: ToolContext) {
         hour: z.number().min(0).max(23).optional().describe('New hour (UTC)'),
         minute: z.number().min(0).max(59).optional().describe('New minute (UTC)'),
         maxCreditsPerRun: z.number().min(0.1).max(10).optional().describe('New max credits per run'),
-        enabled: z.boolean().optional().describe('Enable or disable the routine'),
+        enabled: z.boolean().optional().describe('Enable or disable the agent'),
       }),
       run: wrapTool(ctx, 'update_routine', async (input) => {
         await dbConnect();
 
         const routine = await Routine.findOne({ _id: input.routineId, owner: ctx.userId });
         if (!routine) {
-          return JSON.stringify({ error: 'Routine not found or not owned by this user.' });
+          return JSON.stringify({ error: 'Agent not found or not owned by this user.' });
         }
 
         if (input.name) routine.name = input.name;
@@ -160,23 +160,23 @@ export function buildRoutineTools(ctx: ToolContext) {
 
         return JSON.stringify({
           success: true,
-          message: `Routine "${routine.name}" updated.`,
+          message: `Agent "${routine.name}" updated.`,
         });
       }),
     }),
 
     betaZodTool({
       name: 'delete_routine',
-      description: 'Delete a routine and all its execution history.',
+      description: 'Delete an agent and all its execution history.',
       inputSchema: z.object({
-        routineId: z.string().describe('The routine ID to delete'),
+        routineId: z.string().describe('The agent ID to delete'),
       }),
       run: wrapTool(ctx, 'delete_routine', async (input) => {
         await dbConnect();
 
         const routine = await Routine.findOneAndDelete({ _id: input.routineId, owner: ctx.userId });
         if (!routine) {
-          return JSON.stringify({ error: 'Routine not found or not owned by this user.' });
+          return JSON.stringify({ error: 'Agent not found or not owned by this user.' });
         }
 
         await RoutineExecution.deleteMany({ routine: input.routineId });
@@ -184,16 +184,16 @@ export function buildRoutineTools(ctx: ToolContext) {
 
         return JSON.stringify({
           success: true,
-          message: `Routine "${routine.name}" deleted.`,
+          message: `Agent "${routine.name}" deleted.`,
         });
       }),
     }),
 
     betaZodTool({
       name: 'get_routine_history',
-      description: 'Get the execution history for a routine, showing recent runs, their status, credits used, and what actions were taken.',
+      description: 'Get the execution history for an agent, showing recent runs, their status, credits used, and what actions were taken.',
       inputSchema: z.object({
-        routineId: z.string().describe('The routine ID to get history for'),
+        routineId: z.string().describe('The agent ID to get history for'),
         limit: z.number().min(1).max(20).optional().describe('Number of recent executions to return (default: 5)'),
       }),
       run: wrapTool(ctx, 'get_routine_history', async (input) => {
@@ -201,7 +201,7 @@ export function buildRoutineTools(ctx: ToolContext) {
 
         const routine = await Routine.findOne({ _id: input.routineId, owner: ctx.userId }).lean();
         if (!routine) {
-          return JSON.stringify({ error: 'Routine not found or not owned by this user.' });
+          return JSON.stringify({ error: 'Agent not found or not owned by this user.' });
         }
 
         const executions = await RoutineExecution.find({ routine: input.routineId })

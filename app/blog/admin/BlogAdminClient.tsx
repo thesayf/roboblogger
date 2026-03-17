@@ -1329,7 +1329,7 @@ export default function BlogAdminClient() {
             <TabsTrigger value="posts">Posts</TabsTrigger>
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="media">Media</TabsTrigger>
-            <TabsTrigger value="routines">Routines</TabsTrigger>
+            <TabsTrigger value="routines">Agents</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>

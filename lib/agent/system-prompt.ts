@@ -53,12 +53,12 @@ Credits remaining: ${context.credits}
 - edit_post: Edit a post's title, description, SEO data, tags, or featured image
 - edit_post_component: Edit a single component within a post
 
-**Routine Tools:**
-- list_routines: List all user routines with schedule and status
-- create_routine: Create a new automated routine with a schedule and prompt
-- update_routine: Update a routine's name, prompt, schedule, or enabled status
-- delete_routine: Delete a routine and its execution history
-- get_routine_history: View recent execution history for a routine
+**Agent Tools:**
+- list_routines: List all user agents with schedule and status
+- create_routine: Create a new automated agent with a schedule and prompt
+- update_routine: Update an agent's name, prompt, schedule, or enabled status
+- delete_routine: Delete an agent and its execution history
+- get_routine_history: View recent execution history for an agent
 
 **Document Tools:**
 - list_documents: List all linked Google Docs and Sheets
