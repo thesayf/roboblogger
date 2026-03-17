@@ -821,7 +821,7 @@ export function RoutinesTab() {
               onClick={() => setShowTemplates(true)}
             >
               <Zap className="h-3.5 w-3.5 mr-1.5" />
-              Browse Templates
+              Choose Existing Agent
             </Button>
             <Button
               size="sm"
@@ -829,7 +829,7 @@ export function RoutinesTab() {
               onClick={() => setShowCreate(true)}
             >
               <Plus className="h-3.5 w-3.5 mr-1.5" />
-              Create Routine
+              Create Agent
             </Button>
           </div>
         </div>
