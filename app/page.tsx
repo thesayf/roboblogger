@@ -38,6 +38,9 @@ export default async function HomePage() {
           <Link href="/docs" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
             Docs
           </Link>
+          <Link href="/guide" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            Setup Guide
+          </Link>
           <Link href="/blog" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
             Blog
           </Link>
