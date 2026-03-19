@@ -100,7 +100,7 @@ export default function PricingPage() {
               </p>
             </div>
             <div className="mb-6">
-              <span className="font-lora text-[40px] font-normal">$8</span>
+              <span className="font-lora text-[40px] font-normal">$49</span>
               <span className="text-sm text-[#888888] ml-2">/ month</span>
             </div>
             <SignUpButton mode="modal">
