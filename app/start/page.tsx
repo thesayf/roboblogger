@@ -3,6 +3,7 @@ import { SignUpButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { Check, ArrowRight, Clock, Zap, Shield, Search, PenTool, Image, Calendar, BarChart3, Code2, Bot, Gift, MessageSquare, TrendingUp, BookOpen } from 'lucide-react'
+import CopyPromptButton from './CopyPromptButton'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -355,7 +356,8 @@ export default async function StartPage() {
                 <h3 className="font-lora text-[18px] font-normal mb-2">Paste one prompt into your coding agent</h3>
                 <p className="text-sm text-[#666666] leading-relaxed">
                   Copy our setup prompt. Paste it into Cursor, Claude Code, or any AI coding tool.
-                  It builds your blog pages and connects the API automatically.
+                  It builds your blog pages, renders all 16 component types, and sets up
+                  SEO metadata, sitemaps, and structured data — automatically.
                 </p>
                 <div className="mt-4 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg overflow-hidden">
                   <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#2A2A2A]">
@@ -367,10 +369,16 @@ export default async function StartPage() {
                   <div className="p-4">
                     <p className="text-[13px] text-[#88CCFF] font-mono leading-relaxed">
                       &quot;Add a blog to my site using the Vibeblogger API.
-                      Here are the docs: vibeblogger.io/docs.
-                      My API key is in .env as VIBEBLOGGER_API_KEY.&quot;
+                      Set up all 16 component renderers, SEO metadata,
+                      sitemap, RSS feed, and structured data...&quot;
+                    </p>
+                    <p className="text-[12px] text-[#555555] font-mono mt-2">
+                      // Full prompt includes API docs, component types, SEO setup, and more
                     </p>
                   </div>
+                </div>
+                <div className="mt-3">
+                  <CopyPromptButton />
                 </div>
                 <p className="text-[13px] text-[#888888] mt-3 leading-relaxed">
                   Or{' '}

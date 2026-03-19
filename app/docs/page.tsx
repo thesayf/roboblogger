@@ -735,6 +735,195 @@ export default async function PostPage({
           </div>
         </section>
 
+        <div className="border-b border-[#E0DED8] mb-16" />
+
+        {/* SEO & Discovery */}
+        <section className="mb-16" id="seo">
+          <h2 className="font-lora text-[28px] font-normal mb-4">SEO &amp; Discovery</h2>
+          <p className="text-sm text-[#666666] leading-relaxed mb-6">
+            Make your blog pages rank. The API returns <code className="text-[#111111] bg-[#F0EEE8] px-1.5 py-0.5 rounded text-xs">seoTitle</code> and <code className="text-[#111111] bg-[#F0EEE8] px-1.5 py-0.5 rounded text-xs">seoDescription</code> fields — use these for metadata when available, falling back to <code className="text-[#111111] bg-[#F0EEE8] px-1.5 py-0.5 rounded text-xs">title</code> and <code className="text-[#111111] bg-[#F0EEE8] px-1.5 py-0.5 rounded text-xs">description</code>.
+          </p>
+
+          <div className="space-y-6">
+            {/* Metadata */}
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h3 className="font-lora text-lg font-normal mb-3">Page Metadata</h3>
+              <p className="text-sm text-[#666666] leading-relaxed mb-4">
+                Use <code className="text-[#111111] bg-[#F0EEE8] px-1.5 py-0.5 rounded text-xs">generateMetadata</code> for dynamic SEO tags on each post page:
+              </p>
+              <CodeBlock
+                id="seo-metadata"
+                code={`// app/blog/[slug]/page.tsx
+import { Metadata } from 'next';
+import { getBlogPost } from '@/lib/blog';
+
+export async function generateMetadata({
+  params
+}: {
+  params: { slug: string }
+}): Promise<Metadata> {
+  const data = await getBlogPost(params.slug);
+  if (!data) return { title: 'Post Not Found' };
+
+  const { post } = data;
+  const title = post.seoTitle || post.title;
+  const description = post.seoDescription || post.description;
+  const url = \`https://yourdomain.com/blog/\${post.slug}\`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'article',
+      title,
+      description,
+      url,
+      images: post.featuredImage ? [post.featuredImage] : [],
+      publishedTime: post.publishedAt,
+      modifiedTime: post.updatedAt,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: post.featuredImage ? [post.featuredImage] : [],
+    },
+  };
+}`}
+              />
+            </div>
+
+            {/* JSON-LD */}
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h3 className="font-lora text-lg font-normal mb-3">Structured Data (JSON-LD)</h3>
+              <p className="text-sm text-[#666666] leading-relaxed mb-4">
+                Add BlogPosting schema to get rich results in Google:
+              </p>
+              <CodeBlock
+                id="seo-jsonld"
+                code={`// Add this inside your post page component's return:
+<script
+  type="application/ld+json"
+  dangerouslySetInnerHTML={{
+    __html: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: post.seoTitle || post.title,
+      description: post.seoDescription || post.description,
+      image: post.featuredImage,
+      datePublished: post.publishedAt,
+      dateModified: post.updatedAt,
+      author: {
+        '@type': 'Person',
+        name: post.author?.name,
+      },
+      publisher: {
+        '@type': 'Organization',
+        name: 'Your Site Name',
+        logo: {
+          '@type': 'ImageObject',
+          url: 'https://yourdomain.com/logo.png',
+        },
+      },
+      mainEntityOfPage: {
+        '@type': 'WebPage',
+        '@id': \`https://yourdomain.com/blog/\${post.slug}\`,
+      },
+    }),
+  }}
+/>`}
+              />
+            </div>
+
+            {/* Static Params */}
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h3 className="font-lora text-lg font-normal mb-3">Static Generation (ISR)</h3>
+              <p className="text-sm text-[#666666] leading-relaxed mb-4">
+                Pre-build post pages at build time and revalidate periodically:
+              </p>
+              <CodeBlock
+                id="seo-static-params"
+                code={`// app/blog/[slug]/page.tsx
+export const revalidate = 3600; // Revalidate every hour
+
+export async function generateStaticParams() {
+  const { posts } = await getBlogPosts(1, 100);
+
+  return posts.map((post) => ({
+    slug: post.slug,
+  }));
+}`}
+              />
+            </div>
+
+            {/* Sitemap */}
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h3 className="font-lora text-lg font-normal mb-3">Dynamic Sitemap</h3>
+              <p className="text-sm text-[#666666] leading-relaxed mb-4">
+                Auto-generate a sitemap that includes all your blog posts:
+              </p>
+              <CodeBlock
+                id="seo-sitemap"
+                code={`// app/blog/sitemap.ts
+import { MetadataRoute } from 'next';
+import { getBlogPosts } from '@/lib/blog';
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const { posts } = await getBlogPosts(1, 100);
+
+  return posts.map((post) => ({
+    url: \`https://yourdomain.com/blog/\${post.slug}\`,
+    lastModified: post.updatedAt || post.publishedAt,
+    changeFrequency: 'weekly',
+    priority: 0.8,
+  }));
+}`}
+              />
+            </div>
+
+            {/* RSS Feed */}
+            <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
+              <h3 className="font-lora text-lg font-normal mb-3">RSS Feed</h3>
+              <p className="text-sm text-[#666666] leading-relaxed mb-4">
+                Add an RSS feed for subscribers and syndication:
+              </p>
+              <CodeBlock
+                id="seo-rss"
+                code={`// app/blog/feed.xml/route.ts
+import { getBlogPosts } from '@/lib/blog';
+
+export async function GET() {
+  const { posts } = await getBlogPosts(1, 50);
+
+  const items = posts.map((post) => \`
+    <item>
+      <title><![CDATA[\${post.title}]]></title>
+      <link>https://yourdomain.com/blog/\${post.slug}</link>
+      <description><![CDATA[\${post.description}]]></description>
+      <pubDate>\${new Date(post.publishedAt).toUTCString()}</pubDate>
+      <guid>https://yourdomain.com/blog/\${post.slug}</guid>
+    </item>\`).join('');
+
+  const xml = \`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Your Blog</title>
+    <link>https://yourdomain.com/blog</link>
+    <description>Your blog description</description>
+    \${items}
+  </channel>
+</rss>\`;
+
+  return new Response(xml, {
+    headers: { 'Content-Type': 'application/rss+xml' },
+  });
+}`}
+              />
+            </div>
+          </div>
+        </section>
+
         {/* Help */}
         <section className="bg-white border border-[#E0DED8] rounded-lg p-6 mb-16">
           <h3 className="font-lora text-lg font-normal mb-2">Need help?</h3>
