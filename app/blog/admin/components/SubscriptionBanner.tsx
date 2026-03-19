@@ -136,7 +136,7 @@ export function SubscriptionBanner() {
                 Start your free trial
               </p>
               <p className="text-[14px] text-white/70">
-                5-day trial • $20 free credits included • Cancel anytime
+                30-day trial • 100 free blog posts included • Cancel anytime
               </p>
             </div>
           </div>

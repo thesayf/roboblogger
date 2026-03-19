@@ -77,7 +77,7 @@ export default function PricingPage() {
             </SignUpButton>
             <ul className="space-y-3">
               {[
-                "Up to 5 blog posts",
+                "100 free blog posts",
                 "SEO keyword research",
                 "AI-generated content",
                 "Headless API access",

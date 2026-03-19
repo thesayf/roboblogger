@@ -677,7 +677,7 @@ export default async function HomePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
             <SignUpButton mode="modal">
               <button className="text-[15px] font-semibold text-white bg-[#111111] px-9 py-3.5 rounded-full hover:bg-[#333333] transition-colors cursor-pointer inline-flex items-center justify-center gap-2">
-                Start with 5 free posts
+                Start with 100 free posts
                 <ArrowRight className="w-4 h-4" />
               </button>
             </SignUpButton>

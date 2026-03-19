@@ -367,7 +367,7 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
               <span className="text-[16px] text-[#888888]">/month</span>
             </div>
             <p className="text-[13px] text-[#888888] mt-1">
-              after 5-day free trial
+              after 30-day free trial
             </p>
           </div>
 
@@ -382,7 +382,7 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
             <ul className="space-y-2">
               <li className="flex items-center gap-2 text-[14px] text-emerald-700">
                 <Check className="h-4 w-4 text-emerald-500" />
-                $20 free credits to get started
+                100 free blog posts to get started
               </li>
               <li className="flex items-center gap-2 text-[14px] text-emerald-700">
                 <Check className="h-4 w-4 text-emerald-500" />

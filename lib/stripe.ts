@@ -15,7 +15,7 @@ export const PRICING = {
   subscription: {
     priceId: process.env.STRIPE_SUBSCRIPTION_PRICE_ID || '', // Set after creating in Stripe
     amount: 4900, // $49.00
-    trialDays: 5,
+    trialDays: 30,
   },
   // Credit packs
   creditPacks: {
@@ -35,8 +35,8 @@ export const PRICING = {
       credits: 22, // 2 bonus credits
     },
   },
-  // Free trial credits ($20 value at $5/credit)
-  freeTrialCredits: 4,
+  // Free trial credits ($500 value at $5/credit)
+  freeTrialCredits: 100,
   // Cost per credit (for display)
   costPerCredit: 500, // $5.00
 };
