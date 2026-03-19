@@ -35,8 +35,8 @@ export default async function StartPage() {
           Vibeblogger
         </Link>
         <div className="flex items-center gap-8">
-          <Link href="/pricing" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
-            Pricing
+          <Link href="/guide" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
+            Setup Guide
           </Link>
           <Link href="/docs" className="text-sm text-[#666666] hover:text-[#111111] transition-colors hidden sm:block">
             Docs
