@@ -46,11 +46,12 @@ export default async function HomePage() {
               Sign in
             </button>
           </SignInButton>
-          <SignUpButton mode="modal">
-            <button className="text-sm font-semibold text-white bg-[#111111] px-6 py-2.5 rounded-full hover:bg-[#333333] transition-colors cursor-pointer">
-              Get Started
-            </button>
-          </SignUpButton>
+          <Link
+            href="/start"
+            className="text-sm font-semibold text-white bg-[#111111] px-6 py-2.5 rounded-full hover:bg-[#333333] transition-colors cursor-pointer"
+          >
+            Get 100 Free Posts
+          </Link>
         </div>
       </nav>
 
@@ -73,12 +74,13 @@ export default async function HomePage() {
               SEO expert on your team for $49/mo.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-              <SignUpButton mode="modal">
-                <button className="text-[15px] font-semibold text-[#111111] bg-white px-9 py-3.5 rounded-full hover:bg-[#F0F0F0] transition-colors cursor-pointer inline-flex items-center justify-center gap-2">
-                  Start free — no card needed
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </SignUpButton>
+              <Link
+                href="/start"
+                className="text-[15px] font-semibold text-[#111111] bg-white px-9 py-3.5 rounded-full hover:bg-[#F0F0F0] transition-colors cursor-pointer inline-flex items-center justify-center gap-2"
+              >
+                Get 100 free posts
+                <ArrowRight className="w-4 h-4" />
+              </Link>
               <Link
                 href="/blog"
                 className="text-[15px] font-medium text-white border border-[#444444] px-9 py-3.5 rounded-full hover:border-[#666666] transition-colors text-center"
@@ -87,7 +89,7 @@ export default async function HomePage() {
               </Link>
             </div>
             <p className="text-[13px] text-[#666666]">
-              5 free posts included. Cancel anytime.
+              100 free posts. 5-minute setup. No credit card.
             </p>
           </div>
 
@@ -739,14 +741,15 @@ export default async function HomePage() {
             Your competitors are blogging.<br />Are you?
           </h2>
           <p className="text-base text-[#999999] mb-9">
-            5 free posts. No credit card. Set up in 2 minutes.
+            100 free posts. 5-minute setup. No credit card.
           </p>
-          <SignUpButton mode="modal">
-            <button className="text-[15px] font-semibold text-[#111111] bg-white px-9 py-3.5 rounded-full hover:bg-[#F0F0F0] transition-colors cursor-pointer inline-flex items-center gap-2">
-              Start your free blog
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </SignUpButton>
+          <Link
+            href="/start"
+            className="text-[15px] font-semibold text-[#111111] bg-white px-9 py-3.5 rounded-full hover:bg-[#F0F0F0] transition-colors cursor-pointer inline-flex items-center gap-2"
+          >
+            Get your 100 free posts
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       </section>
 
