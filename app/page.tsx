@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { generateHomePageSchema } from '@/utils/schema'
 import { Check, ArrowRight, Zap, Search, PenTool, Image, Calendar, Code2, BarChart3, FileText, MessageSquare, Quote, Table, Target, TrendingUp, Shield, Clock, Users } from 'lucide-react'
+import LiveProofBar from '@/components/LiveProofBar'
 
 export default async function HomePage() {
   const { userId } = await auth()
@@ -152,29 +153,9 @@ export default async function HomePage() {
       </section>
 
       {/* ============================================
-          SOCIAL PROOF BAR
+          SOCIAL PROOF BAR — Live data
           ============================================ */}
-      <section className="bg-[#FAFAF8] border-b border-[#E0DED8]">
-        <div className="max-w-[900px] mx-auto px-6 sm:px-8 py-6 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-[#888888]" />
-            <span className="text-sm text-[#666666]">1,000+ posts generated</span>
-          </div>
-          <div className="hidden sm:block w-1 h-1 rounded-full bg-[#CCCCCC]" />
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-[#888888]" />
-            <span className="text-sm text-[#666666]">50,000+ keywords researched</span>
-          </div>
-          <div className="hidden sm:block w-1 h-1 rounded-full bg-[#CCCCCC]" />
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-[#666666]">
-              <Link href="/blog" className="underline underline-offset-2 hover:text-[#111111] transition-colors">
-                This blog
-              </Link> is 100% Vibeblogger
-            </span>
-          </div>
-        </div>
-      </section>
+      <LiveProofBar />
 
       {/* ============================================
           THE PROBLEM

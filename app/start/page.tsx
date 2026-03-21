@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { Check, ArrowRight, Clock, Zap, Shield, Search, PenTool, Image, Calendar, BarChart3, Code2, Bot, Gift, MessageSquare, TrendingUp, BookOpen } from 'lucide-react'
 import CopyPromptButton from './CopyPromptButton'
+import LiveStats from './LiveStats'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -109,6 +110,11 @@ export default async function StartPage() {
           </div>
         </div>
       </section>
+
+      {/* ============================================
+          LIVE PROOF
+          ============================================ */}
+      <LiveStats />
 
       {/* ============================================
           THE OFFER STACK
