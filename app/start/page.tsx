@@ -382,9 +382,9 @@ export default async function StartPage() {
                 </div>
                 <p className="text-[13px] text-[#888888] mt-3 leading-relaxed">
                   Or{' '}
-                  <span className="text-[#111111] font-medium underline underline-offset-2 cursor-pointer">
+                  <a href="https://calendly.com/hello-vibeblogger/30min" target="_blank" rel="noopener noreferrer" className="text-[#111111] font-medium underline underline-offset-2 hover:text-[#444444] transition-colors">
                     book a free setup call
-                  </span>
+                  </a>
                   {' '}and we&apos;ll do it for you.
                 </p>
                 <p className="text-[13px] text-[#888888] mt-2 flex items-center gap-1.5">

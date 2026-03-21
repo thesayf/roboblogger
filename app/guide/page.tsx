@@ -285,7 +285,7 @@ export default function GuidePage() {
             <div className="bg-[#F0F8FF] border border-[#C8DFF0] rounded-lg p-4">
               <p className="text-sm text-[#2A6496]">
                 <strong>Don&apos;t want to do this yourself?</strong>{' '}
-                Book a free 15-minute setup call and we&apos;ll do it with you. We&apos;ll screenshare, paste the prompt into your coding agent, and make sure everything works.
+                <a href="https://calendly.com/hello-vibeblogger/30min" target="_blank" rel="noopener noreferrer" className="text-[#2A6496] underline underline-offset-2 hover:text-[#1A4A6A]">Book a free setup call</a> and we&apos;ll do it with you. We&apos;ll screenshare, paste the prompt into your coding agent, and make sure everything works.
               </p>
             </div>
           </div>
@@ -614,7 +614,7 @@ export default function GuidePage() {
             <a href="mailto:support@vibeblogger.io" className="text-[#111111] underline underline-offset-2 hover:text-[#444444]">
               support@vibeblogger.io
             </a>
-            {' '}or book a free setup call. We&apos;ll get you running.
+            {' '}or <a href="https://calendly.com/hello-vibeblogger/30min" target="_blank" rel="noopener noreferrer" className="text-[#111111] underline underline-offset-2 hover:text-[#444444]">book a free setup call</a>. We&apos;ll get you running.
           </p>
         </section>
       </div>
