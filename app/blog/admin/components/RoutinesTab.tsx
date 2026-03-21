@@ -93,72 +93,351 @@ interface RoutineExecution {
 }
 
 const TEMPLATES = [
+  // === RESEARCH & PLANNING ===
   {
     id: "weekly-research",
     name: "Weekly Topic Research",
-    description: "Researches trending topics in your niche, finds content gaps, and queues 3-5 new topics with full SEO data.",
-    prompt: "Research trending topics in my niche, check for content gaps against my existing posts, and queue 3-5 new topics with full SEO data (primary keyword, secondary keywords, search intent, audience, and additional requirements).",
+    description: "Strategic editorial planner — finds trending topics, content gaps, and keyword opportunities, then queues topics based on your current queue depth.",
+    maxCreditsPerRun: 1.0,
+    prompt: `You are an editorial strategist for this blog. Research and queue high-quality topic ideas that will grow organic traffic.
+
+PHASE 1 — Understand the blog (do this first every time):
+- Call get_brand_settings to understand the niche, audience, and tone
+- Call get_blog_stats and get_topics_queue to see what's already published and queued
+- Call get_existing_posts with broad niche terms to understand current content coverage
+
+PHASE 2 — Research opportunities:
+- search_trending_topics: Find emerging discussions gaining momentum but not yet saturated
+- search_content_gaps: Identify questions and subtopics competitors cover that we don't
+- search_competitor_content: See what's ranking well for competitors — look for angles we can do better
+- web_search: Check for seasonal or timely topics relevant in the next 2-8 weeks
+
+PHASE 3 — Evaluate and filter:
+For each candidate topic:
+1. search_keyword_data to get volume, difficulty, and CPC
+2. search_related_keywords to find long-tail variants
+3. check_keyword_cannibalization against existing posts — reject topics that would compete with our own content
+
+Filter criteria (reject topics that fail any):
+- Search volume too low (<100/mo) unless it's a high-intent conversion topic
+- Keyword difficulty too high for the blog's current authority
+- Too similar to an existing published post or queued topic
+- No clear unique angle vs what already ranks
+
+PHASE 4 — Select and queue:
+Adjust volume to queue depth:
+- If queue has <5 pending topics: add 4-5 new topics
+- If queue has 5-10 pending: add 2-3 new topics
+- If queue has >10 pending: add 0-1 topics, and instead review/reprioritize existing queue items
+
+Balance the mix: at least one cluster-building topic and at least one trend/timely topic per batch.
+
+For each topic, provide: primary keyword, 3-5 secondary keywords (including one long-tail question), search intent, meta title (under 60 chars), meta description (under 155 chars), and a one-sentence strategic rationale.
+
+Use create_topics_bulk to add all selected topics at once.`,
     schedule: { frequency: "weekly" as const, dayOfWeek: 1, hour: 9, minute: 0 },
   },
   {
     id: "content-filler",
     name: "Content Calendar Filler",
-    description: "Keeps your queue topped up — if fewer than 5 topics are pending, researches and adds more to maintain your publishing schedule.",
-    prompt: "Check my topic queue. If there are fewer than 5 pending topics, research my niche for opportunities and add enough topics to maintain a consistent publishing schedule. Include full SEO data for each.",
-    schedule: { frequency: "weekly" as const, dayOfWeek: 3, hour: 9, minute: 0 },
+    description: "Daily safety net — checks your queue and tops it up if running low, so your blog never stops publishing.",
+    maxCreditsPerRun: 0.5,
+    prompt: `You are a content queue manager. Ensure the blog never runs out of topics to publish.
+
+STEP 1 — Assess the situation:
+Call get_topics_queue with status "pending" and get_blog_stats. Calculate the target queue depth: aim for at least 2 weeks of runway based on the observed publishing rate. Minimum target is always 4.
+
+If the queue is already at or above the target, STOP HERE and report that no action is needed. Do not waste credits on unnecessary research.
+
+STEP 2 — Understand what's covered:
+Call get_brand_settings and get_existing_posts with a broad niche query to see recent content themes. Identify which topic categories are underrepresented.
+
+STEP 3 — Research to fill gaps:
+Determine how many topics are needed (target minus current pending count). Research using this allocation:
+- ~40% high-volume keywords (1000+ monthly searches)
+- ~30% long-tail quick wins (difficulty < 40)
+- ~30% complementary content that strengthens existing content clusters
+
+Validate each topic with search_keyword_data before adding.
+
+STEP 4 — Queue the topics:
+Use create_topics_bulk with full SEO data. Space scheduledAt dates across upcoming days based on publishing frequency.
+
+RULES:
+- Never add a topic that duplicates an existing post or queued topic
+- Prefer evergreen content (the Weekly Topic Research agent handles trends)
+- Always include primaryKeyword — never queue a topic without SEO data`,
+    schedule: { frequency: "daily" as const, hour: 6, minute: 0 },
   },
   {
-    id: "seo-audit",
-    name: "SEO Audit",
-    description: "Reviews your most recent posts for SEO issues — missing meta descriptions, weak titles, keyword gaps — and suggests fixes.",
-    prompt: "Review my 5 most recent published posts. For each, check the title, meta description, keyword usage, and internal linking. Report any issues found and suggest specific improvements.",
+    id: "competitor-watch",
+    name: "Competitor Watch",
+    description: "Monitors competitor blogs weekly, identifies topics they cover that you don't, and queues opportunities at low priority for your review.",
+    maxCreditsPerRun: 1.5,
+    prompt: `You are a competitive intelligence analyst for this blog.
+
+STEP 1 — Load context:
+Call get_brand_settings for niche, audience, and any defined competitors. Call get_existing_posts to understand current coverage. Call get_topics_queue to see what's planned.
+
+STEP 2 — Identify competitors:
+If brand settings include specific competitors, monitor those. If not, use web_search to identify 3-5 active blogs in the niche. List them explicitly in your report.
+
+STEP 3 — Analyze recent competitor content (last 7 days):
+For each competitor, use search_competitor_content and web_search. For each piece note: topic, angle, content format (guide, listicle, comparison, tutorial), and target keyword if apparent.
+
+STEP 4 — Find gaps and opportunities:
+Use search_content_gaps and search_keyword_data to identify:
+a) Topics competitors covered that we have NOT
+b) Keywords where competitor content ranks but difficulty is low enough to compete (difficulty < 40)
+c) Topics we've covered but competitors published fresher/deeper content on (refresh opportunities)
+
+STEP 5 — Queue actionable topics:
+For the top 3-5 opportunities, call create_topics_bulk with:
+- Priority: low
+- additionalRequirements noting which competitor inspired it and what angle to take that differentiates from theirs
+
+Do NOT queue topics that overlap with existing posts or queued items. Only queue if there's a genuine gap for our audience.
+
+STEP 6 — Report:
+Summarize: competitors monitored, their recent content, gaps identified, refresh opportunities, topics queued, and any publishing cadence patterns.`,
+    schedule: { frequency: "weekly" as const, dayOfWeek: 1, hour: 8, minute: 0 },
+  },
+
+  // === SEO & OPTIMIZATION ===
+  {
+    id: "daily-seo-check",
+    name: "New Post SEO Check",
+    description: "Audits every post within 24 hours of publishing — catches missing metadata, weak titles, and image alt text, and auto-fixes them.",
+    maxCreditsPerRun: 2.0,
+    prompt: `Audit all blog posts published in the last 24 hours for SEO quality.
+
+STEP 1: Use audit_content with limit 10 to scan recent posts.
+
+STEP 2: For each post with issues, call get_post to read its full content, then check:
+1. SEO title: exists, 50-60 characters, contains primary keyword near the front
+2. Meta description: exists, 150-160 characters, compelling with a call to action
+3. Heading structure: clear H2/H3 hierarchy, headings contain relevant keywords
+4. Image alt text: every image has descriptive alt text
+5. Internal links: at least 2 internal links to related posts
+6. Content length: at least 800 words for standard posts
+
+STEP 3: Auto-fix these issues using edit_post and edit_post_component:
+- Missing or weak SEO titles → write an optimized one
+- Missing or weak meta descriptions → write a compelling one
+- Missing image alt text → add descriptive alt text
+- Missing tags → add 3-5 relevant tags
+
+For issues you cannot auto-fix (thin content, poor heading structure), report them with specific recommendations.
+
+If no posts were published in the last 24 hours, report that and exit.`,
+    schedule: { frequency: "daily" as const, hour: 6, minute: 30 },
+  },
+  {
+    id: "monthly-seo-deep-dive",
+    name: "Monthly SEO Deep Dive",
+    description: "Comprehensive monthly review — checks rankings, finds keyword cannibalization, scans for systemic issues across your entire blog.",
+    maxCreditsPerRun: 5.0,
+    prompt: `Perform a comprehensive monthly SEO review of the entire blog.
+
+STEP 1 — Portfolio health check:
+Call audit_content with limit 20 to scan the 20 most recent posts. Identify systemic patterns (e.g., "most posts are missing meta descriptions" vs one-off issues).
+
+STEP 2 — Keyword cannibalization:
+Call check_keyword_cannibalization. If conflicts are found, recommend which post should be the canonical one for each keyword and suggest how to differentiate the others.
+
+STEP 3 — Rankings check:
+Call check_post_rankings for the 5 posts most likely to rank (newest pillar content or posts targeting high-volume keywords). Note any posts ranking on page 2 that could be pushed to page 1 with improvements.
+
+STEP 4 — Internal linking gaps:
+Identify the 5 posts with the fewest inbound internal links that deserve more. Do NOT fix these — the Internal Link Builder agent handles that.
+
+STEP 5 — Report:
+Produce a structured monthly SEO report with:
+- Overall health score (average audit score across scanned posts)
+- Top 5 most urgent issues to fix
+- Cannibalization risks
+- Ranking wins and opportunities (page 2 posts close to breaking through)
+- Internal linking recommendations
+
+This is a diagnostic/reporting agent only. Do NOT auto-fix issues — the daily SEO Check handles fixes.`,
     schedule: { frequency: "monthly" as const, dayOfMonth: 1, hour: 10, minute: 0 },
   },
   {
     id: "internal-links",
     name: "Internal Link Builder",
-    description: "Scans your entire blog for internal linking gaps and automatically adds relevant links between related posts to boost SEO.",
-    prompt: `You are an internal linking specialist. Your job is to strengthen the blog's SEO by ensuring all posts are well-connected with relevant internal links.
+    description: "Strengthens your SEO by finding posts with no inbound links and connecting them to related content with natural, contextual links.",
+    maxCreditsPerRun: 1.5,
+    prompt: `You are an internal linking specialist. Strengthen the blog's internal link structure.
 
-STEP 1 — Get the full picture:
-Call get_internal_link_map to get every post's title, slug, description, tags, and existing internal links in one go. This is your starting point — it shows you the entire blog's link structure in a single call.
+STEP 1 — Inventory:
+Call get_internal_link_map to see every post's title, slug, tags, and existing internal links. Group posts into topic clusters (groups of 3+ posts about related subjects).
 
-STEP 2 — Identify linking gaps:
-Analyse the link map and find posts that should link to each other but don't. Look for:
-- Posts covering related topics that have zero links between them
-- Newer posts that aren't linked from any older posts yet
-- Pillar/cornerstone posts that should be linked from many supporting posts but aren't
-- Posts with no outbound internal links at all
-Prioritise the highest-impact gaps first (e.g. important posts with few inbound links).
+STEP 2 — Find orphans:
+Prioritize posts with the fewest inbound internal links, especially any published in the last 30 days. These are your primary targets.
 
-STEP 3 — Edit posts to add links:
-For each post that needs updating:
-1. Call get_post with the post ID to see the full content and get component IDs
-2. Call edit_post_component to update the relevant text component, adding natural internal links using markdown link syntax [anchor text](/blog/slug)
-3. Add 1-3 links per post — don't over-link. Links should feel natural in context, not forced.
+STEP 3 — Select 5 posts to update:
+Pick the 5 posts that would benefit most from new internal links:
+a) Recent posts with zero or one inbound links
+b) Posts in topic clusters that aren't well connected
+c) Pillar/cornerstone content that should link out to subtopics
 
-RULES:
-- Never add more than 5 internal links to a single post
-- Use descriptive anchor text (the topic name or a natural phrase), never "click here"
-- Don't link the same target post twice within one article
-- Only link where it's genuinely relevant — quality over quantity
-- Aim to update 5-10 posts per run, focusing on the biggest gaps first
-- Report a summary of what you changed at the end`,
+STEP 4 — Add links:
+For each selected post, use get_post to read the full content, then use edit_post_component to add 1-3 internal links using markdown syntax [anchor text](/blog/slug).
+
+Link placement rules:
+- Place links in body paragraphs where the linked topic is naturally discussed
+- Use descriptive anchor text (3-7 words describing the destination post), never "click here" or "read more"
+- Link to posts within the same topic cluster first, then to related clusters
+- Ensure pillar posts link to subtopics and vice versa
+- Don't add links in the first or final paragraph — mid-content links perform better
+- Don't add a link if one to the same destination already exists
+
+STEP 5 — Verify and report:
+Confirm each link is contextually appropriate. Report what was changed.
+
+Keep to exactly 5 posts per run.`,
     schedule: { frequency: "weekly" as const, dayOfWeek: 5, hour: 14, minute: 0 },
   },
   {
     id: "stale-refresh",
-    name: "Stale Content Refresh",
-    description: "Finds your oldest posts and updates them with fresh information, better SEO, and improved content.",
-    prompt: "Find my 3 oldest published posts. Evaluate whether they need updating with current information, better SEO, or improved content. If so, edit them with improvements.",
-    schedule: { frequency: "monthly" as const, dayOfMonth: 15, hour: 10, minute: 0 },
+    name: "Content Refresher",
+    description: "Finds posts with declining rankings or untapped potential and updates them with fresh data, better SEO, and improved content.",
+    maxCreditsPerRun: 2.0,
+    prompt: `Find and refresh published blog posts with the highest potential for traffic recovery.
+
+STEP 1 — Identify candidates:
+Use get_existing_posts to list published posts. Then use check_post_rankings to find posts that meet ANY of these criteria (in priority order):
+a) Posts ranking positions 8-20 (page 2 or bottom of page 1 — closest to meaningful traffic)
+b) Posts whose rankings have declined
+c) Posts older than 6 months that haven't been updated
+Do NOT simply pick the oldest posts. Pick the ones where a refresh would most likely improve traffic.
+
+STEP 2 — Select 3-4 posts:
+Choose the top candidates from Step 1. If a post's topic is completely obsolete, skip it but note it as "needs full rewrite — not suitable for refresh."
+
+STEP 3 — Refresh each post:
+For each selected post, use get_post to read the full content, then:
+- web_search to check if key facts, statistics, or claims are still accurate. Update outdated numbers with current data.
+- search_keyword_data to check if the target keyword has shifted or if there are new related keywords worth incorporating.
+- audit_content to evaluate SEO elements. Improve title tag and meta description if weak.
+- check_keyword_cannibalization to see if this post competes with another for the same keyword.
+- Add 1-2 internal links to newer content published since this post was last updated.
+- Improve the introduction if it's weak — the first 100 words have the highest impact on bounce rate.
+- Apply edits using edit_post and edit_post_component.
+
+STEP 4 — Summary:
+Report what was changed in each post and why, plus any posts flagged for full rewrites.
+
+Focus on targeted improvements, not complete rewrites. If a post needs more than 40% of its content changed, flag it instead.`,
+    schedule: { frequency: "monthly" as const, dayOfMonth: 1, hour: 11, minute: 0 },
+  },
+
+  // === GROWTH & DISTRIBUTION ===
+  {
+    id: "content-repurposer",
+    name: "Content Repurposer",
+    description: "Takes your latest published posts and generates ready-to-post Twitter threads, standalone tweets, LinkedIn posts, and short-form video scripts.",
+    maxCreditsPerRun: 1.0,
+    prompt: `You are a content distribution specialist. Turn published blog posts into social media content.
+
+STEP 1 — Find recent posts:
+Call get_blog_stats and get_existing_posts to find posts published in the last 24-48 hours that haven't been repurposed yet.
+
+STEP 2 — For each post, call get_post to read the full content, then generate:
+
+a) TWITTER THREAD (5-7 tweets):
+- Tweet 1: Strong hook that creates curiosity — a surprising stat, contrarian take, or bold claim from the post
+- Tweets 2-6: Key insights, one per tweet. Use short sentences. Include specific numbers/data when available.
+- Final tweet: CTA linking to the full post
+- Use line breaks for readability. No hashtags in the thread body.
+
+b) STANDALONE TWEETS (3-5):
+- Pull the most interesting statistics, quotes, or claims from the post
+- Each should work as an independent tweet without context
+- Format: insight + data point, or question + answer
+
+c) LINKEDIN POST (1):
+- Opening hook (first 2 lines are critical — they show before "see more")
+- 3-4 short paragraphs with key insights from the post
+- Personal/professional tone, not promotional
+- End with a question to drive comments
+
+d) VIDEO SCRIPT (1, 30-60 seconds):
+- Hook (first 3 seconds): question or surprising statement
+- Problem (3-8 seconds): the pain point the post addresses
+- Solution (8-25 seconds): 2-3 key takeaways from the post
+- CTA (final 5 seconds): where to read more
+
+STEP 3 — Report:
+Present all generated content clearly labeled by platform, ready to copy and paste. Include the source post title for reference.`,
+    schedule: { frequency: "daily" as const, hour: 7, minute: 0 },
   },
   {
-    id: "competitor-watch",
-    name: "Competitor Watch",
-    description: "Searches for recent competitor content in your niche and identifies topics they're covering that you haven't written about yet.",
-    prompt: "Search for recent blog posts from competitors in my niche using web search. Identify topics they are covering that I have not written about yet. Report your findings with specific topic suggestions.",
-    schedule: { frequency: "weekly" as const, dayOfWeek: 1, hour: 8, minute: 0 },
+    id: "performance-reporter",
+    name: "Performance Reporter",
+    description: "Weekly check on which posts are ranking, what's gaining traction, and where to double down — so you know what's working.",
+    maxCreditsPerRun: 2.0,
+    prompt: `You are a content performance analyst. Produce a weekly performance report.
+
+STEP 1 — Get the landscape:
+Call get_blog_stats for overall numbers. Call get_existing_posts to see all published content.
+
+STEP 2 — Check rankings:
+Use check_post_rankings for your 10 most recent posts and any known high-priority posts. Categorize each:
+- Ranking page 1 (positions 1-10): These are winning — note the keywords
+- Ranking page 2 (positions 11-20): These are close — flag for optimization
+- Not ranking yet: Normal for new posts, but flag any older than 30 days
+
+STEP 3 — Identify patterns:
+- Which topics/categories are performing best?
+- Which content formats rank fastest?
+- Are there keyword clusters where you're building authority?
+- Any posts that were ranking but have dropped?
+
+STEP 4 — Report:
+Structure your report as:
+
+WINS THIS WEEK: Posts that are ranking well or improving
+OPPORTUNITIES: Page-2 posts that could break through with updates
+NEEDS ATTENTION: Older posts not ranking that may need refreshing
+STRATEGIC INSIGHTS: Patterns in what's working, suggestions for future content focus
+RECOMMENDED ACTIONS: 3-5 specific next steps based on the data`,
+    schedule: { frequency: "weekly" as const, dayOfWeek: 5, hour: 9, minute: 0 },
+  },
+  {
+    id: "content-clusters",
+    name: "Content Cluster Builder",
+    description: "Maps your posts into topic clusters, identifies missing pillar pages, and suggests content to build topical authority.",
+    maxCreditsPerRun: 2.0,
+    prompt: `You are a content architecture specialist. Analyze the blog's content structure and build topic clusters for SEO authority.
+
+STEP 1 — Map all content:
+Call get_existing_posts to get all published posts. Group them by topic similarity into clusters (groups of 3+ related posts).
+
+STEP 2 — Analyze each cluster:
+For each cluster, identify:
+- The pillar/cornerstone post (the broadest, most authoritative piece) — or note if one is missing
+- Supporting posts (specific subtopics within the cluster)
+- Gaps: subtopics that should exist but don't
+- Internal linking: are cluster posts well-linked to each other and to the pillar?
+
+STEP 3 — Find orphan content:
+Identify posts that don't fit into any cluster. These are either:
+- The start of a new cluster (suggest 2-3 related topics to build around them)
+- Outliers that may not be worth investing in
+
+STEP 4 — Keyword authority check:
+For the top 3 clusters, use search_keyword_data on the cluster's core keyword to assess competition and opportunity.
+
+STEP 5 — Report and recommend:
+For each cluster:
+- Name the cluster and list its posts
+- Identify the pillar post (or recommend creating one)
+- List 2-3 missing subtopics that would strengthen the cluster
+- Rate the cluster's internal linking strength (weak/moderate/strong)
+
+Queue the 3 highest-priority missing topics using create_topics_bulk with a note in additionalRequirements about which cluster they belong to.`,
+    schedule: { frequency: "monthly" as const, dayOfMonth: 15, hour: 10, minute: 0 },
   },
 ];
 
@@ -611,7 +890,7 @@ export function RoutinesTab() {
       dayOfMonth: template.schedule.dayOfMonth ?? 1,
       hour: template.schedule.hour,
       minute: template.schedule.minute,
-      maxCreditsPerRun: 2.0,
+      maxCreditsPerRun: template.maxCreditsPerRun ?? 2.0,
     });
     setShowTemplates(false);
     setShowCreate(true);
