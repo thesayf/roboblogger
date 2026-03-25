@@ -250,6 +250,7 @@ export default function BlogAdminClient() {
       setIsLoading(true);
       const params = new URLSearchParams();
       params.append("ownerOnly", "true"); // Only show posts owned by current user
+      params.append("limit", "1000");
       if (searchTerm) params.append("search", searchTerm);
       if (statusFilter !== "all") params.append("status", statusFilter);
 
