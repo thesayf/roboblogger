@@ -335,12 +335,13 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
             <Link href="/" className="flex items-center gap-3">
               <span className="font-lora text-xl font-bold text-[#111111]">Vibeblogger</span>
             </Link>
-            <Link
-              href="/"
-              className="text-sm text-[#666666] hover:text-[#111111] transition-colors"
+            <button
+              onClick={() => signOut({ redirectUrl: '/' })}
+              className="flex items-center gap-1.5 text-sm text-[#666666] hover:text-[#111111] transition-colors"
             >
-              Back to home
-            </Link>
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
+            </button>
           </div>
         </div>
       </div>
