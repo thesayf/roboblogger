@@ -98,6 +98,8 @@ export default function BlogAdminClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [postsPage, setPostsPage] = useState(1);
+  const [postsPagination, setPostsPagination] = useState({ total: 0, pages: 1 });
   const [pipelineFilter, setPipelineFilter] = useState<"all" | "scheduled" | "pending" | "generating" | "failed">("all");
   const [showBulkTopicsDialog, setShowBulkTopicsDialog] = useState(false);
   const [bulkTopicsInput, setBulkTopicsInput] = useState("");
@@ -200,11 +202,17 @@ export default function BlogAdminClient() {
   // Fetch blog posts from API
   useEffect(() => {
     fetchBlogPosts();
+  }, [statusFilter, postsPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPostsPage(1);
   }, [statusFilter]);
 
   // Debounce search term
   useEffect(() => {
     const timeoutId = setTimeout(() => {
+      setPostsPage(1);
       fetchBlogPosts();
     }, 300);
     return () => clearTimeout(timeoutId);
@@ -250,7 +258,8 @@ export default function BlogAdminClient() {
       setIsLoading(true);
       const params = new URLSearchParams();
       params.append("ownerOnly", "true"); // Only show posts owned by current user
-      params.append("limit", "1000");
+      params.append("page", postsPage.toString());
+      params.append("limit", "10");
       if (searchTerm) params.append("search", searchTerm);
       if (statusFilter !== "all") params.append("status", statusFilter);
 
@@ -259,6 +268,9 @@ export default function BlogAdminClient() {
 
       if (response.ok) {
         setBlogPosts(data.posts || []);
+        if (data.pagination) {
+          setPostsPagination({ total: data.pagination.total, pages: data.pagination.pages });
+        }
       } else {
         console.error("Failed to fetch posts:", data.error);
         setBlogPosts([]);
@@ -1390,6 +1402,7 @@ export default function BlogAdminClient() {
                 </Button>
               </div>
             ) : (
+              <>
               <div className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
                 {/* Table header */}
                 <div className="posts-table-header">
@@ -1499,6 +1512,41 @@ export default function BlogAdminClient() {
                   </div>
                 ))}
               </div>
+
+              {/* Pagination */}
+              {postsPagination.pages > 1 && (
+                <div className="flex items-center justify-between pt-4">
+                  <p className="text-[13px] text-[#888888]">
+                    {postsPagination.total} post{postsPagination.total !== 1 ? "s" : ""} total
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPostsPage((p) => Math.max(1, p - 1))}
+                      disabled={postsPage === 1}
+                      className="h-8 px-3"
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Prev
+                    </Button>
+                    <span className="text-[13px] text-[#444444] px-2">
+                      Page {postsPage} of {postsPagination.pages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPostsPage((p) => Math.min(postsPagination.pages, p + 1))}
+                      disabled={postsPage === postsPagination.pages}
+                      className="h-8 px-3"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              </>
             )}
           </TabsContent>
 
