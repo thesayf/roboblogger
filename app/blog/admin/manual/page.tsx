@@ -1,11 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
 import { useRouter } from "next/navigation";
 import ManualBlogEditor from "../components/ManualBlogEditor";
 import AdminPasswordGate from "@/components/auth/AdminPasswordGate";
 import { ToastProvider } from "@/components/ui/toast";
 
-export default function ManualEditorPage() {
+function ManualEditorContent() {
   const router = useRouter();
 
   const handleBack = () => {
@@ -18,5 +19,13 @@ export default function ManualEditorPage() {
         <ManualBlogEditor onBack={handleBack} />
       </ToastProvider>
     </AdminPasswordGate>
+  );
+}
+
+export default function ManualEditorPage() {
+  return (
+    <Suspense>
+      <ManualEditorContent />
+    </Suspense>
   );
 }
