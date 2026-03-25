@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useCredits } from "@/lib/contexts/CreditsContext";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useClerk } from "@clerk/nextjs";
 import {
   Sparkles,
   Loader2,
@@ -14,6 +15,7 @@ import {
   Palette,
   AlertCircle,
   CreditCard,
+  LogOut,
 } from "lucide-react";
 
 const features = [
@@ -29,6 +31,7 @@ interface SubscriptionGateProps {
 
 export function SubscriptionGate({ children }: SubscriptionGateProps) {
   const { subscriptionStatus, isLoading, refreshCredits } = useCredits();
+  const { signOut } = useClerk();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -153,12 +156,13 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
               <Link href="/" className="flex items-center gap-3">
                 <span className="font-lora text-xl font-bold text-[#111111]">Vibeblogger</span>
               </Link>
-              <Link
-                href="/"
-                className="text-sm text-[#666666] hover:text-[#111111] transition-colors"
+              <button
+                onClick={() => signOut({ redirectUrl: '/' })}
+                className="flex items-center gap-1.5 text-sm text-[#666666] hover:text-[#111111] transition-colors"
               >
-                Back to home
-              </Link>
+                <LogOut className="h-3.5 w-3.5" />
+                Sign out
+              </button>
             </div>
           </div>
         </div>
@@ -238,12 +242,13 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
               <Link href="/" className="flex items-center gap-3">
                 <span className="font-lora text-xl font-bold text-[#111111]">Vibeblogger</span>
               </Link>
-              <Link
-                href="/"
-                className="text-sm text-[#666666] hover:text-[#111111] transition-colors"
+              <button
+                onClick={() => signOut({ redirectUrl: '/' })}
+                className="flex items-center gap-1.5 text-sm text-[#666666] hover:text-[#111111] transition-colors"
               >
-                Back to home
-              </Link>
+                <LogOut className="h-3.5 w-3.5" />
+                Sign out
+              </button>
             </div>
           </div>
         </div>
