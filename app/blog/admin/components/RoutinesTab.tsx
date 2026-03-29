@@ -20,6 +20,12 @@ import {
   Brain,
   CircleDot,
   XCircle,
+  TrendingUp,
+  Link2,
+  BarChart3,
+  FileText,
+  Shield,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -440,6 +446,33 @@ Queue the 3 highest-priority missing topics using create_topics_bulk with a note
     schedule: { frequency: "monthly" as const, dayOfMonth: 15, hour: 10, minute: 0 },
   },
 ];
+
+const TEMPLATE_ICONS: Record<string, LucideIcon> = {
+  "weekly-research": Search,
+  "content-filler": Calendar,
+  "competitor-watch": CircleDot,
+  "daily-seo-check": Shield,
+  "monthly-seo-deep-dive": BarChart3,
+  "internal-links": Link2,
+  "stale-refresh": RefreshCw,
+  "content-repurposer": FileText,
+  "performance-reporter": TrendingUp,
+  "content-clusters": Brain,
+};
+
+function getAgentIcon(routine: Routine): LucideIcon {
+  if (routine.templateId && TEMPLATE_ICONS[routine.templateId]) {
+    return TEMPLATE_ICONS[routine.templateId];
+  }
+  // Fallback: guess from name
+  const name = routine.name.toLowerCase();
+  if (name.includes("seo") || name.includes("audit")) return Shield;
+  if (name.includes("research") || name.includes("topic")) return Search;
+  if (name.includes("link")) return Link2;
+  if (name.includes("refresh") || name.includes("update")) return RefreshCw;
+  if (name.includes("report") || name.includes("performance")) return TrendingUp;
+  return Zap;
+}
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -1128,122 +1161,148 @@ export function RoutinesTab() {
                 }`}
               >
                 {/* Agent Header */}
-                <div className="px-5 py-4 flex items-center justify-between">
-                  <div
-                    className="flex-1 cursor-pointer"
-                    onClick={() => toggleExpand(routine.id)}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      {isRunning ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
-                      ) : (
-                        <div className={`w-2 h-2 rounded-full ${routine.enabled ? "bg-green-500" : "bg-[#CCCCCC]"}`} />
-                      )}
-                      <span className="font-medium text-[14px] text-[#111111]">{routine.name}</span>
+                <div className="px-5 py-5">
+                  <div className="flex items-center justify-between mb-1">
+                    <div
+                      className="flex items-center gap-3 flex-1 cursor-pointer"
+                      onClick={() => toggleExpand(routine.id)}
+                    >
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                        isRunning ? "bg-blue-500" : "bg-[#111111]"
+                      }`}>
+                        {isRunning ? (
+                          <Loader2 className="w-4 h-4 text-white animate-spin" />
+                        ) : (
+                          (() => { const Icon = getAgentIcon(routine); return <Icon className="w-4 h-4 text-white" />; })()
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-[#111111]">{routine.name}</div>
+                        <div className="text-[12px] text-[#888888]">{formatSchedule(routine.schedule)}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
                       {isRunning && (
-                        <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
                           {routine.lastExecution?.phase
                             ? phaseLabel(routine.lastExecution.phase)
                             : "Starting..."}
                         </span>
                       )}
                       {!isRunning && isOverdue && (
-                        <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
                           Due
                         </span>
                       )}
-                      {!isRunning && routine.lastRunStatus === "failed" && (
-                        <span className="text-[11px] font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      {!isRunning && !isOverdue && routine.lastRunStatus === "failed" && (
+                        <span className="text-[11px] font-medium text-red-600 bg-red-50 px-2.5 py-1 rounded-full flex items-center gap-1">
                           <AlertCircle className="h-3 w-3" />
                           Failed
                         </span>
                       )}
-                      {!isRunning && routine.lastRunStatus === "success" && routine.lastRunAt && (
-                        <span className="text-[11px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          {timeAgo(routine.lastRunAt)}
+                      {!isRunning && !isOverdue && routine.enabled && routine.lastRunStatus !== "failed" && (
+                        <span className="text-[11px] font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full">
+                          Active
                         </span>
                       )}
+                      {!isRunning && !routine.enabled && routine.lastRunStatus !== "failed" && (
+                        <span className="text-[11px] font-medium text-[#888888] bg-[#F5F5F0] px-2.5 py-1 rounded-full">
+                          Paused
+                        </span>
+                      )}
+                      <div className="flex items-center gap-0.5 ml-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => executeRoutine(routine.id)}
+                          disabled={!!isRunning}
+                          title="Run now"
+                        >
+                          {isRunning ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Play className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => toggleRoutine(routine.id, !routine.enabled)}
+                          title={routine.enabled ? "Pause" : "Enable"}
+                        >
+                          {routine.enabled ? (
+                            <Pause className="h-3.5 w-3.5 text-[#666666]" />
+                          ) : (
+                            <RefreshCw className="h-3.5 w-3.5 text-[#888888]" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-400 hover:text-red-600"
+                          onClick={() => deleteRoutine(routine.id)}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => toggleExpand(routine.id)}
+                        >
+                          {expandedRoutine === routine.id ? (
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 mt-1.5 ml-4">
-                      <span className="text-[12px] text-[#888888] flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatSchedule(routine.schedule)}
-                      </span>
+                  </div>
+
+                  {/* Prompt preview */}
+                  <div className="bg-[#FAFAF8] rounded-lg p-3 mt-3 ml-12">
+                    <p className="text-[13px] text-[#666666] leading-relaxed italic line-clamp-2">
+                      &ldquo;{routine.prompt.length > 120 ? routine.prompt.slice(0, 120).trim() + "..." : routine.prompt}&rdquo;
+                    </p>
+                  </div>
+
+                  {/* Last run / next run footer */}
+                  <div className="flex items-center justify-between text-[12px] text-[#888888] mt-3 ml-12">
+                    <div className="flex items-center gap-4">
+                      {routine.totalRuns > 0 && (
+                        <span>{routine.successfulRuns}/{routine.totalRuns} runs</span>
+                      )}
                       {isRunning && routine.lastExecution?.startedAt && (
-                        <span className="text-[12px] text-blue-500 flex items-center gap-1">
+                        <span className="text-blue-500 flex items-center gap-1">
                           <Loader2 className="h-3 w-3 animate-spin" />
                           Started {timeAgo(routine.lastExecution.startedAt)}
                         </span>
                       )}
-                      {routine.totalRuns > 0 && (
-                        <span className="text-[12px] text-[#AAAAAA]">
-                          {routine.successfulRuns}/{routine.totalRuns} runs
+                    </div>
+                    <div>
+                      {!isRunning && routine.lastRunStatus === "success" && routine.lastRunAt && (
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                          Last run {timeAgo(routine.lastRunAt)}
                         </span>
                       )}
                       {!isRunning && routine.nextRunAt && routine.enabled && !isOverdue && (
-                        <span className="text-[12px] text-[#AAAAAA] flex items-center gap-1">
+                        <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           Next: {new Date(routine.nextRunAt).toLocaleDateString()} {new Date(routine.nextRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       )}
                       {!isRunning && isOverdue && (
-                        <span className="text-[12px] text-amber-500 flex items-center gap-1">
+                        <span className="text-amber-500 flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           Waiting for next cron check...
                         </span>
                       )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => executeRoutine(routine.id)}
-                      disabled={!!isRunning}
-                      title="Run now"
-                    >
-                      {isRunning ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Play className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => toggleRoutine(routine.id, !routine.enabled)}
-                      title={routine.enabled ? "Pause" : "Enable"}
-                    >
-                      {routine.enabled ? (
-                        <Pause className="h-3.5 w-3.5 text-[#666666]" />
-                      ) : (
-                        <RefreshCw className="h-3.5 w-3.5 text-[#888888]" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-red-400 hover:text-red-600"
-                      onClick={() => deleteRoutine(routine.id)}
-                      title="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => toggleExpand(routine.id)}
-                    >
-                      {expandedRoutine === routine.id ? (
-                        <ChevronUp className="h-3.5 w-3.5" />
-                      ) : (
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
                   </div>
                 </div>
 
