@@ -1500,6 +1500,12 @@ export default function BlogAdminClient() {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            onClick={() => router.push(`/blog/admin/posts/${post._id}/preview`)}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Preview
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             onClick={() => handleDeletePost(post._id)}
                             className="text-red-600"
                           >
