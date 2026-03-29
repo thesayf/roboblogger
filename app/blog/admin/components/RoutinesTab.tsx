@@ -377,8 +377,8 @@ d) VIDEO SCRIPT (1, 30-60 seconds):
 - Solution (8-25 seconds): 2-3 key takeaways from the post
 - CTA (final 5 seconds): where to read more
 
-STEP 3 — Report:
-Present all generated content clearly labeled by platform, ready to copy and paste. Include the source post title for reference.`,
+STEP 3 — Save to a document:
+Use create_document to create a document titled "Social Content — [Date]". Then use write_document to save all the generated content, clearly labeled by platform and source post title. This gives the user a permanent, copy-pasteable reference they can access from the Documents tab.`,
     schedule: { frequency: "daily" as const, hour: 7, minute: 0 },
   },
   {
@@ -403,14 +403,16 @@ STEP 3 — Identify patterns:
 - Are there keyword clusters where you're building authority?
 - Any posts that were ranking but have dropped?
 
-STEP 4 — Report:
-Structure your report as:
+STEP 4 — Save report to a document:
+Use create_document to create a document titled "Performance Report — [Date]". Then use write_document to save the report with this structure:
 
 WINS THIS WEEK: Posts that are ranking well or improving
 OPPORTUNITIES: Page-2 posts that could break through with updates
 NEEDS ATTENTION: Older posts not ranking that may need refreshing
 STRATEGIC INSIGHTS: Patterns in what's working, suggestions for future content focus
-RECOMMENDED ACTIONS: 3-5 specific next steps based on the data`,
+RECOMMENDED ACTIONS: 3-5 specific next steps based on the data
+
+This gives the user a permanent record they can review from the Documents tab.`,
     schedule: { frequency: "weekly" as const, dayOfWeek: 5, hour: 9, minute: 0 },
   },
   {
@@ -445,7 +447,9 @@ For each cluster:
 - List 2-3 missing subtopics that would strengthen the cluster
 - Rate the cluster's internal linking strength (weak/moderate/strong)
 
-Queue the 3 highest-priority missing topics using create_topics_bulk with a note in additionalRequirements about which cluster they belong to.`,
+Queue the 3 highest-priority missing topics using create_topics_bulk with a note in additionalRequirements about which cluster they belong to.
+
+Save the full cluster analysis to a document using create_document titled "Content Clusters — [Date]" and write_document, so the user has a permanent reference in the Documents tab.`,
     schedule: { frequency: "monthly" as const, dayOfMonth: 15, hour: 10, minute: 0 },
   },
 ];
