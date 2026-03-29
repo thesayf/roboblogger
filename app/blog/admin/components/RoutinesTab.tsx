@@ -25,6 +25,9 @@ import {
   BarChart3,
   FileText,
   Shield,
+  History,
+  ChevronLeft,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -706,6 +709,16 @@ export function RoutinesTab() {
   const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
+  // History sub-tab state
+  const [activeSubTab, setActiveSubTab] = useState<"agents" | "history">("agents");
+  const [allExecutions, setAllExecutions] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyFilter, setHistoryFilter] = useState<string>("");
+  const [expandedExecution, setExpandedExecution] = useState<string | null>(null);
+
   // Create form state
   const [form, setForm] = useState({
     name: "",
@@ -813,6 +826,26 @@ export function RoutinesTab() {
       console.error("Error fetching execution history:", error);
     }
   };
+
+  const fetchAllExecutions = useCallback(async (page = 1, status = "") => {
+    setHistoryLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: "15" });
+      if (status) params.set("status", status);
+      const response = await fetch(`/api/blog/routines/executions?${params}`);
+      const data = await response.json();
+      if (response.ok) {
+        setAllExecutions(data.executions || []);
+        setHistoryTotalPages(data.totalPages || 1);
+        setHistoryTotal(data.total || 0);
+        setHistoryPage(data.page || 1);
+      }
+    } catch (error) {
+      console.error("Error fetching execution history:", error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
 
   const createRoutine = async (overrides?: Partial<typeof form>) => {
     const data = overrides ? { ...form, ...overrides } : form;
@@ -958,25 +991,55 @@ export function RoutinesTab() {
             Autonomous AI agents that manage your blog on autopilot
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full text-[13px]"
-            onClick={() => setShowTemplates(!showTemplates)}
-          >
-            <Zap className="h-3.5 w-3.5 mr-1.5" />
-            Templates
-          </Button>
-          <Button
-            size="sm"
-            className="rounded-full text-[13px] bg-[#111111] hover:bg-[#333333] text-white"
-            onClick={() => { setShowCreate(!showCreate); setShowTemplates(false); }}
-          >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            New Agent
-          </Button>
-        </div>
+        {activeSubTab === "agents" && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full text-[13px]"
+              onClick={() => setShowTemplates(!showTemplates)}
+            >
+              <Zap className="h-3.5 w-3.5 mr-1.5" />
+              Templates
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-full text-[13px] bg-[#111111] hover:bg-[#333333] text-white"
+              onClick={() => { setShowCreate(!showCreate); setShowTemplates(false); }}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              New Agent
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Sub-tabs */}
+      <div className="flex gap-1 bg-[#F5F5F0] rounded-lg p-1 w-fit">
+        <button
+          onClick={() => setActiveSubTab("agents")}
+          className={`px-4 py-1.5 rounded-md text-[13px] font-medium transition-colors ${
+            activeSubTab === "agents"
+              ? "bg-white text-[#111111] shadow-sm"
+              : "text-[#888888] hover:text-[#444444]"
+          }`}
+        >
+          Agents
+        </button>
+        <button
+          onClick={() => {
+            setActiveSubTab("history");
+            if (allExecutions.length === 0) fetchAllExecutions(1, historyFilter);
+          }}
+          className={`px-4 py-1.5 rounded-md text-[13px] font-medium transition-colors flex items-center gap-1.5 ${
+            activeSubTab === "history"
+              ? "bg-white text-[#111111] shadow-sm"
+              : "text-[#888888] hover:text-[#444444]"
+          }`}
+        >
+          <History className="h-3.5 w-3.5" />
+          History
+        </button>
       </div>
 
       {/* Save message */}
@@ -985,6 +1048,242 @@ export function RoutinesTab() {
           {saveMessage.text}
         </div>
       )}
+
+      {/* ======================== HISTORY TAB ======================== */}
+      {activeSubTab === "history" && (
+        <div className="space-y-4">
+          {/* Filter bar */}
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1 bg-[#F5F5F0] rounded-lg p-1">
+              {[
+                { value: "", label: "All" },
+                { value: "success", label: "Success" },
+                { value: "failed", label: "Failed" },
+                { value: "running", label: "Running" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setHistoryFilter(opt.value);
+                    fetchAllExecutions(1, opt.value);
+                  }}
+                  className={`px-3 py-1 rounded-md text-[12px] font-medium transition-colors ${
+                    historyFilter === opt.value
+                      ? "bg-white text-[#111111] shadow-sm"
+                      : "text-[#888888] hover:text-[#444444]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <span className="text-[12px] text-[#AAAAAA] ml-auto">
+              {historyTotal} total run{historyTotal !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          {historyLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-[#888888]" />
+            </div>
+          ) : allExecutions.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-xl border border-[#E0DED8]">
+              <History className="h-10 w-10 text-[#CCCCCC] mx-auto mb-3" />
+              <h3 className="text-[16px] font-medium text-[#444444]">No runs yet</h3>
+              <p className="text-[13px] text-[#888888] mt-1">
+                Agent execution history will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {allExecutions.map((exec) => {
+                const AgentIcon = getAgentIcon({ templateId: routines.find(r => r.id === exec.routineId)?.templateId, name: exec.routineName } as Routine);
+                const duration = exec.completedAt
+                  ? Math.round((new Date(exec.completedAt).getTime() - new Date(exec.startedAt).getTime()) / 1000)
+                  : null;
+                const isExpanded = expandedExecution === exec.id;
+
+                return (
+                  <div
+                    key={exec.id}
+                    className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden"
+                  >
+                    <div
+                      className="px-5 py-4 flex items-center gap-4 cursor-pointer hover:bg-[#FAFAF8] transition-colors"
+                      onClick={() => setExpandedExecution(isExpanded ? null : exec.id)}
+                    >
+                      {/* Icon */}
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                        exec.status === "running" ? "bg-blue-500" :
+                        exec.status === "failed" ? "bg-red-100" : "bg-[#111111]"
+                      }`}>
+                        {exec.status === "running" ? (
+                          <Loader2 className="w-4 h-4 text-white animate-spin" />
+                        ) : exec.status === "failed" ? (
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        ) : (
+                          <AgentIcon className="w-4 h-4 text-white" />
+                        )}
+                      </div>
+
+                      {/* Agent name + time */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-[#111111] truncate">{exec.routineName}</span>
+                          {exec.status === "success" && (
+                            <span className="text-[11px] font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full shrink-0">
+                              Success
+                            </span>
+                          )}
+                          {exec.status === "failed" && (
+                            <span className="text-[11px] font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Failed
+                            </span>
+                          )}
+                          {exec.status === "running" && (
+                            <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full shrink-0">
+                              Running
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5 text-[12px] text-[#888888]">
+                          <span>{new Date(exec.startedAt).toLocaleDateString()} {new Date(exec.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                          {duration !== null && (
+                            <span>{duration < 60 ? `${duration}s` : `${Math.floor(duration / 60)}m ${duration % 60}s`}</span>
+                          )}
+                          {exec.toolCalls.length > 0 && (
+                            <span>{exec.toolCalls.length} tool call{exec.toolCalls.length !== 1 ? "s" : ""}</span>
+                          )}
+                          {exec.creditsUsed > 0 && (
+                            <span>{exec.creditsUsed.toFixed(2)} credits</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Expand arrow */}
+                      <div className="shrink-0">
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4 text-[#AAAAAA]" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-[#AAAAAA]" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Expanded details */}
+                    {isExpanded && (
+                      <div className="px-5 pb-5 border-t border-[#F0EEE8]">
+                        {/* Data changed */}
+                        {exec.dataChanged.length > 0 && (
+                          <div className="mt-3">
+                            <div className="text-[11px] font-medium text-[#AAAAAA] uppercase tracking-wider mb-1.5">Changes made</div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {exec.dataChanged.map((change: string, i: number) => (
+                                <span key={i} className="text-[11px] bg-[#F5F5F0] text-[#666666] px-2 py-0.5 rounded">
+                                  {change}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Tool calls */}
+                        {exec.toolCalls.length > 0 && (
+                          <div className="mt-3">
+                            <div className="text-[11px] font-medium text-[#AAAAAA] uppercase tracking-wider mb-1.5">Tools used</div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {exec.toolCalls.map((tc: any, i: number) => (
+                                <span key={i} className={`text-[11px] px-2 py-0.5 rounded flex items-center gap-1 ${
+                                  tc.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
+                                }`}>
+                                  <Wrench className="h-2.5 w-2.5" />
+                                  {tc.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Response */}
+                        {exec.response && (
+                          <div className="mt-3">
+                            <div className="text-[11px] font-medium text-[#AAAAAA] uppercase tracking-wider mb-1.5">Agent response</div>
+                            <div className="bg-[#FAFAF8] rounded-lg p-3 text-[12px] text-[#444444] leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
+                              {exec.response}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Error */}
+                        {exec.error && (
+                          <div className="mt-3">
+                            <div className="text-[12px] text-red-500 flex items-center gap-1.5 bg-red-50 rounded-lg p-3">
+                              <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                              {exec.error}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Execution log */}
+                        {exec.liveLog && exec.liveLog.length > 0 && (
+                          <details className="mt-3">
+                            <summary className="text-[11px] text-[#AAAAAA] cursor-pointer hover:text-[#666666]">
+                              Show execution log ({exec.liveLog.length} entries)
+                            </summary>
+                            <div className="mt-1.5 pl-2 border-l-2 border-[#E0DED8] space-y-0.5 max-h-64 overflow-y-auto">
+                              {exec.liveLog.map((entry: any, i: number) => (
+                                <div key={i} className="flex items-start gap-1.5 py-0.5">
+                                  <LogEntryIcon type={entry.type} />
+                                  <span className={`text-[10px] ${
+                                    entry.type === "error" ? "text-red-500" : "text-[#888888]"
+                                  }`}>
+                                    {entry.message}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Pagination */}
+              {historyTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0 rounded-full"
+                    disabled={historyPage <= 1}
+                    onClick={() => fetchAllExecutions(historyPage - 1, historyFilter)}
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-[13px] text-[#888888]">
+                    Page {historyPage} of {historyTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0 rounded-full"
+                    disabled={historyPage >= historyTotalPages}
+                    onClick={() => fetchAllExecutions(historyPage + 1, historyFilter)}
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ======================== AGENTS TAB ======================== */}
+      {activeSubTab === "agents" && <>
 
       {/* Templates */}
       {showTemplates && (
@@ -1439,6 +1738,8 @@ export function RoutinesTab() {
           })}
         </div>
       )}
+
+      </>}
     </div>
   );
 }
