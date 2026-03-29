@@ -1188,18 +1188,43 @@ export function RoutinesTab() {
                           </div>
                         )}
 
-                        {/* Tool calls */}
+                        {/* Tool calls with details */}
                         {exec.toolCalls.length > 0 && (
                           <div className="mt-3">
-                            <div className="text-[11px] font-medium text-[#AAAAAA] uppercase tracking-wider mb-1.5">Tools used</div>
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="text-[11px] font-medium text-[#AAAAAA] uppercase tracking-wider mb-1.5">Tool calls ({exec.toolCalls.length})</div>
+                            <div className="space-y-1.5">
                               {exec.toolCalls.map((tc: any, i: number) => (
-                                <span key={i} className={`text-[11px] px-2 py-0.5 rounded flex items-center gap-1 ${
-                                  tc.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
+                                <details key={i} className={`rounded-lg border overflow-hidden ${
+                                  tc.success ? "border-green-100 bg-green-50/30" : "border-red-100 bg-red-50/30"
                                 }`}>
-                                  <Wrench className="h-2.5 w-2.5" />
-                                  {tc.name}
-                                </span>
+                                  <summary className="px-3 py-1.5 cursor-pointer hover:bg-white/50 transition-colors flex items-center gap-1.5">
+                                    <Wrench className="h-2.5 w-2.5 shrink-0" />
+                                    <span className={`text-[12px] font-medium ${tc.success ? "text-green-700" : "text-red-600"}`}>
+                                      {tc.name}
+                                    </span>
+                                    <span className={`text-[10px] ml-auto ${tc.success ? "text-green-500" : "text-red-400"}`}>
+                                      {tc.success ? "success" : "failed"}
+                                    </span>
+                                  </summary>
+                                  <div className="px-3 pb-2 space-y-1.5 border-t border-[#E0DED8]/50">
+                                    {tc.input && (
+                                      <div className="mt-1.5">
+                                        <div className="text-[10px] font-medium text-[#AAAAAA] mb-0.5">Input</div>
+                                        <pre className="text-[10px] text-[#666666] bg-white rounded p-2 overflow-x-auto max-h-32 whitespace-pre-wrap break-all">
+                                          {tc.input}
+                                        </pre>
+                                      </div>
+                                    )}
+                                    {tc.result && (
+                                      <div>
+                                        <div className="text-[10px] font-medium text-[#AAAAAA] mb-0.5">Result</div>
+                                        <pre className="text-[10px] text-[#666666] bg-white rounded p-2 overflow-x-auto max-h-32 whitespace-pre-wrap break-all">
+                                          {tc.result}
+                                        </pre>
+                                      </div>
+                                    )}
+                                  </div>
+                                </details>
                               ))}
                             </div>
                           </div>

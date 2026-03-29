@@ -42,6 +42,8 @@ export async function GET(
     toolCalls: (execution.toolCalls || []).map((tc: any) => ({
       name: tc.name,
       success: tc.success,
+      input: tc.input ? JSON.stringify(tc.input).slice(0, 500) : undefined,
+      result: tc.result?.slice(0, 1000),
     })),
     dataChanged: execution.dataChanged,
     creditsUsed: execution.creditsUsed,

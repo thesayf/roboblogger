@@ -49,7 +49,12 @@ export async function GET(
       phase: e.phase || 'queued',
       phaseDetail: e.phaseDetail,
       response: e.response?.slice(0, 1000),
-      toolCalls: e.toolCalls?.map((tc: any) => ({ name: tc.name, success: tc.success })),
+      toolCalls: e.toolCalls?.map((tc: any) => ({
+        name: tc.name,
+        success: tc.success,
+        input: tc.input ? JSON.stringify(tc.input).slice(0, 500) : undefined,
+        result: tc.result?.slice(0, 1000),
+      })),
       dataChanged: e.dataChanged,
       creditsUsed: e.creditsUsed,
       error: e.error,
