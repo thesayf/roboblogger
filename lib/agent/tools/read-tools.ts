@@ -365,11 +365,15 @@ export function buildReadTools(ctx: ToolContext) {
           const textBlocks = componentsByPost.get(pid) || [];
           const fullText = textBlocks.join(' ');
 
-          // Extract internal links (href containing blog slug patterns)
-          const linkRegex = /href=["'](?:https?:\/\/[^"']*)?\/blog\/([a-z0-9-]+)["']/gi;
+          // Extract internal links — both HTML href and markdown [text](/blog/slug) formats
           const existingLinks: string[] = [];
           let match;
-          while ((match = linkRegex.exec(fullText)) !== null) {
+          const htmlLinkRegex = /href=["'](?:https?:\/\/[^"']*)?\/blog\/([a-z0-9-]+)["']/gi;
+          while ((match = htmlLinkRegex.exec(fullText)) !== null) {
+            existingLinks.push(match[1]);
+          }
+          const mdLinkRegex = /\]\((?:https?:\/\/[^)]*)?\/blog\/([a-z0-9-]+(?:-[a-z0-9]+)*)[^)]*\)/gi;
+          while ((match = mdLinkRegex.exec(fullText)) !== null) {
             existingLinks.push(match[1]);
           }
 
@@ -383,7 +387,7 @@ export function buildReadTools(ctx: ToolContext) {
             seoKeyword: p.seoTitle,
             status: p.status,
             publishedAt: p.publishedAt,
-            linksTo: [...new Set(existingLinks)],
+            linksTo: Array.from(new Set(existingLinks)),
           };
         });
 
