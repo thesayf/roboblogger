@@ -57,85 +57,126 @@ export const { POST } = serve<{ routineId: string; executionId: string }>(
 
     // Step 2: Update execution and routine records based on result
     await context.run('update-records', async () => {
-      console.log(`${tag} Step 2: Updating records...`);
-      await dbConnect();
+      try {
+        console.log(`${tag} Step 2: Updating records...`);
+        await dbConnect();
 
-      const execution = await RoutineExecution.findById(executionId);
-      const routine = await Routine.findById(routineId);
+        let execution;
+        try {
+          execution = await RoutineExecution.findById(executionId);
+        } catch (err) {
+          console.error(`${tag} DB ERROR: Failed to find execution ${executionId}:`, err);
+          throw err;
+        }
 
-      if (!execution || !routine) {
-        console.error(`${tag} CRITICAL: Missing records — execution=${!!execution} routine=${!!routine}`);
-        return;
-      }
+        let routine;
+        try {
+          routine = await Routine.findById(routineId);
+        } catch (err) {
+          console.error(`${tag} DB ERROR: Failed to find routine ${routineId}:`, err);
+          throw err;
+        }
 
-      if (result.status === 200 && result.body?.success) {
-        console.log(`${tag} Result: SUCCESS`);
+        if (!execution || !routine) {
+          console.error(`${tag} CRITICAL: Missing records — execution=${!!execution} routine=${!!routine}`);
+          return;
+        }
 
-        execution.status = 'success';
-        execution.phase = 'completed';
-        execution.completedAt = new Date();
-        execution.response = result.body.response || '';
-        execution.toolCalls = result.body.toolCalls || [];
-        execution.dataChanged = result.body.dataChanged || [];
-        execution.creditsUsed = result.body.creditsUsed || 0;
-        await execution.save();
-        console.log(`${tag} Execution ${executionId} → success`);
+        if (result.status === 200 && result.body?.success) {
+          console.log(`${tag} Result: SUCCESS`);
 
-        routine.lastRunAt = new Date();
-        routine.lastRunStatus = 'success';
-        routine.totalRuns += 1;
-        routine.successfulRuns += 1;
-        routine.totalCreditsUsed += result.body.creditsUsed || 0;
+          execution.status = 'success';
+          execution.phase = 'completed';
+          execution.completedAt = new Date();
+          execution.response = result.body.response || '';
+          execution.toolCalls = result.body.toolCalls || [];
+          execution.dataChanged = result.body.dataChanged || [];
+          execution.creditsUsed = result.body.creditsUsed || 0;
 
-        if (routine.schedule.frequency === 'once') {
-          routine.enabled = false;
-          routine.nextRunAt = null;
-          console.log(`${tag} Routine is 'once' — disabling, nextRunAt=null`);
+          try {
+            await execution.save();
+            console.log(`${tag} Execution ${executionId} → success`);
+          } catch (err) {
+            console.error(`${tag} DB ERROR: Failed to save execution ${executionId}:`, err);
+            throw err;
+          }
+
+          routine.lastRunAt = new Date();
+          routine.lastRunStatus = 'success';
+          routine.totalRuns += 1;
+          routine.successfulRuns += 1;
+          routine.totalCreditsUsed += result.body.creditsUsed || 0;
+
+          if (routine.schedule.frequency === 'once') {
+            routine.enabled = false;
+            routine.nextRunAt = null;
+            console.log(`${tag} Routine is 'once' — disabling, nextRunAt=null`);
+          } else {
+            routine.nextRunAt = calculateNextRun(routine.schedule);
+          }
+
+          try {
+            await routine.save();
+          } catch (err) {
+            console.error(`${tag} DB ERROR: Execution saved OK but failed to save routine ${routineId}:`, err);
+            throw err;
+          }
+
+          console.log(`${tag} Routine updated: runs=${routine.totalRuns}, success=${routine.successfulRuns}, nextRunAt=${routine.nextRunAt?.toISOString() || 'null'}`);
+          console.log(`${tag} ── WORKFLOW COMPLETE (SUCCESS) ─────────────`);
         } else {
+          const errorMsg = result.body?.error || `Agent call failed with status ${result.status}`;
+          console.error(`${tag} Result: FAILED — ${errorMsg}`);
+
+          execution.status = 'failed';
+          execution.phase = 'failed';
+          execution.completedAt = new Date();
+          execution.error = errorMsg;
+          execution.liveLog.push({
+            timestamp: new Date(),
+            type: 'error',
+            message: errorMsg,
+          });
+
+          try {
+            await execution.save();
+            console.log(`${tag} Execution ${executionId} → failed`);
+          } catch (err) {
+            console.error(`${tag} DB ERROR: Failed to save execution ${executionId}:`, err);
+            throw err;
+          }
+
+          routine.lastRunAt = new Date();
+          routine.lastRunStatus = 'failed';
+          routine.totalRuns += 1;
           routine.nextRunAt = calculateNextRun(routine.schedule);
+
+          // Disable after 3 consecutive failures
+          const recentFailures = await RoutineExecution.countDocuments({
+            routine: routineId,
+            status: 'failed',
+            createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+          });
+          console.log(`${tag} Recent failures in last 7 days: ${recentFailures}`);
+
+          if (recentFailures >= 3) {
+            routine.enabled = false;
+            console.warn(`${tag} AUTO-DISABLED: 3+ failures in 7 days`);
+          }
+
+          try {
+            await routine.save();
+          } catch (err) {
+            console.error(`${tag} DB ERROR: Execution saved OK but failed to save routine ${routineId}:`, err);
+            throw err;
+          }
+
+          console.log(`${tag} Routine updated: runs=${routine.totalRuns}, nextRunAt=${routine.nextRunAt?.toISOString() || 'null'}`);
+          console.error(`${tag} ── WORKFLOW COMPLETE (FAILED) ──────────────`);
         }
-
-        await routine.save();
-
-        console.log(`${tag} Routine updated: runs=${routine.totalRuns}, success=${routine.successfulRuns}, nextRunAt=${routine.nextRunAt?.toISOString() || 'null'}`);
-        console.log(`${tag} ── WORKFLOW COMPLETE (SUCCESS) ─────────────`);
-      } else {
-        const errorMsg = result.body?.error || `Agent call failed with status ${result.status}`;
-        console.error(`${tag} Result: FAILED — ${errorMsg}`);
-
-        execution.status = 'failed';
-        execution.phase = 'failed';
-        execution.completedAt = new Date();
-        execution.error = errorMsg;
-        execution.liveLog.push({
-          timestamp: new Date(),
-          type: 'error',
-          message: errorMsg,
-        });
-        await execution.save();
-        console.log(`${tag} Execution ${executionId} → failed`);
-
-        routine.lastRunAt = new Date();
-        routine.lastRunStatus = 'failed';
-        routine.totalRuns += 1;
-        routine.nextRunAt = calculateNextRun(routine.schedule);
-
-        // Disable after 3 consecutive failures
-        const recentFailures = await RoutineExecution.countDocuments({
-          routine: routineId,
-          status: 'failed',
-          createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-        });
-        console.log(`${tag} Recent failures in last 7 days: ${recentFailures}`);
-
-        if (recentFailures >= 3) {
-          routine.enabled = false;
-          console.warn(`${tag} AUTO-DISABLED: 3+ failures in 7 days`);
-        }
-
-        await routine.save();
-        console.log(`${tag} Routine updated: runs=${routine.totalRuns}, nextRunAt=${routine.nextRunAt?.toISOString() || 'null'}`);
-        console.error(`${tag} ── WORKFLOW COMPLETE (FAILED) ──────────────`);
+      } catch (err) {
+        console.error(`${tag} CRITICAL: update-records step failed:`, err);
+        throw err;
       }
     });
   },

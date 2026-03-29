@@ -1518,22 +1518,39 @@ export function RoutinesTab() {
                           Due
                         </span>
                       )}
-                      {!isRunning && !isOverdue && routine.lastRunStatus === "failed" && (
-                        <span className="text-[11px] font-medium text-red-600 bg-red-50 px-2.5 py-1 rounded-full flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3" />
-                          Failed
-                        </span>
-                      )}
-                      {!isRunning && !isOverdue && routine.enabled && routine.lastRunStatus !== "failed" && (
-                        <span className="text-[11px] font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full">
-                          Active
-                        </span>
-                      )}
-                      {!isRunning && !routine.enabled && routine.lastRunStatus !== "failed" && (
-                        <span className="text-[11px] font-medium text-[#888888] bg-[#F5F5F0] px-2.5 py-1 rounded-full">
-                          Paused
-                        </span>
-                      )}
+                      {(() => {
+                        // Prefer lastExecution.status over routine.lastRunStatus when they conflict
+                        const execStatus = routine.lastExecution?.status;
+                        const execPhase = routine.lastExecution?.phase;
+                        const actuallyFailed =
+                          (execStatus === "failed" || execPhase === "failed") ||
+                          (!routine.lastExecution && routine.lastRunStatus === "failed");
+                        const actuallySucceeded = execStatus === "completed" || execPhase === "completed";
+
+                        if (!isRunning && !isOverdue && actuallyFailed && !actuallySucceeded) {
+                          return (
+                            <span className="text-[11px] font-medium text-red-600 bg-red-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Failed
+                            </span>
+                          );
+                        }
+                        if (!isRunning && !isOverdue && routine.enabled) {
+                          return (
+                            <span className="text-[11px] font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full">
+                              Active
+                            </span>
+                          );
+                        }
+                        if (!isRunning && !routine.enabled) {
+                          return (
+                            <span className="text-[11px] font-medium text-[#888888] bg-[#F5F5F0] px-2.5 py-1 rounded-full">
+                              Paused
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                       <div className="flex items-center gap-0.5 ml-1">
                         <Button
                           variant="ghost"
@@ -1597,9 +1614,11 @@ export function RoutinesTab() {
                   {/* Last run / next run footer */}
                   <div className="flex items-center justify-between text-[12px] text-[#888888] mt-3 ml-12">
                     <div className="flex items-center gap-4">
-                      {routine.totalRuns > 0 && (
+                      {routine.totalRuns > 0 ? (
                         <span>{routine.successfulRuns}/{routine.totalRuns} runs</span>
-                      )}
+                      ) : routine.lastExecution && (routine.lastExecution.phase === "completed" || routine.lastExecution.status === "completed") ? (
+                        <span className="text-green-600">Last run succeeded</span>
+                      ) : null}
                       {isRunning && routine.lastExecution?.startedAt && (
                         <span className="text-blue-500 flex items-center gap-1">
                           <Loader2 className="h-3 w-3 animate-spin" />

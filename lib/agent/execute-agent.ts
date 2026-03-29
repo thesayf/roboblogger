@@ -162,6 +162,17 @@ export async function executeAgent(options: {
           type: 'tool_end',
           message: resultStr,
         }, block.name);
+
+        // Persist tool call data progressively so it survives if later steps fail
+        if (executionId && tc) {
+          try {
+            await RoutineExecution.findByIdAndUpdate(executionId, {
+              $push: { toolCalls: { name: tc.name, input: tc.input, result: tc.result?.slice(0, 2000), success: tc.success } }
+            });
+          } catch (err) {
+            console.error(`${tag} Failed to persist toolCall to execution:`, err);
+          }
+        }
       }
     }
 
@@ -202,7 +213,21 @@ export async function executeAgent(options: {
     });
   }
 
-  // Phase: completed
+  // Phase: completed — persist final stats so data survives even if later workflow steps fail
+  if (executionId) {
+    try {
+      await RoutineExecution.findByIdAndUpdate(executionId, {
+        $set: {
+          phase: 'completed',
+          creditsUsed: totalCreditsUsed,
+          dataChanged: Array.from(new Set(dataChanged)),
+          response: assistantContent.slice(0, 5000),
+        },
+      });
+    } catch (err) {
+      console.error(`${tag} Failed to persist completion stats to execution:`, err);
+    }
+  }
   await logProgress(executionId, 'completed', {
     type: 'phase',
     message: `Completed with ${toolCalls.length} tool calls, ${totalCreditsUsed.toFixed(1)} credits used`,

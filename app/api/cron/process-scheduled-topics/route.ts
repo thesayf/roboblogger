@@ -253,6 +253,34 @@ export async function GET(request: NextRequest) {
           await exec.save();
           console.warn(`[Cron]   → Marked as failed`);
         }
+
+        // Also update the parent Routine so the agent card reflects the correct state
+        try {
+          const routine = await Routine.findById(exec.routine);
+          if (routine) {
+            routine.lastRunAt = exec.completedAt;
+            routine.lastRunStatus = exec.status as 'success' | 'failed';
+            routine.totalRuns = (routine.totalRuns || 0) + 1;
+            if (exec.status === 'success') {
+              routine.successfulRuns = (routine.successfulRuns || 0) + 1;
+            }
+            routine.totalCreditsUsed = (routine.totalCreditsUsed || 0) + (exec.creditsUsed || 0);
+
+            if (routine.schedule.frequency === 'once') {
+              routine.enabled = false;
+              routine.nextRunAt = null;
+            } else {
+              routine.nextRunAt = calculateNextRun(routine.schedule);
+            }
+
+            await routine.save();
+            console.warn(`[Cron]   → Updated parent routine ${routine._id} (lastRunStatus=${exec.status}, totalRuns=${routine.totalRuns}, successfulRuns=${routine.successfulRuns})`);
+          } else {
+            console.warn(`[Cron]   → Parent routine ${exec.routine} not found (may have been deleted)`);
+          }
+        } catch (routineErr: any) {
+          console.error(`[Cron]   → Failed to update parent routine ${exec.routine}: ${routineErr.message}`);
+        }
       }
     }
 
