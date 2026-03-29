@@ -1103,6 +1103,14 @@ export function RoutinesTab() {
                   : null;
                 const isExpanded = expandedExecution === exec.id;
 
+                // Detect stuck "running" — has completed phase or tool data but status never updated
+                const isStuckRunning = exec.status === "running" && (
+                  exec.phase === "completed" ||
+                  exec.toolCalls.length > 0 ||
+                  exec.creditsUsed > 0
+                );
+                const displayStatus = isStuckRunning ? "success" : exec.status;
+
                 return (
                   <div
                     key={exec.id}
@@ -1114,12 +1122,12 @@ export function RoutinesTab() {
                     >
                       {/* Icon */}
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                        exec.status === "running" ? "bg-blue-500" :
-                        exec.status === "failed" ? "bg-red-100" : "bg-[#111111]"
+                        displayStatus === "running" ? "bg-blue-500" :
+                        displayStatus === "failed" ? "bg-red-100" : "bg-[#111111]"
                       }`}>
-                        {exec.status === "running" ? (
+                        {displayStatus === "running" ? (
                           <Loader2 className="w-4 h-4 text-white animate-spin" />
-                        ) : exec.status === "failed" ? (
+                        ) : displayStatus === "failed" ? (
                           <XCircle className="w-4 h-4 text-red-500" />
                         ) : (
                           <AgentIcon className="w-4 h-4 text-white" />
@@ -1130,18 +1138,18 @@ export function RoutinesTab() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-[#111111] truncate">{exec.routineName}</span>
-                          {exec.status === "success" && (
+                          {displayStatus === "success" && (
                             <span className="text-[11px] font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full shrink-0">
                               Success
                             </span>
                           )}
-                          {exec.status === "failed" && (
+                          {displayStatus === "failed" && (
                             <span className="text-[11px] font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1">
                               <AlertCircle className="h-3 w-3" />
                               Failed
                             </span>
                           )}
-                          {exec.status === "running" && (
+                          {displayStatus === "running" && (
                             <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full shrink-0">
                               Running
                             </span>
@@ -1518,39 +1526,16 @@ export function RoutinesTab() {
                           Due
                         </span>
                       )}
-                      {(() => {
-                        // Prefer lastExecution.status over routine.lastRunStatus when they conflict
-                        const execStatus = routine.lastExecution?.status;
-                        const execPhase = routine.lastExecution?.phase;
-                        const actuallyFailed =
-                          (execStatus === "failed" || execPhase === "failed") ||
-                          (!routine.lastExecution && routine.lastRunStatus === "failed");
-                        const actuallySucceeded = execStatus === "completed" || execPhase === "completed";
-
-                        if (!isRunning && !isOverdue && actuallyFailed && !actuallySucceeded) {
-                          return (
-                            <span className="text-[11px] font-medium text-red-600 bg-red-50 px-2.5 py-1 rounded-full flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              Failed
-                            </span>
-                          );
-                        }
-                        if (!isRunning && !isOverdue && routine.enabled) {
-                          return (
-                            <span className="text-[11px] font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full">
-                              Active
-                            </span>
-                          );
-                        }
-                        if (!isRunning && !routine.enabled) {
-                          return (
-                            <span className="text-[11px] font-medium text-[#888888] bg-[#F5F5F0] px-2.5 py-1 rounded-full">
-                              Paused
-                            </span>
-                          );
-                        }
-                        return null;
-                      })()}
+                      {!isRunning && !isOverdue && routine.enabled && (
+                        <span className="text-[11px] font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full">
+                          Active
+                        </span>
+                      )}
+                      {!isRunning && !routine.enabled && (
+                        <span className="text-[11px] font-medium text-[#888888] bg-[#F5F5F0] px-2.5 py-1 rounded-full">
+                          Paused
+                        </span>
+                      )}
                       <div className="flex items-center gap-0.5 ml-1">
                         <Button
                           variant="ghost"
