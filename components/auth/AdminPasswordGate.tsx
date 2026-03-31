@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Key, MessageSquare, X } from 'lucide-react';
+import { Key, MessageSquare } from 'lucide-react';
 import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { CreditsDisplay } from '@/app/blog/admin/components/CreditsDisplay';
@@ -86,16 +86,7 @@ export default function AdminPasswordGate({ children }: AdminPasswordGateProps) 
 
       {/* Chat sidebar — fixed right panel */}
       <div className={`fixed top-0 right-0 h-full w-[440px] bg-white border-l border-[#E0DED8] z-50 flex flex-col transition-transform duration-300 ${chatOpen ? "translate-x-0" : "translate-x-full"}`}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#E0DED8]">
-          <span className="text-sm font-medium text-[#111111]">Agent Chat</span>
-          <button
-            onClick={() => setChatOpen(false)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#F5F5F0] transition-colors text-[#888888] hover:text-[#111111]"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        {chatOpen && <ChatPanel />}
+        {chatOpen && <ChatPanel onClose={() => setChatOpen(false)} />}
       </div>
     </div>
   );

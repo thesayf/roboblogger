@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef } from 'react';
-import { MessageSquare, ChevronLeft, Loader2 } from 'lucide-react';
+import { MessageSquare, ChevronLeft, Loader2, X } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useChat, type ConversationInfo } from '@/hooks/useChat';
 import ChatMessageComponent from './ChatMessage';
 import ChatInput from './ChatInput';
 
-export default function ChatPanel() {
+export default function ChatPanel({ onClose }: { onClose?: () => void }) {
   const {
     messages,
     isStreaming,
@@ -92,12 +92,22 @@ export default function ChatPanel() {
               <MessageSquare className="w-4 h-4 text-[#666666]" />
               <span className="text-sm font-medium text-[#111111]">Blog Strategist</span>
             </div>
-            <button
-              onClick={handleShowHistory}
-              className="text-xs text-[#888888] hover:text-[#111111] transition-colors"
-            >
-              History
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleShowHistory}
+                className="text-xs text-[#888888] hover:text-[#111111] transition-colors"
+              >
+                History
+              </button>
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#F5F5F0] transition-colors text-[#888888] hover:text-[#111111]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
