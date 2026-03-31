@@ -6,6 +6,7 @@ export interface IBrandSettings extends Document {
   // Blog Identity
   blogName: string;
   blogDescription: string;
+  blogUrl?: string; // External blog URL for "View live" links
 
   // Target Audience
   targetAudience: string;
@@ -48,6 +49,10 @@ const BrandSettingsSchema = new Schema<IBrandSettings>(
       default: '',
     },
     blogDescription: {
+      type: String,
+      default: '',
+    },
+    blogUrl: {
       type: String,
       default: '',
     },

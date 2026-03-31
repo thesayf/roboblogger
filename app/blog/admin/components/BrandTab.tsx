@@ -26,11 +26,13 @@ import {
   ImageIcon,
   X,
   Plus,
+  ExternalLink,
 } from "lucide-react";
 
 interface BrandSettings {
   blogName: string;
   blogDescription: string;
+  blogUrl: string;
   targetAudience: string;
   tone: 'professional' | 'casual' | 'technical' | 'conversational' | 'authoritative' | 'friendly' | 'custom';
   customTone: string;
@@ -52,6 +54,7 @@ interface MediaImage {
 const defaultSettings: BrandSettings = {
   blogName: '',
   blogDescription: '',
+  blogUrl: '',
   targetAudience: '',
   tone: 'professional',
   customTone: '',
@@ -106,6 +109,7 @@ export function BrandTab() {
         setSettings({
           blogName: data.blogName || '',
           blogDescription: data.blogDescription || '',
+          blogUrl: data.blogUrl || '',
           targetAudience: data.targetAudience || '',
           tone: data.tone || 'professional',
           customTone: data.customTone || '',
@@ -319,6 +323,21 @@ export function BrandTab() {
             />
             <p className="text-[12px] text-[#888888] mt-1.5">
               Used for SEO research and topic generation
+            </p>
+          </div>
+          <div>
+            <Label className="text-[13px] text-[#444444] font-medium flex items-center gap-1.5">
+              <ExternalLink className="h-3.5 w-3.5" />
+              Blog URL
+            </Label>
+            <Input
+              value={settings.blogUrl}
+              onChange={(e) => updateField('blogUrl', e.target.value)}
+              placeholder="e.g., https://yourdomain.com/blog"
+              className="mt-1.5 h-10 border-[#E0DED8] focus:border-[#111111] focus:ring-0"
+            />
+            <p className="text-[12px] text-[#888888] mt-1.5">
+              Your live blog URL — used for &quot;View live&quot; links and SEO analysis
             </p>
           </div>
         </div>
