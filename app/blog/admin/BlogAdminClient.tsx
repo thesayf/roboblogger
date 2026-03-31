@@ -37,6 +37,7 @@ import {
   ChevronRight,
   MoreHorizontal,
   X,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1505,6 +1506,14 @@ export default function BlogAdminClient() {
                             <Eye className="h-4 w-4 mr-2" />
                             Preview
                           </DropdownMenuItem>
+                          {post.slug && (
+                            <DropdownMenuItem
+                              onClick={() => window.open(`/blog/${post.slug}`, '_blank')}
+                            >
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              View live
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             onClick={() => handleDeletePost(post._id)}
                             className="text-red-600"
