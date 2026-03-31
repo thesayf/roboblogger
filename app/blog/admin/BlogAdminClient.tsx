@@ -2325,7 +2325,7 @@ export default function BlogAdminClient() {
                   ) : (
                     <div className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
                       {/* Table Header */}
-                      <div className="grid grid-cols-[auto_1fr_120px_140px_48px] gap-4 px-5 py-3 border-b border-[#F0EEE8] bg-[#FAFAF8]">
+                      <div className="grid grid-cols-[auto_1fr_110px_120px_48px] gap-4 px-5 py-3 border-b border-[#F0EEE8] bg-[#FAFAF8]">
                         <div className="flex items-center">
                           <input
                             type="checkbox"
@@ -2360,7 +2360,7 @@ export default function BlogAdminClient() {
                         return (
                           <div
                             key={topic._id}
-                            className={`grid grid-cols-[auto_1fr_120px_140px_48px] gap-4 px-5 py-4 border-b border-[#F0EEE8] hover:bg-[#FAFAF8] transition-colors items-center cursor-pointer ${
+                            className={`grid grid-cols-[auto_1fr_110px_120px_48px] gap-4 px-5 py-4 border-b border-[#F0EEE8] hover:bg-[#FAFAF8] transition-colors items-center cursor-pointer ${
                               selectedTopics.includes(topic._id) ? "bg-blue-50" : ""
                             }`}
                             onClick={() => { setDetailTopic(topic); setShowDetailSheet(true); }}
@@ -2380,7 +2380,7 @@ export default function BlogAdminClient() {
                             </div>
 
                             {/* Topic cell */}
-                            <div>
+                            <div className="min-w-0">
                               <p className="text-[15px] text-[#111111] font-medium truncate" style={{ fontFamily: "'Lora', Georgia, serif" }}>
                                 {topic.topic}
                               </p>
@@ -2414,7 +2414,7 @@ export default function BlogAdminClient() {
                             <div>{getStatusBadgeElement(displayStatus, topic)}</div>
 
                             {/* Scheduled date cell */}
-                            <div className="text-[13px] text-[#666666]">
+                            <div className="text-[13px] text-[#666666] whitespace-nowrap">
                               {topic.scheduledAt ? formatScheduledDate(topic.scheduledAt) : "—"}
                             </div>
 
