@@ -28,7 +28,7 @@ interface BlogPostData {
   };
 }
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 const API_BASE = process.env.NEXT_PUBLIC_APP_URL || "https://vibeblogger.io";
 const API_KEY = process.env.VIBEBLOGGER_API_KEY;
@@ -59,7 +59,7 @@ async function getPost(slug: string): Promise<BlogPostData | null> {
   try {
     const res = await fetch(`${API_BASE}/api/v1/posts/${slug}`, {
       headers: { Authorization: `Bearer ${API_KEY}` },
-      next: { revalidate: 3600 },
+      next: { revalidate: 60 },
     });
 
     if (!res.ok) return null;
@@ -78,7 +78,7 @@ async function getRelatedPosts(currentSlug: string): Promise<BlogPostData[]> {
   try {
     const res = await fetch(`${API_BASE}/api/v1/posts?limit=4`, {
       headers: { Authorization: `Bearer ${API_KEY}` },
-      next: { revalidate: 3600 },
+      next: { revalidate: 60 },
     });
 
     if (!res.ok) return [];

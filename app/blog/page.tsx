@@ -2,8 +2,8 @@ import BlogPageClient from "./BlogPageClient";
 import { generateBlogListSchema } from "@/utils/schema";
 import type { Metadata } from "next";
 
-// Revalidate every hour
-export const revalidate = 3600;
+// Revalidate every 60 seconds
+export const revalidate = 60;
 
 export type CleanBlogPost = {
   id: string;
@@ -34,7 +34,7 @@ async function getBlogPosts(): Promise<CleanBlogPost[]> {
       headers: {
         Authorization: `Bearer ${API_KEY}`,
       },
-      next: { revalidate: 3600 },
+      next: { revalidate: 60 },
     });
 
     if (!res.ok) {
