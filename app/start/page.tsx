@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { SignUpButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { Check, ArrowRight, Clock, Zap, Shield, Search, PenTool, Image, Calendar, BarChart3, Code2, Bot, Gift, MessageSquare, TrendingUp, BookOpen } from 'lucide-react'
+import { ArrowRight, Clock, Zap, Search, PenTool, Image, Calendar, BarChart3, Code2, Bot, Gift, MessageSquare, TrendingUp, BookOpen } from 'lucide-react'
 import CopyPromptButton from './CopyPromptButton'
 import LiveStats from './LiveStats'
 import type { Metadata } from 'next'
@@ -372,19 +372,31 @@ export default async function StartPage() {
                     <div className="w-2.5 h-2.5 rounded-full bg-[#333333]" />
                     <span className="text-[11px] text-[#555555] ml-2 font-mono">Your coding agent</span>
                   </div>
-                  <div className="p-4">
-                    <p className="text-[13px] text-[#88CCFF] font-mono leading-relaxed">
-                      &quot;Add a blog to my site using the Vibeblogger API.
-                      Set up all 16 component renderers, SEO metadata,
-                      sitemap, RSS feed, and structured data...&quot;
-                    </p>
-                    <p className="text-[12px] text-[#555555] font-mono mt-2">
-                      // Full prompt includes API docs, component types, SEO setup, and more
-                    </p>
+                  <div className="p-4 max-h-[200px] overflow-hidden relative">
+                    <pre className="text-[12px] text-[#CCCCCC] font-mono leading-relaxed whitespace-pre-wrap">{`I want to add a blog to my site using the Vibeblogger API. Here is everything you need:
+
+## API Info
+- Base URL: https://vibeblogger.io/api/v1
+- Auth: Authorization: Bearer header using process.env.VIBEBLOGGER_API_KEY
+- Endpoints:
+  - GET /api/v1/posts — list all published posts
+  - GET /api/v1/posts/:slug — get a single post by slug
+
+## 16 Component Types (all must be rendered)
+- rich_text, image, callout, quote, cta, video, table,
+  bar_chart, line_chart, pie_chart, comparison_table,
+  pros_cons, timeline, flowchart, step_by_step, code_block...`}</pre>
+                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#1A1A1A] to-transparent" />
                   </div>
                 </div>
-                <div className="mt-3">
+                <div className="mt-3 flex items-center gap-3">
                   <CopyPromptButton />
+                  <a
+                    href="/docs/setup-prompt"
+                    className="text-[13px] font-medium text-[#888888] hover:text-[#111111] transition-colors whitespace-nowrap"
+                  >
+                    View full prompt →
+                  </a>
                 </div>
                 <p className="text-[13px] text-[#888888] mt-3 leading-relaxed">
                   Or{' '}
@@ -446,30 +458,6 @@ export default async function StartPage() {
               <p className="font-lora text-[28px] font-normal text-[#111111]">5 minutes</p>
               <p className="text-sm text-[#666666] mt-1">Then your blog runs itself.</p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================
-          THE GUARANTEE
-          ============================================ */}
-      <section className="bg-[#FAFAF8]">
-        <div className="max-w-[700px] mx-auto px-6 sm:px-8 py-20 sm:py-24">
-          <div className="bg-white border-2 border-[#111111] rounded-xl p-8 sm:p-10 text-center">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-[#F5F4F0] rounded-full mb-6">
-              <Shield className="w-6 h-6 text-[#111111]" />
-            </div>
-            <h2 className="font-lora text-[24px] sm:text-[32px] font-normal leading-snug mb-4">
-              The 90-Day Traffic Guarantee
-            </h2>
-            <p className="text-[15px] text-[#666666] leading-[1.7] max-w-[480px] mx-auto mb-6">
-              If you don&apos;t see organic traffic growth within 90 days of publishing,
-              we&apos;ll generate another 100 posts — free. No questions asked.
-            </p>
-            <p className="text-sm text-[#888888]">
-              We can make this guarantee because the system works.
-              Every post is research-backed, not AI slop.
-            </p>
           </div>
         </div>
       </section>
