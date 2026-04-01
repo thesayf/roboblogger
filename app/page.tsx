@@ -93,7 +93,7 @@ export default async function HomePage() {
               </Link>
             </div>
             <p className="text-[13px] text-[#666666]">
-              100 free posts. 5-minute setup. No credit card.
+              100 free posts. 5-minute setup.
             </p>
           </div>
 
@@ -559,7 +559,7 @@ export default async function HomePage() {
               See full pricing
             </Link>
           </div>
-          <p className="text-[13px] text-[#999999]">No credit card required</p>
+          <p className="text-[13px] text-[#999999]">Cancel anytime</p>
         </div>
       </section>
 
@@ -591,7 +591,7 @@ export default async function HomePage() {
               },
               {
                 q: "What's included in the free plan?",
-                a: "5 blog posts, full SEO research, agent chat, and API access. No credit card required. Upgrade to Pro when you're ready for agents, auto-publish, and images."
+                a: "5 blog posts, full SEO research, agent chat, and API access. Upgrade to Pro when you're ready for agents, auto-publish, and images."
               },
             ].map((faq) => (
               <div key={faq.q}>
@@ -612,7 +612,7 @@ export default async function HomePage() {
             Your competitors are blogging.<br />Are you?
           </h2>
           <p className="text-base text-[#999999] mb-9">
-            100 free posts. 5-minute setup. No credit card.
+            100 free posts. 5-minute setup.
           </p>
           <Link
             href="/start"

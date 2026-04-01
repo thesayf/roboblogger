@@ -167,7 +167,7 @@ export default function SimpleBlogPostClient({
       <section className="bg-[#111111] text-white mt-16">
         <div className="max-w-[600px] mx-auto px-8 py-24 text-center">
           <h2 className="font-lora text-4xl font-normal tracking-tight mb-4">Ready to start?</h2>
-          <p className="text-base text-[#999999] mb-9">Your first blog post is free. No credit card required.</p>
+          <p className="text-base text-[#999999] mb-9">Your first blog post is free.</p>
           <SignUpButton mode="modal">
             <button className="text-[15px] font-semibold text-[#111111] bg-white px-9 py-3.5 rounded-full hover:bg-[#F0F0F0] transition-colors cursor-pointer">
               Create your first post →

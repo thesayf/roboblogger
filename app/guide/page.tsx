@@ -113,7 +113,7 @@ export default function GuidePage() {
                 <li className="flex gap-3">
                   <span className="text-sm font-medium text-[#888888] shrink-0">b.</span>
                   <p className="text-sm text-[#444444] leading-relaxed">
-                    Sign up with your email or Google account. No credit card required.
+                    Sign up with your email or Google account.
                   </p>
                 </li>
                 <li className="flex gap-3">

@@ -83,7 +83,7 @@ export default async function StartPage() {
               </Link>
             </div>
             <p className="text-[13px] text-[#666666]">
-              No credit card. Set up in 5 minutes. Posts start generating immediately.
+              Set up in 5 minutes. Posts start generating immediately.
             </p>
           </div>
         </div>
@@ -593,7 +593,7 @@ export default async function StartPage() {
             {[
               {
                 q: "Is this actually free?",
-                a: "Yes. You get 100 credits — enough for 100 blog posts. No credit card required. After that, it's $49/mo to keep your blog on autopilot."
+                a: "Yes. You get 100 credits — enough for 100 blog posts. After that, it's $49/mo to keep your blog on autopilot."
               },
               {
                 q: "Will Google penalize AI content?",
@@ -635,7 +635,7 @@ export default async function StartPage() {
             Are you?
           </h2>
           <p className="text-base text-[#999999] mb-4">
-            100 free posts. 5-minute setup. No credit card.
+            100 free posts. 5-minute setup.
           </p>
           <p className="text-sm text-[#666666] mb-9">
             Plus: competitor audit, content calendar, 3 autonomous agents,
