@@ -71,50 +71,37 @@ export default function SimpleBlogPostClient({
 
       {/* Article */}
       <article className="max-w-[720px] mx-auto px-8 pt-16 pb-20">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-[#AAAAAA] mb-10">
-          <Link href="/blog" className="hover:text-[#111111] transition-colors">Blog</Link>
-          <span>/</span>
-          <span className="text-[#666666] truncate">{post.data.title}</span>
-        </div>
-
         {/* Header */}
         <header className="mb-12">
-          <div className="flex items-center gap-2 text-sm text-[#888888] mb-6">
-            <time dateTime={post.data.date}>{formatDate(post.data.date)}</time>
-            {post.data.last_modified && post.data.last_modified !== post.data.date && (
+          {post.data.category && (
+            <Link href="/blog" className="text-xs font-medium text-[#888888] uppercase tracking-[0.15em] hover:text-[#111111] transition-colors">
+              {post.data.category}
+            </Link>
+          )}
+
+          <h1 className="font-lora text-[36px] sm:text-[48px] font-normal leading-[1.15] tracking-[-0.02em] mt-4 mb-6">
+            {post.data.title}
+          </h1>
+
+          <p className="text-lg text-[#666666] leading-[1.7] mb-6">
+            {post.data.description}
+          </p>
+
+          <div className="flex items-center gap-2 text-sm text-[#AAAAAA]">
+            {post.data.author && (
               <>
+                <span className="text-[#888888]">{post.data.author}</span>
                 <span>·</span>
-                <span>Updated {formatDate(post.data.last_modified)}</span>
               </>
             )}
+            <time dateTime={post.data.date}>{formatDate(post.data.date)}</time>
             {post.data.read_in_minutes && (
               <>
                 <span>·</span>
                 <span>{post.data.read_in_minutes} min read</span>
               </>
             )}
-            {post.data.category && (
-              <>
-                <span>·</span>
-                <span>{post.data.category}</span>
-              </>
-            )}
           </div>
-
-          <h1 className="font-lora text-[36px] sm:text-[48px] font-normal leading-[1.15] tracking-[-0.02em] mb-6">
-            {post.data.title}
-          </h1>
-
-          <p className="text-lg text-[#666666] leading-[1.7]">
-            {post.data.description}
-          </p>
-
-          {post.data.author && (
-            <p className="text-sm text-[#888888] mt-6">
-              By {post.data.author}
-            </p>
-          )}
         </header>
 
         {/* Featured Image */}
