@@ -66,6 +66,16 @@ export default function ChatPanel({ onClose }: { onClose?: () => void }) {
     setView('chat');
   };
 
+  const handleDeleteConversation = async () => {
+    if (!conversationId) return;
+    try {
+      await fetch(`/api/chat/conversations/${conversationId}`, { method: 'DELETE' });
+      window.location.reload();
+    } catch (e) {
+      console.error('Failed to delete conversation', e);
+    }
+  };
+
   const handleBackToChat = () => {
     setView('chat');
   };
@@ -90,7 +100,7 @@ export default function ChatPanel({ onClose }: { onClose?: () => void }) {
           <>
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-[#666666]" />
-              <span className="text-sm font-medium text-[#111111]">Blog Strategist</span>
+              <span className="text-sm font-medium text-[#111111] select-none" onDoubleClick={handleDeleteConversation}>Blog Strategist</span>
             </div>
             <div className="flex items-center gap-2">
               <button
