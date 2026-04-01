@@ -97,56 +97,18 @@ export default async function HomePage() {
             </p>
           </div>
 
-          {/* Hero visual — Agent chat preview */}
-          <div className="max-w-[700px] mx-auto mt-16">
-            <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl overflow-hidden shadow-2xl">
-              <div className="flex items-center gap-2 px-5 py-3 border-b border-[#2A2A2A]">
-                <div className="w-3 h-3 rounded-full bg-[#333333]" />
-                <div className="w-3 h-3 rounded-full bg-[#333333]" />
-                <div className="w-3 h-3 rounded-full bg-[#333333]" />
-                <span className="text-[12px] text-[#555555] ml-3 font-mono">Vibeblogger — Strategist</span>
-              </div>
-              <div className="p-6 space-y-5">
-                {/* User message */}
-                <div className="flex justify-end">
-                  <div className="bg-[#2A2A2A] rounded-2xl rounded-br-md px-5 py-3 max-w-[85%]">
-                    <p className="text-[14px] text-[#E0E0E0] leading-relaxed">
-                      I run a project management SaaS. Research what keywords my competitors rank for and queue 10 posts for the next month.
-                    </p>
-                  </div>
-                </div>
-                {/* Agent response */}
-                <div className="flex justify-start">
-                  <div className="bg-[#222222] border border-[#2A2A2A] rounded-2xl rounded-bl-md px-5 py-3 max-w-[85%]">
-                    <p className="text-[14px] text-[#CCCCCC] leading-relaxed">
-                      Found 47 keyword gaps across 3 competitors. I&apos;ve queued 10 posts targeting high-volume, low-difficulty keywords:
-                    </p>
-                    <div className="mt-3 space-y-1.5">
-                      {[
-                        '"Best Project Management Tools 2025" — 12,100 searches/mo',
-                        '"Agile vs Waterfall: Which Is Right?" — 8,400 searches/mo',
-                        '"How to Run a Sprint Planning Meeting" — 6,200 searches/mo',
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-start gap-2">
-                          <Check className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
-                          <span className="text-[13px] text-[#999999]">{item}</span>
-                        </div>
-                      ))}
-                      <p className="text-[13px] text-[#666666] mt-1">+ 7 more queued for the next 4 weeks</p>
-                    </div>
-                  </div>
-                </div>
-                {/* Typing indicator */}
-                <div className="flex justify-start">
-                  <div className="bg-[#222222] border border-[#2A2A2A] rounded-2xl rounded-bl-md px-5 py-3">
-                    <div className="flex gap-1.5">
-                      <div className="w-2 h-2 rounded-full bg-[#555555] animate-pulse" />
-                      <div className="w-2 h-2 rounded-full bg-[#555555] animate-pulse [animation-delay:150ms]" />
-                      <div className="w-2 h-2 rounded-full bg-[#555555] animate-pulse [animation-delay:300ms]" />
-                    </div>
-                  </div>
-                </div>
-              </div>
+          {/* Hero visual — Demo video */}
+          <div className="max-w-[900px] mx-auto mt-16">
+            <div className="rounded-xl overflow-hidden shadow-2xl border border-[#2A2A2A]">
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-auto"
+              >
+                <source src="/vibebloggerhero.mp4" type="video/mp4" />
+              </video>
             </div>
           </div>
         </div>
