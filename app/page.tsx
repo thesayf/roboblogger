@@ -3,7 +3,7 @@ import { SignInButton, SignUpButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { generateHomePageSchema } from '@/utils/schema'
-import { Check, ArrowRight, Zap, Search, PenTool, Image, Calendar, Code2, BarChart3, FileText, MessageSquare, Quote, Table, Target, TrendingUp, Shield, Clock, Users } from 'lucide-react'
+import { Check, ArrowRight, Zap, Search, PenTool, Image, Calendar, Code2, BarChart3, MessageSquare, TrendingUp, Shield, Users } from 'lucide-react'
 import LiveProofBar from '@/components/LiveProofBar'
 
 export default async function HomePage() {
@@ -307,7 +307,7 @@ export default async function HomePage() {
       </section>
 
       {/* ============================================
-          QUALITY — "Not AI Slop"
+          QUALITY — Content Showcase
           ============================================ */}
       <section className="bg-white border-y border-[#E0DED8]">
         <div className="max-w-[900px] mx-auto px-6 sm:px-8 py-20 sm:py-24">
@@ -315,98 +315,23 @@ export default async function HomePage() {
             Content quality
           </p>
           <h2 className="font-lora text-[28px] sm:text-[36px] font-normal leading-snug text-center mb-5">
-            Research-backed content. Not AI slop.
+            Rich, structured content that ranks
           </h2>
           <p className="text-[15px] text-[#666666] text-center max-w-[520px] mx-auto mb-16">
-            Every post starts with real keyword data and multi-source research.
-            Then it&apos;s built from structured components — not a wall of text.
+            Every post is built from 15+ component types — data tables, callouts,
+            charts, images, and more. Real research, not a wall of text.
           </p>
 
-          {/* Side by side comparison */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
-            {/* Typical AI */}
-            <div className="border border-[#E0DED8] rounded-lg p-6 bg-[#FAFAF8]">
-              <div className="text-[11px] font-medium text-[#CC4444] uppercase tracking-[0.1em] mb-5">Typical AI blog post</div>
-              <div className="space-y-3">
-                <div className="h-3 bg-[#E0DED8] rounded w-full" />
-                <div className="h-3 bg-[#E0DED8] rounded w-[95%]" />
-                <div className="h-3 bg-[#E0DED8] rounded w-full" />
-                <div className="h-3 bg-[#E0DED8] rounded w-[88%]" />
-                <div className="h-5 my-3" />
-                <div className="h-3 bg-[#E0DED8] rounded w-full" />
-                <div className="h-3 bg-[#E0DED8] rounded w-[92%]" />
-                <div className="h-3 bg-[#E0DED8] rounded w-full" />
-                <div className="h-3 bg-[#E0DED8] rounded w-[97%]" />
-                <div className="h-5 my-3" />
-                <div className="h-3 bg-[#E0DED8] rounded w-full" />
-                <div className="h-3 bg-[#E0DED8] rounded w-[90%]" />
-              </div>
-              <p className="text-[12px] text-[#999999] mt-5 italic">Wall of generic text. No structure. No data.</p>
-            </div>
-
-            {/* Vibeblogger */}
-            <div className="border-2 border-[#111111] rounded-lg p-6 bg-white">
-              <div className="text-[11px] font-medium text-[#111111] uppercase tracking-[0.1em] mb-5">Vibeblogger post</div>
-              <div className="space-y-3">
-                {/* Title */}
-                <div className="h-4 bg-[#111111] rounded w-[70%]" />
-                <div className="h-2.5 bg-[#E0DED8] rounded w-[40%]" />
-                {/* Paragraph */}
-                <div className="flex gap-1 mt-2">
-                  <div className="h-2.5 bg-[#E0DED8] rounded flex-1" />
-                  <div className="h-2.5 bg-[#E0DED8] rounded flex-1" />
-                </div>
-                {/* Callout */}
-                <div className="bg-blue-50 border-l-2 border-blue-400 rounded-r p-2.5 mt-1">
-                  <div className="h-2 bg-blue-200 rounded w-[80%]" />
-                  <div className="h-2 bg-blue-200 rounded w-[60%] mt-1.5" />
-                </div>
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-2 mt-1">
-                  <div className="bg-[#F5F4F0] rounded p-2 text-center">
-                    <div className="h-3 bg-[#111111] rounded w-[60%] mx-auto" />
-                    <div className="h-2 bg-[#E0DED8] rounded w-[80%] mx-auto mt-1" />
-                  </div>
-                  <div className="bg-[#F5F4F0] rounded p-2 text-center">
-                    <div className="h-3 bg-[#111111] rounded w-[50%] mx-auto" />
-                    <div className="h-2 bg-[#E0DED8] rounded w-[70%] mx-auto mt-1" />
-                  </div>
-                  <div className="bg-[#F5F4F0] rounded p-2 text-center">
-                    <div className="h-3 bg-[#111111] rounded w-[55%] mx-auto" />
-                    <div className="h-2 bg-[#E0DED8] rounded w-[75%] mx-auto mt-1" />
-                  </div>
-                </div>
-                {/* Image placeholder */}
-                <div className="bg-[#F0EEE8] rounded h-14 flex items-center justify-center">
-                  <Image className="w-4 h-4 text-[#BBBBBB]" />
-                </div>
-                {/* CTA */}
-                <div className="bg-[#111111] rounded-full h-7 w-[45%]" />
-              </div>
-              <p className="text-[12px] text-[#666666] mt-5 italic">Rich components. Real data. SEO-optimized.</p>
-            </div>
-          </div>
-
-          {/* Component bento grid */}
-          <h3 className="text-sm font-medium text-[#888888] uppercase tracking-[0.15em] text-center mb-8">
-            15+ content components
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {[
-              { icon: FileText, label: "Rich text" },
-              { icon: BarChart3, label: "Charts" },
-              { icon: Table, label: "Comparison tables" },
-              { icon: Image, label: "AI images" },
-              { icon: Quote, label: "Expert quotes" },
-              { icon: Target, label: "Call-to-actions" },
-              { icon: Code2, label: "Code blocks" },
-              { icon: Clock, label: "Timelines" },
-            ].map((comp) => (
-              <div key={comp.label} className="flex items-center gap-2.5 bg-[#FAFAF8] border border-[#E0DED8] rounded-lg px-4 py-3">
-                <comp.icon className="w-4 h-4 text-[#888888] shrink-0" />
-                <span className="text-[13px] text-[#444444]">{comp.label}</span>
-              </div>
-            ))}
+          <div className="rounded-xl overflow-hidden shadow-lg border border-[#E0DED8]">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-auto"
+            >
+              <source src="https://ik.imagekit.io/1eqqea9acu/Area.mp4" type="video/mp4" />
+            </video>
           </div>
         </div>
       </section>
