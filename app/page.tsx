@@ -107,7 +107,7 @@ export default async function HomePage() {
                 playsInline
                 className="w-full h-auto"
               >
-                <source src="/vibebloggerhero.mp4" type="video/mp4" />
+                <source src="https://ik.imagekit.io/1eqqea9acu/vibebloggerhero.mp4" type="video/mp4" />
               </video>
             </div>
           </div>
