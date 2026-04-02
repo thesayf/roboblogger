@@ -3,7 +3,26 @@
 import { useState } from 'react';
 import { Copy, Check, X } from 'lucide-react';
 
-const SETUP_PROMPT = `I want to add a blog to my site using the Vibeblogger API. Here is everything you need:
+const SETUP_PROMPT = `I want to add a blog to my site using the Vibeblogger API. Before creating the blog, audit and fix the SEO on my existing site. Here is everything you need:
+
+## Part 1: Audit & Fix Existing Site SEO (do this first)
+Scan every existing page in the app and fix the following:
+- Every page must have a unique, descriptive <title> and <meta description> via generateMetadata()
+- Add Open Graph metadata (og:title, og:description, og:image, og:url, og:type) to every page
+- Add Twitter card metadata (twitter:card, twitter:title, twitter:description) to every page
+- Add canonical URLs (alternates.canonical) to every page to prevent duplicate content
+- Ensure every page has exactly one <h1> and headings follow proper hierarchy (h1 > h2 > h3, no skipping)
+- Add alt text to every <img> tag — if missing, write a descriptive alt based on context
+- Use semantic HTML throughout: <header>, <nav>, <main>, <article>, <section>, <footer>
+- Add JSON-LD Organization structured data to the homepage (@type: Organization with name, url, logo)
+- Check that the site has a robots.txt (create at app/robots.ts if missing) — allow all crawlers, reference sitemap
+- Check that the site has a sitemap (create or update app/sitemap.ts) — include ALL public pages with lastModified dates
+- Ensure all internal links use proper <a> tags or Next.js <Link> components (no broken links)
+- Lazy load images below the fold (use Next.js Image component or loading="lazy")
+- Set width and height on images to prevent Cumulative Layout Shift (CLS)
+
+## Part 2: Add the Blog
+Now create the blog using the Vibeblogger API.
 
 ## API Info
 - Base URL: https://vibeblogger.io/api/v1

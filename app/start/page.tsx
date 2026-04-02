@@ -373,19 +373,18 @@ export default async function StartPage() {
                     <span className="text-[11px] text-[#555555] ml-2 font-mono">Your coding agent</span>
                   </div>
                   <div className="p-4 max-h-[200px] overflow-hidden relative">
-                    <pre className="text-[12px] text-[#CCCCCC] font-mono leading-relaxed whitespace-pre-wrap">{`I want to add a blog to my site using the Vibeblogger API. Here is everything you need:
+                    <pre className="text-[12px] text-[#CCCCCC] font-mono leading-relaxed whitespace-pre-wrap">{`I want to add a blog to my site using the Vibeblogger API. Before creating the blog, audit and fix the SEO on my existing site.
 
-## API Info
-- Base URL: https://vibeblogger.io/api/v1
-- Auth: Authorization: Bearer header using process.env.VIBEBLOGGER_API_KEY
-- Endpoints:
-  - GET /api/v1/posts — list all published posts
-  - GET /api/v1/posts/:slug — get a single post by slug
+## Part 1: Audit & Fix Existing Site SEO
+- Every page must have unique <title> and <meta description>
+- Add Open Graph and Twitter card metadata to every page
+- Add canonical URLs, proper heading hierarchy, alt text
+- Add JSON-LD Organization data to the homepage
+- Create robots.txt and sitemap if missing...
 
-## 16 Component Types (all must be rendered)
-- rich_text, image, callout, quote, cta, video, table,
-  bar_chart, line_chart, pie_chart, comparison_table,
-  pros_cons, timeline, flowchart, step_by_step, code_block...`}</pre>
+## Part 2: Add the Blog
+- Create blog pages, 16 component renderers, SEO metadata,
+  sitemap, RSS feed, and structured data...`}</pre>
                     <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#1A1A1A] to-transparent" />
                   </div>
                 </div>
