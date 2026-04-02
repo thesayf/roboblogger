@@ -3,7 +3,7 @@ import { SignUpButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { ArrowRight, Clock, Zap, Search, PenTool, Image, Calendar, BarChart3, Code2, Bot, Gift, MessageSquare, TrendingUp, BookOpen } from 'lucide-react'
-import CopyPromptButton from './CopyPromptButton'
+import CopyPromptButton, { ViewPromptButton } from './CopyPromptButton'
 import LiveStats from './LiveStats'
 import type { Metadata } from 'next'
 
@@ -391,12 +391,7 @@ export default async function StartPage() {
                 </div>
                 <div className="mt-3 flex items-center gap-3">
                   <CopyPromptButton />
-                  <a
-                    href="/docs/setup-prompt"
-                    className="text-[13px] font-medium text-[#888888] hover:text-[#111111] transition-colors whitespace-nowrap"
-                  >
-                    View full prompt →
-                  </a>
+                  <ViewPromptButton />
                 </div>
                 <p className="text-[13px] text-[#888888] mt-3 leading-relaxed">
                   Or{' '}

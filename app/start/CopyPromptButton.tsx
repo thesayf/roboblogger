@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, X } from 'lucide-react';
 
 const SETUP_PROMPT = `I want to add a blog to my site using the Vibeblogger API. Here is everything you need:
 
@@ -123,5 +123,67 @@ export default function CopyPromptButton() {
         </>
       )}
     </button>
+  );
+}
+
+export function ViewPromptButton() {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(SETUP_PROMPT);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="text-[13px] font-medium text-[#888888] hover:text-[#111111] transition-colors whitespace-nowrap cursor-pointer"
+      >
+        View full prompt &rarr;
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setOpen(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-[700px] max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E0DED8]">
+              <h3 className="font-lora text-lg font-normal">Setup Prompt</h3>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleCopy}
+                  className="text-[13px] font-medium text-white bg-[#111111] px-4 py-2 rounded-full hover:bg-[#333333] transition-colors inline-flex items-center gap-2 cursor-pointer"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-green-400" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      Copy
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="text-[#888888] hover:text-[#111111] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="overflow-y-auto p-6">
+              <pre className="text-[13px] text-[#444444] font-mono leading-relaxed whitespace-pre-wrap">
+                {SETUP_PROMPT}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
