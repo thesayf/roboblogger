@@ -21,10 +21,18 @@ import {
   GitBranch,
   ListOrdered,
   Terminal,
+  Key,
+  Zap,
+  X,
 } from 'lucide-react';
+import { SETUP_PROMPT, getSetupPrompt } from '@/lib/setup-prompt';
 
 export default function DocsPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState('');
+  const [promptGenerated, setPromptGenerated] = useState(false);
+  const [promptCopied, setPromptCopied] = useState(false);
+  const [showPromptModal, setShowPromptModal] = useState(false);
 
   const copyCode = async (code: string, id: string) => {
     await navigator.clipboard.writeText(code);
@@ -89,6 +97,140 @@ export default function DocsPage() {
             Fetch your blog content via API and render it with your own components. Works with Next.js, Remix, Astro, or any frontend.
           </p>
         </div>
+
+        {/* Setup Prompt Generator */}
+        <section className="mb-16" id="setup-prompt">
+          <div className="bg-[#111111] rounded-2xl p-8 sm:p-10 text-white">
+            <div className="flex items-center gap-3 mb-2">
+              <Zap className="w-5 h-5 text-[#88CCFF]" />
+              <h2 className="font-lora text-[24px] sm:text-[28px] font-normal">Setup Prompt Generator</h2>
+            </div>
+            <p className="text-[15px] text-[#888888] leading-relaxed mb-8 max-w-[520px]">
+              Paste your API key below. We&apos;ll generate a single prompt that audits your site&apos;s SEO and builds your entire blog. Paste it into Cursor, Claude Code, or any AI coding agent.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[12px] font-medium text-[#666666] uppercase tracking-[0.1em] block mb-2">
+                  Your API Key
+                </label>
+                <div className="flex gap-3">
+                  <div className="relative flex-1">
+                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555555]" />
+                    <input
+                      type="text"
+                      value={apiKey}
+                      onChange={(e) => { setApiKey(e.target.value); setPromptGenerated(false); }}
+                      placeholder="vb_live_your_key_here"
+                      className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg pl-11 pr-4 py-3 text-[14px] text-white font-mono placeholder:text-[#444444] focus:outline-none focus:border-[#88CCFF] transition-colors"
+                    />
+                  </div>
+                  <Link
+                    href="/blog/admin/api-keys"
+                    className="text-[13px] font-medium text-[#88CCFF] bg-[#1A1A1A] border border-[#2A2A2A] px-5 py-3 rounded-lg hover:bg-[#222222] transition-colors shrink-0 inline-flex items-center gap-2"
+                  >
+                    Get API Key
+                  </Link>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    const prompt = getSetupPrompt(apiKey || undefined);
+                    navigator.clipboard.writeText(prompt);
+                    setPromptGenerated(true);
+                    setPromptCopied(true);
+                    setTimeout(() => setPromptCopied(false), 2000);
+                  }}
+                  className="text-[14px] font-semibold text-[#111111] bg-white px-8 py-3 rounded-full hover:bg-[#F0F0F0] transition-colors inline-flex items-center gap-2 cursor-pointer"
+                >
+                  {promptCopied ? (
+                    <>
+                      <Check className="w-4 h-4 text-green-600" />
+                      Copied to clipboard
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      {promptGenerated ? 'Copy again' : 'Generate & copy prompt'}
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowPromptModal(true)}
+                  className="text-[13px] font-medium text-[#888888] hover:text-white transition-colors inline-flex items-center cursor-pointer"
+                >
+                  Preview prompt &rarr;
+                </button>
+              </div>
+
+              {promptGenerated && (
+                <p className="text-[13px] text-[#666666]">
+                  {apiKey ? (
+                    <>Prompt generated with your API key baked in. Paste it into your coding agent.</>
+                  ) : (
+                    <>Prompt copied without an API key. You&apos;ll need to add it to your .env.local manually.</>
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Prompt preview modal */}
+        {showPromptModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPromptModal(false)} />
+            <div className="relative bg-[#111111] rounded-2xl shadow-2xl w-full max-w-[720px] max-h-[85vh] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#2A2A2A] shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-[#333333]" />
+                    <div className="w-3 h-3 rounded-full bg-[#333333]" />
+                    <div className="w-3 h-3 rounded-full bg-[#333333]" />
+                  </div>
+                  <span className="text-[13px] text-[#666666] font-mono">setup-prompt.md</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(getSetupPrompt(apiKey || undefined));
+                      setPromptCopied(true);
+                      setTimeout(() => setPromptCopied(false), 2000);
+                    }}
+                    className="text-[12px] font-medium text-white bg-[#2A2A2A] px-4 py-1.5 rounded-full hover:bg-[#3A3A3A] transition-colors inline-flex items-center gap-1.5 cursor-pointer border border-[#3A3A3A]"
+                  >
+                    {promptCopied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-green-400" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy all
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setShowPromptModal(false)}
+                    className="text-[#666666] hover:text-white transition-colors cursor-pointer p-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-y-auto p-6">
+                <pre className="text-[13px] text-[#AAAAAA] font-mono leading-relaxed whitespace-pre-wrap">
+                  {getSetupPrompt(apiKey || undefined)}
+                </pre>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="border-b border-[#E0DED8] mb-16" />
 
         {/* Quick Start */}
         <section className="mb-16" id="quick-start">
