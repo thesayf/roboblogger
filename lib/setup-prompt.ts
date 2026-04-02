@@ -153,6 +153,6 @@ export function getSetupPrompt(apiKey?: string): string {
   return SETUP_PROMPT_TEMPLATE
     .replace(
       '- Auth: Authorization: Bearer header using process.env.VIBEBLOGGER_API_KEY',
-      `- Auth: Authorization: Bearer header using process.env.VIBEBLOGGER_API_KEY\n- Your API Key: ${apiKey} (add this to your .env.local as VIBEBLOGGER_API_KEY)`
+      `- Auth: Authorization: Bearer header using process.env.VIBEBLOGGER_API_KEY\n- API Key: ${apiKey}\n- IMPORTANT: Add this key to the project's .env.local file as VIBEBLOGGER_API_KEY=${apiKey} (create the file if it doesn't exist)`
     );
 }
