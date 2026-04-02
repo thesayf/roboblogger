@@ -35,7 +35,7 @@ export default function AdminPasswordGate({ children }: AdminPasswordGateProps) 
                 href="/blog/admin/quick-start"
                 className="text-sm text-[#666666] hover:text-[#111111] transition-colors"
               >
-                Quick Start
+                Setup Guide
               </Link>
               <Link
                 href="/docs"
