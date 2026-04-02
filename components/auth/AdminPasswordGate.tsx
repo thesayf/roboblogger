@@ -32,6 +32,12 @@ export default function AdminPasswordGate({ children }: AdminPasswordGateProps) 
 
             <div className="flex items-center gap-4">
               <Link
+                href="/blog/admin/quick-start"
+                className="text-sm text-[#666666] hover:text-[#111111] transition-colors"
+              >
+                Quick Start
+              </Link>
+              <Link
                 href="/docs"
                 className="text-sm text-[#666666] hover:text-[#111111] transition-colors"
               >
