@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Copy, Check, ChevronLeft, Key, Plus, Zap, ExternalLink } from 'lucide-react';
-import { getSetupPrompt } from '@/lib/setup-prompt';
+import { SETUP_PROMPT, getSetupPrompt } from '@/lib/setup-prompt';
 
 export default function QuickStartPage() {
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export default function QuickStartPage() {
   };
 
   const copyPrompt = async () => {
-    const prompt = getSetupPrompt(apiKey || newlyCreatedKey || undefined);
+    const prompt = newlyCreatedKey ? getSetupPrompt(newlyCreatedKey) : SETUP_PROMPT;
     await navigator.clipboard.writeText(prompt);
     setPromptCopied(true);
     setTimeout(() => setPromptCopied(false), 2000);
@@ -153,9 +153,12 @@ export default function QuickStartPage() {
                   </Link>
                 </div>
               </div>
-              <p className="text-[12px] text-[#888888] mt-3">
-                Your API key is included in the setup prompt below. Add it to your project&apos;s <code className="bg-[#F0EEE8] px-1 py-0.5 rounded text-[#111111]">.env.local</code> file.
-              </p>
+              <div className="mt-3 bg-[#F5F4F0] rounded-lg p-3">
+                <p className="text-[12px] text-[#666666]">
+                  Make sure your key is in your project&apos;s <code className="bg-white px-1.5 py-0.5 rounded text-[#111111] text-[11px]">.env.local</code> file:
+                </p>
+                <code className="text-[11px] text-[#888888] font-mono mt-1 block">VIBEBLOGGER_API_KEY={keys[0].keyPrefix}...</code>
+              </div>
             </div>
           ) : (
             <div className="bg-white border border-[#E0DED8] rounded-lg p-5 text-center">
@@ -227,7 +230,7 @@ export default function QuickStartPage() {
                 ) : hasKey ? (
                   <>
                     <Copy className="w-4 h-4" />
-                    Copy setup prompt {newlyCreatedKey ? '(with API key)' : ''}
+                    Copy setup prompt{newlyCreatedKey ? ' (with API key)' : ''}
                   </>
                 ) : (
                   <>
