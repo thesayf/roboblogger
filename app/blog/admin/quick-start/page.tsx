@@ -106,7 +106,7 @@ export default function QuickStartPage() {
         <div className="ml-11">
           <div className="bg-white border border-[#E0DED8] rounded-lg p-5">
             <p className="text-sm text-[#666666] leading-relaxed mb-3">
-              Go to the <Link href="/blog/admin" className="text-[#111111] underline underline-offset-2 hover:text-[#444444]">Settings tab</Link> in your dashboard and fill in your brand details. This is how the AI learns to write like you.
+              Go to the <Link href="/blog/admin" className="text-[#111111] underline underline-offset-2 hover:text-[#444444]">Brand tab</Link> in your dashboard and fill in your brand details. This is how the AI learns to write like you.
             </p>
             <div className="space-y-2">
               {[

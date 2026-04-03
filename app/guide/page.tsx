@@ -120,7 +120,7 @@ export default function GuidePage() {
                   <span className="text-sm font-medium text-[#888888] shrink-0">b.</span>
                   <div>
                     <p className="text-sm text-[#444444] leading-relaxed mb-3">
-                      Go to the <strong>Settings</strong> tab and fill in your brand voice. This is how the AI learns to write like you:
+                      Go to the <strong>Brand</strong> tab and fill in your brand details. This is how the AI learns to write like you:
                     </p>
                     <div className="space-y-2">
                       {[

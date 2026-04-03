@@ -1345,7 +1345,7 @@ export default function BlogAdminClient() {
             <TabsTrigger value="media">Media</TabsTrigger>
             <TabsTrigger value="routines">Agents</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="settings">Brand</TabsTrigger>
           </TabsList>
 
           {/* Posts Tab */}
