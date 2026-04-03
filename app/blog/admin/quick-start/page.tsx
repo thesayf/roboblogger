@@ -287,6 +287,14 @@ export default function QuickStartPage() {
         </div>
 
         <div className="ml-11 space-y-3">
+          <div className="rounded-xl overflow-hidden border border-[#E0DED8]">
+            <img
+              src="https://pub-71f1bcca1eeb4a92894ea145c8ed6bc0.r2.dev/Screenshot%202026-04-03%20at%2019.00.02.png"
+              alt="Google Search Console — Add property"
+              className="w-full h-auto"
+            />
+          </div>
+
           <div className="bg-[#FFF8E8] border border-[#E8DCC0] rounded-lg p-3">
             <p className="text-[13px] text-[#8B6914]">
               <strong>Why this matters:</strong> Without Search Console, Google may take weeks to find your blog. With it, pages can be indexed in 2-7 days.
