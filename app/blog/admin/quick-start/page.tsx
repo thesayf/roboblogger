@@ -104,6 +104,12 @@ export default function QuickStartPage() {
         </div>
 
         <div className="ml-11">
+          <div className="rounded-xl overflow-hidden border border-[#E0DED8] mb-3">
+            <video autoPlay loop muted playsInline className="w-full h-auto">
+              <source src="https://ik.imagekit.io/1eqqea9acu/brandsettings.mp4" type="video/mp4" />
+            </video>
+          </div>
+
           <div className="bg-white border border-[#E0DED8] rounded-lg p-5">
             <p className="text-sm text-[#666666] leading-relaxed mb-3">
               Go to the <Link href="/blog/admin" className="text-[#111111] underline underline-offset-2 hover:text-[#444444]">Brand tab</Link> in your dashboard and fill in your brand details. This is how the AI learns to write like you.
