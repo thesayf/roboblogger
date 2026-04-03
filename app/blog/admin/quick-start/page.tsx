@@ -151,6 +151,12 @@ export default function QuickStartPage() {
         </div>
 
         <div className="ml-11">
+          <div className="rounded-xl overflow-hidden border border-[#E0DED8] mb-3">
+            <video autoPlay loop muted playsInline className="w-full h-auto">
+              <source src="https://pub-71f1bcca1eeb4a92894ea145c8ed6bc0.r2.dev/prompt.mp4" type="video/mp4" />
+            </video>
+          </div>
+
           <div className="bg-[#111111] rounded-xl p-6 text-white">
             <div className="flex items-center gap-2 mb-2">
               <Zap className="w-4 h-4 text-[#88CCFF]" />
