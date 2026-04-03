@@ -330,12 +330,17 @@ export function BrandTab() {
               <ExternalLink className="h-3.5 w-3.5" />
               Blog URL
             </Label>
-            <Input
-              value={settings.blogUrl}
-              onChange={(e) => updateField('blogUrl', e.target.value)}
-              placeholder="e.g., https://yourdomain.com/blog"
-              className="mt-1.5 h-10 border-[#E0DED8] focus:border-[#111111] focus:ring-0"
-            />
+            <div className="mt-1.5 flex">
+              <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-[#E0DED8] bg-[#F5F4F0] text-[13px] text-[#888888]">
+                https://
+              </span>
+              <Input
+                value={settings.blogUrl.replace(/^https?:\/\//, '')}
+                onChange={(e) => updateField('blogUrl', 'https://' + e.target.value.replace(/^https?:\/\//, ''))}
+                placeholder="yourdomain.com/blog"
+                className="h-10 border-[#E0DED8] focus:border-[#111111] focus:ring-0 rounded-l-none"
+              />
+            </div>
             <p className="text-[12px] text-[#888888] mt-1.5">
               Your live blog URL — used for &quot;View live&quot; links and SEO analysis
             </p>
