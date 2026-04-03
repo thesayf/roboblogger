@@ -378,6 +378,12 @@ export default function QuickStartPage() {
         </div>
 
         <div className="ml-11 space-y-3">
+          <div className="rounded-xl overflow-hidden border border-[#E0DED8]">
+            <video autoPlay loop muted playsInline className="w-full h-auto">
+              <source src="https://pub-71f1bcca1eeb4a92894ea145c8ed6bc0.r2.dev/strategising.mp4" type="video/mp4" />
+            </video>
+          </div>
+
           <div className="bg-white border border-[#E0DED8] rounded-lg p-5">
             <p className="text-sm text-[#666666] leading-relaxed mb-3">
               Open the <strong>Chat</strong> panel on the right side of your dashboard. Have a conversation about your SEO direction — it knows your niche, your competitors, and where the opportunities are.
