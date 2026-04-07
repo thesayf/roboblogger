@@ -431,6 +431,34 @@ export async function executeSearchExistingContent(
         similarity: post.score || 0,
       });
     }
+
+    // If vector search returned few results, supplement with text search
+    // (catches posts without embeddings, e.g. newly generated posts)
+    if (posts.length < limit) {
+      const existingSlugs = new Set(posts.map(p => p.slug));
+      const textPosts = await BlogPost.find({
+        owner: userId,
+        slug: { $nin: Array.from(existingSlugs) },
+        $or: [
+          { title: { $regex: query, $options: 'i' } },
+          { seoTitle: { $regex: query, $options: 'i' } },
+          { tags: { $in: query.split(' ') } },
+        ],
+      })
+        .select('title slug publishedAt tags')
+        .limit(limit - posts.length)
+        .lean();
+
+      for (const post of textPosts) {
+        posts.push({
+          title: post.title,
+          slug: post.slug,
+          publishedAt: post.publishedAt?.toISOString(),
+          keywords: post.tags || [],
+          similarity: 0.5,
+        });
+      }
+    }
   } catch (error) {
     console.error('[VectorSearch] Error searching posts:', error);
     // Vector search might not be set up yet, fall back to text search
