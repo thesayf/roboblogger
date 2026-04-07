@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Client } from '@upstash/workflow';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
 import { deductCredits, BLOG_GENERATION_CREDITS } from '@/lib/billing/credit-service';
+import { executeGenerationAgent } from '@/lib/generation/unified-agent';
 
 // POST /api/blog/topics/[id]/generate - Trigger blog generation workflow
 export async function POST(
@@ -59,27 +59,22 @@ export async function POST(
       await topic.save();
     }
 
-    // Trigger the Upstash Workflow via QStash client (not direct fetch)
-    const baseUrl = process.env.UPSTASH_WORKFLOW_URL ||
-                   process.env.NEXT_PUBLIC_BASE_URL ||
-                   'http://localhost:3000';
+    // Fire and forget — the agent runs in the background on Railway (no serverless timeout)
+    console.log(`[Generate] Starting unified agent for topic ${topic._id}: "${topic.topic}"`);
 
-    const workflowUrl = `${baseUrl}/api/workflow/generate-post`;
-
-    console.log(`[Generate] Triggering workflow for topic ${topic._id}: "${topic.topic}"`);
-    console.log(`[Generate] Workflow URL: ${workflowUrl}`);
-
-    const client = new Client({ token: process.env.QSTASH_TOKEN! });
-    const { workflowRunId } = await client.trigger({
-      url: workflowUrl,
-      body: JSON.stringify({ topicId: topic._id.toString() }),
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    console.log(`[Generate] Workflow triggered for topic ${topic._id}, runId: ${workflowRunId}`);
+    executeGenerationAgent({
+      topicId: topic._id.toString(),
+      ownerId: topic.owner.toString(),
+    })
+      .then(result => {
+        console.log(`[Generate] Agent completed for topic ${topic._id}: ${result.success ? 'success' : 'failed'}${result.postId ? ` (post ${result.postId})` : ''}${result.error ? ` — ${result.error}` : ''}`);
+      })
+      .catch(err => {
+        console.error(`[Generate] Agent crashed for topic ${topic._id}:`, err);
+      });
 
     return NextResponse.json({
-      message: 'Generation workflow started',
+      message: 'Generation started',
       topic: {
         id: topic._id,
         status: 'generating',
