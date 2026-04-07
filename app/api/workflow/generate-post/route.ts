@@ -50,6 +50,7 @@ export const { POST } = serve<{ topicId: string }>(
         referenceImages: t.referenceImages || [],
         brandContext: t.brandContext || '',
         brandExamples: t.brandExamples || '',
+        researchMode: t.researchMode || 'guided',
         seo: t.seo ? JSON.parse(JSON.stringify(t.seo)) : null,
         researchData: t.researchData ? JSON.parse(JSON.stringify(t.researchData)) : null,
         internalLinks: t.internalLinks ? JSON.parse(JSON.stringify(t.internalLinks)) : [],
@@ -114,6 +115,24 @@ export const { POST } = serve<{ topicId: string }>(
         const t = await Topic.findById(topicId);
         return t?.researchData ? JSON.parse(JSON.stringify(t.researchData)) : null;
       });
+
+      // For exploratory mode: apply the recommended title from research
+      if (topic.researchMode === 'exploratory' && researchData?.recommendedTitle) {
+        const recommendedTitle = researchData.recommendedTitle;
+        await context.run('apply-exploratory-title', async () => {
+          await dbConnect();
+          await Topic.findByIdAndUpdate(topicId, {
+            topic: recommendedTitle,
+            ...(researchData.recommendedAudience ? { audience: researchData.recommendedAudience } : {}),
+          });
+          console.log(`[workflow] Exploratory mode: applied recommended title "${recommendedTitle}"`);
+        });
+        // Update the in-memory topic object so content generation uses the new title
+        topic.topic = recommendedTitle;
+        if (researchData.recommendedAudience) {
+          topic.audience = researchData.recommendedAudience;
+        }
+      }
     }
 
     // Step 4: Content generation

@@ -13,8 +13,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { PerplexityProvider } from '@/lib/ai-providers/perplexity-provider';
-import { researchTools, ResearchResult } from '@/lib/research/research-tools';
-import { generateResearchSystemPrompt, generateResearchUserPrompt } from '@/lib/research/research-prompts';
+import { ExaProvider } from '@/lib/ai-providers/exa-provider';
+import { researchTools, ResearchResult, ResearchBrief } from '@/lib/research/research-tools';
+import {
+  generateResearchSystemPrompt,
+  generateResearchUserPrompt,
+  generateExploratorySystemPrompt,
+  generateExploratoryUserPrompt,
+} from '@/lib/research/research-prompts';
 import { cleanAndParseJSON } from '@/lib/utils/clean-json';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
@@ -29,6 +35,13 @@ const getPerplexityProvider = () => {
   return new PerplexityProvider({
     apiKey: process.env.PERPLEXITY_API_KEY!,
     model: 'sonar-pro',
+  });
+};
+
+const getExaProvider = () => {
+  if (!process.env.EXA_API_KEY) return null;
+  return new ExaProvider({
+    apiKey: process.env.EXA_API_KEY,
   });
 };
 
@@ -85,6 +98,99 @@ async function executeResearchTool(
     }
   }
 
+  // Exa tools
+  if (toolName === 'searchWithExa') {
+    const exaProvider = getExaProvider();
+    if (!exaProvider) {
+      return JSON.stringify({ error: true, message: 'EXA_API_KEY not configured — use searchTopicInfo instead' });
+    }
+    const { query, numResults, category, includeDomains, startDate } = toolInput;
+    console.log(`[research-turn] searchWithExa: "${query}"`);
+
+    try {
+      const response = await exaProvider.searchContent({
+        query,
+        numResults: Math.min(numResults || 5, 10),
+        category,
+        includeDomains,
+        startPublishedDate: startDate,
+      });
+      console.log(`[research-turn] Exa search returned ${response.results.length} results`);
+      return JSON.stringify({
+        results: response.results.map(r => ({
+          title: r.title,
+          url: r.url,
+          highlights: r.highlights,
+          text: r.text?.substring(0, 2000),
+          publishedDate: r.publishedDate,
+          author: r.author,
+        }))
+      });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Exa search failed';
+      console.log(`[research-turn] searchWithExa failed: ${errorMsg}`);
+      return JSON.stringify({ error: true, message: errorMsg });
+    }
+  }
+
+  if (toolName === 'findSimilarContent') {
+    const exaProvider = getExaProvider();
+    if (!exaProvider) {
+      return JSON.stringify({ error: true, message: 'EXA_API_KEY not configured' });
+    }
+    const { url, numResults } = toolInput;
+    console.log(`[research-turn] findSimilarContent: "${url}"`);
+
+    try {
+      const response = await exaProvider.findSimilar({
+        url,
+        numResults: numResults || 5,
+      });
+      console.log(`[research-turn] Exa findSimilar returned ${response.results.length} results`);
+      return JSON.stringify({
+        results: response.results.map(r => ({
+          title: r.title,
+          url: r.url,
+          highlights: r.highlights,
+          text: r.text?.substring(0, 2000),
+          publishedDate: r.publishedDate,
+        }))
+      });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Exa findSimilar failed';
+      console.log(`[research-turn] findSimilarContent failed: ${errorMsg}`);
+      return JSON.stringify({ error: true, message: errorMsg });
+    }
+  }
+
+  if (toolName === 'getFullContent') {
+    const exaProvider = getExaProvider();
+    if (!exaProvider) {
+      return JSON.stringify({ error: true, message: 'EXA_API_KEY not configured' });
+    }
+    const { urls } = toolInput;
+    const limitedUrls = (urls as string[]).slice(0, 3); // Max 3 at a time
+    console.log(`[research-turn] getFullContent: ${limitedUrls.length} URLs`);
+
+    try {
+      const response = await exaProvider.getContents({ urls: limitedUrls });
+      console.log(`[research-turn] Exa getContents returned ${response.results.length} pages`);
+      return JSON.stringify({
+        results: response.results.map(r => ({
+          title: r.title,
+          url: r.url,
+          text: r.text?.substring(0, 5000),
+          publishedDate: r.publishedDate,
+          author: r.author,
+        }))
+      });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Exa getContents failed';
+      console.log(`[research-turn] getFullContent failed: ${errorMsg}`);
+      return JSON.stringify({ error: true, message: errorMsg });
+    }
+  }
+
   return JSON.stringify({ error: true, message: `Unknown tool: ${toolName}` });
 }
 
@@ -115,35 +221,51 @@ export async function POST(request: NextRequest) {
     let messages: Anthropic.MessageParam[];
     let systemPrompt: string;
     let iteration: number;
+    let model: string;
+
+    const researchMode = topic.researchMode || 'guided';
 
     if (!topic.researchState || !topic.researchState.messages) {
       // First turn — initialize conversation
-      console.log(`[research-turn] First turn for topic ${topicId}: "${topic.topic}"`);
+      console.log(`[research-turn] First turn for topic ${topicId}: "${topic.topic}" (mode: ${researchMode})`);
 
       const seoKeywords: string[] = [];
       if (topic.seo?.primaryKeyword) seoKeywords.push(topic.seo.primaryKeyword);
       if (topic.seo?.secondaryKeywords?.length) seoKeywords.push(...topic.seo.secondaryKeywords);
 
-      systemPrompt = generateResearchSystemPrompt(
-        topic.topic,
-        topic.audience || '',
-        seoKeywords
-      );
-      const userPrompt = generateResearchUserPrompt(topic.topic);
-      messages = [{ role: 'user', content: userPrompt }];
+      if (researchMode === 'exploratory') {
+        systemPrompt = generateExploratorySystemPrompt(
+          topic.topic,
+          topic.audience || '',
+          seoKeywords
+        );
+        const userPrompt = generateExploratoryUserPrompt(topic.topic);
+        messages = [{ role: 'user', content: userPrompt }];
+        model = 'claude-opus-4-6';
+      } else {
+        systemPrompt = generateResearchSystemPrompt(
+          topic.topic,
+          topic.audience || '',
+          seoKeywords
+        );
+        const userPrompt = generateResearchUserPrompt(topic.topic);
+        messages = [{ role: 'user', content: userPrompt }];
+        model = 'claude-sonnet-4-5-20250929';
+      }
       iteration = 1;
     } else {
       // Continuing turn — restore conversation state
       messages = topic.researchState.messages;
       systemPrompt = topic.researchState.systemPrompt;
+      model = topic.researchState.model || 'claude-sonnet-4-5-20250929';
       iteration = (topic.researchState.iteration || 0) + 1;
-      console.log(`[research-turn] Continuing turn ${iteration} for topic ${topicId}`);
+      console.log(`[research-turn] Continuing turn ${iteration} for topic ${topicId} (model: ${model})`);
     }
 
     // Call Claude with the full conversation + tools
-    console.log(`[research-turn] Calling Claude (turn ${iteration})...`);
+    console.log(`[research-turn] Calling Claude ${model} (turn ${iteration})...`);
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model,
       max_tokens: 16000,
       system: systemPrompt,
       tools: researchTools,
@@ -183,6 +305,7 @@ export async function POST(request: NextRequest) {
         researchState: {
           messages: updatedMessages,
           systemPrompt,
+          model,
           iteration,
           startedAt: topic.researchState?.startedAt || new Date()
         }
@@ -231,13 +354,26 @@ export async function POST(request: NextRequest) {
       ? (Date.now() - new Date(topic.researchState.startedAt).getTime()) / 1000
       : (Date.now() - turnStart) / 1000;
 
+    // Determine which search providers were used based on tool calls in conversation
+    const searchProviders: string[] = ['perplexity-sonar-pro'];
+    const hasExaCalls = messages.some((msg) => {
+      if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+        return msg.content.some((block: any) =>
+          block.type === 'tool_use' && ['searchWithExa', 'findSimilarContent', 'getFullContent'].includes(block.name)
+        );
+      }
+      return false;
+    });
+    if (hasExaCalls) searchProviders.push('exa');
+
     // Enrich research data with metadata
     const enrichedResearch = researchData ? {
       ...researchData,
       _metadata: {
         provider: 'claude-orchestrated',
-        model: 'claude-sonnet-4-5-20250929',
-        searchProvider: 'perplexity-sonar-pro',
+        model,
+        researchMode,
+        searchProviders,
         timestamp: new Date().toISOString(),
         totalTurns: iteration,
         toolCalls: totalToolCalls,

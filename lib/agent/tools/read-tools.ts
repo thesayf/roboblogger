@@ -423,7 +423,8 @@ export function buildReadTools(ctx: ToolContext) {
           return JSON.stringify({ error: 'Post not found or not owned by this user.' });
         }
 
-        const components = await BlogComponent.find({ blogPost: input.postId })
+        const postId = (post as any)._id;
+        const components = await BlogComponent.find({ blogPost: postId })
           .sort({ order: 1 })
           .lean();
 

@@ -58,6 +58,74 @@ Call multiple times if you need different types of expert input (academic vs ind
       },
       required: ['query', 'expertiseArea']
     }
+  },
+  {
+    name: 'searchWithExa',
+    description: `Neural search for high-quality source documents, articles, and research papers.
+Use this to find: specific blog posts, research papers, in-depth articles, authoritative sources.
+Returns actual source URLs with content excerpts — ideal for finding citable material.
+Better than searchTopicInfo for finding specific source documents rather than synthesized answers.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Search query — can be natural language, a question, or a topic description.'
+        },
+        numResults: {
+          type: 'number',
+          description: 'Number of results to return (default: 5, max: 10)'
+        },
+        category: {
+          type: 'string',
+          enum: ['research paper', 'news', 'company', 'personal site'],
+          description: 'Filter by content category. Use "research paper" for academic sources, "news" for current events.'
+        },
+        includeDomains: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Only search these domains (e.g., ["arxiv.org", "nature.com"])'
+        },
+        startDate: {
+          type: 'string',
+          description: 'Only include results published after this date (ISO format, e.g., "2025-01-01")'
+        }
+      },
+      required: ['query']
+    }
+  },
+  {
+    name: 'findSimilarContent',
+    description: `Find web pages semantically similar to a given URL. Use this when you find one excellent source and want to discover related articles, alternative perspectives, or complementary research.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        url: {
+          type: 'string',
+          description: 'URL of a page to find similar content for'
+        },
+        numResults: {
+          type: 'number',
+          description: 'Number of similar results to return (default: 5)'
+        }
+      },
+      required: ['url']
+    }
+  },
+  {
+    name: 'getFullContent',
+    description: `Retrieve the full text content of specific web pages. Use this to read an article in full after finding it via search — for example, to extract exact quotes, detailed data, or understand the full context of a finding.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        urls: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'URLs to retrieve full content from (max 3 at a time)'
+        }
+      },
+      required: ['urls']
+    }
   }
 ];
 
@@ -111,4 +179,49 @@ export interface ResearchResult {
   keyPoints: string[];
   searchIterations?: number;
   confidenceLevel: 'high' | 'medium' | 'low';
+}
+
+/**
+ * New research brief format — replaces the rigid stats/quotes/trends structure
+ * with an editorial brief that provides narrative direction
+ */
+
+export interface ResearchSource {
+  url: string;
+  title: string;
+  excerpt?: string;
+  publishedDate?: string;
+  credibility?: 'high' | 'medium' | 'low';
+}
+
+export interface ResearchEvidence {
+  claim: string;
+  source: ResearchSource;
+  type: 'statistic' | 'quote' | 'finding' | 'example' | 'data_point';
+  attribution?: string; // e.g. "According to [name], [title] at [org]"
+}
+
+export interface ResearchBrief {
+  researchComplete: boolean;
+  // Editorial direction
+  angle: string;              // The specific angle/thesis for this piece
+  thesis: string;             // One-sentence thesis statement
+  whyNow: string;             // Timeliness hook — why this matters right now
+  gapInCoverage: string;      // What existing coverage misses
+  briefNarrative: string;     // 3-5 paragraph editorial brief
+  // Supporting evidence (no hardcoded limits)
+  evidence: ResearchEvidence[];
+  // For exploratory mode
+  recommendedTitle?: string;
+  recommendedAudience?: string;
+  // Meta
+  confidenceLevel: 'high' | 'medium' | 'low';
+  searchesPerformed: number;
+}
+
+/**
+ * Type guard to detect legacy research format vs new brief format
+ */
+export function isLegacyResearchFormat(data: any): data is ResearchResult {
+  return data && Array.isArray(data.statistics);
 }

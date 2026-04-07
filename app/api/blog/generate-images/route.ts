@@ -151,11 +151,6 @@ function buildImageStylePrompt(imageContext: string, referenceAnalysis: string =
     stylePrompt += `Brand and style context: ${imageContext.trim()}. `;
   }
   
-  // Default fallback if no context provided
-  if (!stylePrompt.trim()) {
-    stylePrompt = 'Professional business style with clean, modern design. ';
-  }
-  
   return stylePrompt.trim();
 }
 
@@ -175,29 +170,15 @@ async function generateImageWithGPTImage(prompt: string, styleInstructions: stri
     
     console.log(`Using image size: ${imageSize} for title: "${title?.substring(0, 50)}..."`);
 
-    // Build enhanced prompt combining original prompt, style instructions, and reference analysis
+    // Build enhanced prompt — use the writer's description as-is, layer on style context
     let enhancedPrompt = prompt;
-    
-    // Add NO TEXT instruction for component images (non-featured images)
-    if (!isFeaturedImage) {
-      enhancedPrompt = `Create a photorealistic image with NO TEXT, NO WORDS, NO LETTERS, NO TYPOGRAPHY of any kind. Focus only on visual elements: ${prompt}`;
-    }
-    
+
     if (styleInstructions?.trim()) {
       enhancedPrompt += `. Style: ${styleInstructions}`;
     }
-    
+
     if (referenceAnalysis?.trim()) {
       enhancedPrompt += `. Reference style: ${referenceAnalysis}`;
-    }
-    
-    // Add layout instructions - different for featured vs component images
-    if (isFeaturedImage) {
-      // Featured images can have text
-      enhancedPrompt += '. CRITICAL LAYOUT RULES: Create image in LANDSCAPE orientation (wider than tall). Center all text with at least 15% margin from every edge. Never place text near image borders. All text must be COMPLETELY visible - no letters or words can touch or approach the edges. Use only the center 70% of the image for text. Think of the image as having a large invisible border that text cannot enter. If the title is long, break it into multiple centered lines rather than extending to edges. VERIFICATION: Before finalizing, ensure every single character of text is fully visible with substantial space around it. The final image must be in landscape format suitable for blog headers.';
-    } else {
-      // Component images should have NO text
-      enhancedPrompt += '. CRITICAL: This image must contain NO TEXT whatsoever. No words, no letters, no numbers, no typography. Create a purely visual image focusing on the scene, objects, people, and environment described. Any text-like elements should be represented abstractly or symbolically without actual readable characters.';
     }
 
     const response = await fetch('https://api.openai.com/v1/images/generations', {
@@ -327,8 +308,8 @@ export async function POST(request: NextRequest) {
       try {
         console.log(`Generating featured image for blog post: ${title}`);
         
-        // Create a featured image prompt based on the blog topic and title
-        const featuredImagePrompt = `Create a featured image for blog post in LANDSCAPE orientation (16:9 ratio). CRITICAL: Place this title text "${title}" in the CENTER of the image with massive margins on all sides. The text must occupy only the middle 60% of the image. Leave the outer 20% of the image completely empty on all edges. Never let any text approach the borders. If the title is long, split it into 2-3 centered lines. Design an eye-catching hero image about ${topic} with the title text as the clear focal point, surrounded by plenty of empty space. The image must be wider than it is tall, suitable for a blog header.`;
+        // Create a featured image prompt — clean visual scene, no text in image
+        const featuredImagePrompt = `Create a visually compelling hero image about ${topic}. Landscape composition (wider than tall) suitable for a blog header. Focus on creating an atmospheric, eye-catching visual that captures the essence of the topic. No text or typography in the image.`;
         
         // Generate image using GPT Image 1 API with enhanced prompting
         const generatedImageUrl = await generateImageWithGPTImage(

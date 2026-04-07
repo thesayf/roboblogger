@@ -52,6 +52,7 @@ export function buildActionTools(ctx: ToolContext) {
           title: z.string().describe('Post title'),
           description: z.string().optional().describe('Context hint for how to reference this post'),
         })).optional().describe('Pre-planned internal links to include in the generated post'),
+        researchMode: z.enum(['guided', 'exploratory']).optional().describe('Research mode: "guided" (default) researches a specific topic, "exploratory" discovers the best angle and recommends a title — use exploratory when the user wants to find what\'s interesting in a broad area'),
       }),
       run: wrapTool(ctx, 'create_topic', async (input) => {
         await dbConnect();
@@ -62,6 +63,7 @@ export function buildActionTools(ctx: ToolContext) {
           tone: input.tone,
           length: input.length,
           priority: input.priority || 'medium',
+          researchMode: input.researchMode,
           source: 'individual',
           owner: ctx.userId,
           tags: input.tags,
@@ -111,6 +113,7 @@ export function buildActionTools(ctx: ToolContext) {
             title: z.string(),
             description: z.string().optional(),
           })).optional().describe('Pre-planned internal links'),
+          researchMode: z.enum(['guided', 'exploratory']).optional().describe('Research mode: "guided" or "exploratory"'),
         })).max(20).describe('Array of topics to add (max 20)'),
       }),
       run: wrapTool(ctx, 'create_topics_bulk', async (input) => {
@@ -122,6 +125,7 @@ export function buildActionTools(ctx: ToolContext) {
           tone: t.tone,
           length: t.length,
           priority: t.priority || 'medium',
+          researchMode: t.researchMode,
           source: 'bulk' as const,
           owner: ctx.userId,
           tags: t.tags,

@@ -17,6 +17,9 @@ export interface ITopic extends Document {
   brandContext?: string;
   brandExamples?: string;
 
+  // Research mode
+  researchMode?: 'guided' | 'exploratory';
+
   // Research data (populated by agentic research phase)
   researchData?: {
     summary: string; // Brief 1-2 sentence overview
@@ -200,6 +203,13 @@ const TopicSchema = new Schema<ITopic>({
     maxlength: 50000 // Allow for multiple example posts
   },
 
+  // Research mode: 'guided' (has a title, research supports it) or 'exploratory' (broad topic, agent discovers the angle)
+  researchMode: {
+    type: String,
+    enum: ['guided', 'exploratory'],
+    default: 'guided'
+  },
+
   // Research data (populated by agentic research phase)
   researchData: {
     type: Schema.Types.Mixed,
@@ -213,6 +223,7 @@ const TopicSchema = new Schema<ITopic>({
   researchState: {
     messages: { type: Schema.Types.Mixed },
     systemPrompt: { type: String },
+    model: { type: String }, // Tracks which model is being used across turns
     iteration: { type: Number, default: 0 },
     startedAt: { type: Date }
   },

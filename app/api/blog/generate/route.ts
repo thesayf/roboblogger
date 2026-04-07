@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
+import { isLegacyResearchFormat } from '@/lib/research/research-tools';
 import dbConnect from '@/lib/mongo';
 import User from '@/models/User';
 
@@ -29,8 +30,8 @@ CRITICAL: Return ONLY valid JSON. No explanatory text before or after. No markdo
       "type": "image",
       "order": 1,
       "alt": "descriptive alt text for accessibility",
-      "caption": "",
-      "imageDescription": "DETAILED visual scene description (NO TEXT IN IMAGE) - describe what should be shown, not written. Be specific about subjects, actions, environment, mood, colors, composition. Example: 'Professional working at laptop in bright modern office, natural sunlight from large windows, minimalist desk with coffee cup and small potted plant, clean aesthetic, shallow depth of field focusing on person'"
+      "caption": "Optional caption providing context or attribution",
+      "imageDescription": "Detailed visual scene description — describe subjects, actions, environment, mood, colors, and composition. Be specific enough for image generation. Example: 'Professional working at laptop in bright modern office, natural sunlight from large windows, minimalist desk with coffee cup and small potted plant, clean aesthetic, shallow depth of field focusing on person'"
     },
     {
       "type": "callout",
@@ -229,6 +230,163 @@ CRITICAL: Return ONLY valid JSON. No explanatory text before or after. No markdo
   "rationale": "Brief explanation of the content structure, target audience, and key takeaways"
 }`;
 
+// Format research data for injection into the content generation prompt
+// Handles both legacy format (stats/quotes/trends) and new brief format
+function formatResearchDataForPrompt(researchData: any): string {
+  if (!researchData) return '';
+
+  // New brief format — has angle, thesis, briefNarrative
+  if (researchData.briefNarrative || researchData.angle) {
+    let section = `PRE-RESEARCHED INFORMATION:
+A research team has prepared the following editorial brief. This is your primary guide for writing the article.
+
+## Editorial Direction
+${researchData.angle ? `**Angle:** ${researchData.angle}\n` : ''}${researchData.thesis ? `**Thesis:** ${researchData.thesis}\n` : ''}${researchData.whyNow ? `**Why Now:** ${researchData.whyNow}\n` : ''}${researchData.gapInCoverage ? `**Gap in Coverage:** ${researchData.gapInCoverage}\n` : ''}
+## Research Brief
+${researchData.briefNarrative}
+
+`;
+
+    if (researchData.evidence && researchData.evidence.length > 0) {
+      // Group evidence by type
+      const grouped: Record<string, any[]> = {};
+      for (const e of researchData.evidence) {
+        const type = e.type || 'finding';
+        if (!grouped[type]) grouped[type] = [];
+        grouped[type].push(e);
+      }
+
+      const typeLabels: Record<string, string> = {
+        statistic: 'Statistics & Data',
+        quote: 'Expert Quotes',
+        finding: 'Key Findings',
+        example: 'Examples & Case Studies',
+        data_point: 'Data Points',
+      };
+
+      for (const [type, items] of Object.entries(grouped)) {
+        section += `## ${typeLabels[type] || type}\n`;
+        for (const item of items) {
+          section += `- ${item.claim}`;
+          if (item.attribution) section += ` (${item.attribution})`;
+          if (item.source?.url) section += `\n  Source: ${item.source.title || item.source.url} — ${item.source.url}`;
+          section += '\n';
+        }
+        section += '\n';
+      }
+    }
+
+    section += `RESEARCH USAGE REQUIREMENTS:
+- The research brief above provides your editorial direction — follow the angle and thesis
+- Cite evidence with full attribution and source URLs where possible
+- Use the brief narrative to frame your article structure
+- The research confidence level is "${researchData.confidenceLevel || 'medium'}" - ${researchData.confidenceLevel === 'high' ? 'rely heavily on this data' : researchData.confidenceLevel === 'medium' ? 'use this data while supplementing with general knowledge' : 'use this data sparingly and rely more on established facts'}
+
+`;
+    return section;
+  }
+
+  // Legacy format — has statistics, expertQuotes, trends arrays
+  if (isLegacyResearchFormat(researchData)) {
+    let section = `PRE-RESEARCHED INFORMATION:
+The following research has been gathered using real-time web search. This is HIGH-QUALITY, VERIFIED data - USE IT!
+
+`;
+    if (researchData.narrativeSummary) {
+      section += `## The Big Picture\n${researchData.narrativeSummary}\n\n`;
+    } else if (researchData.summary) {
+      section += `## Research Summary\n${researchData.summary}\n\n`;
+    }
+
+    if (researchData.keyInsights && researchData.keyInsights.length > 0) {
+      section += `## Key Insights\n${researchData.keyInsights.map((i: any) => `- INSIGHT: ${i.insight}${i.supportingEvidence ? `\n  Evidence: ${i.supportingEvidence}` : ''}${i.articleAngle ? `\n  Use in article: ${i.articleAngle}` : ''}`).join('\n\n')}\n\n`;
+    }
+
+    if (researchData.statistics.length > 0) {
+      section += `## Statistics\n${researchData.statistics.map((s: any) => `- ${s.fact} (Source: ${s.source}${s.year ? `, ${s.year}` : ''})${s.context ? `\n  Why it matters: ${s.context}` : ''}`).join('\n')}\n\n`;
+    }
+
+    if (researchData.expertQuotes.length > 0) {
+      section += `## Expert Quotes\n${researchData.expertQuotes.map((q: any) => `- "${q.quote}" — ${q.expert}${q.title ? `, ${q.title}` : ''}${q.organization ? ` at ${q.organization}` : ''}${q.context ? `\n  Context: ${q.context}` : ''}`).join('\n')}\n\n`;
+    }
+
+    if (researchData.trends && researchData.trends.length > 0) {
+      section += `## Current Trends\n${researchData.trends.map((t: any) => `- ${t.trend}${t.source ? ` (${t.source})` : ''}${t.implication ? `\n  Implication: ${t.implication}` : ''}`).join('\n')}\n\n`;
+    }
+
+    if (researchData.counterpoints && researchData.counterpoints.length > 0) {
+      section += `## Nuances & Counterpoints\n${researchData.counterpoints.map((c: any) => `- ${c.point}${c.context ? `\n  Context: ${c.context}` : ''}`).join('\n')}\n\n`;
+    }
+
+    if (researchData.keyPoints && researchData.keyPoints.length > 0) {
+      section += `## Key Points to Cover\n${researchData.keyPoints.map((p: string) => `- ${p}`).join('\n')}\n\n`;
+    }
+
+    section += `CRITICAL RESEARCH USAGE REQUIREMENTS:
+- ALWAYS cite statistics with attribution
+- Use expert quotes with full attribution (name, title, organization)
+- Include counterpoints for nuance - don't oversimplify
+- The research confidence level is "${researchData.confidenceLevel}" - ${researchData.confidenceLevel === 'high' ? 'rely heavily on this data' : researchData.confidenceLevel === 'medium' ? 'use this data while supplementing with general knowledge' : 'use this data sparingly and rely more on established facts'}
+
+`;
+    return section;
+  }
+
+  return '';
+}
+
+// Helper functions for web search (writer agent)
+async function searchWebWithExa(query: string, numResults: number = 3) {
+  try {
+    if (!process.env.EXA_API_KEY) return { error: 'Exa search unavailable — EXA_API_KEY not configured' };
+    const { ExaProvider } = await import('@/lib/ai-providers/exa-provider');
+    const exa = new ExaProvider({ apiKey: process.env.EXA_API_KEY });
+    const response = await exa.searchContent({ query, numResults: Math.min(numResults, 5) });
+    return response.results.map(r => ({
+      title: r.title,
+      url: r.url,
+      snippet: r.highlights?.join(' ') || r.text?.substring(0, 300) || '',
+      publishedDate: r.publishedDate,
+    }));
+  } catch (error) {
+    console.error('Error in searchWebWithExa:', error);
+    return { error: 'Web search failed' };
+  }
+}
+
+async function findSimilarWebContent(url: string, numResults: number = 3) {
+  try {
+    if (!process.env.EXA_API_KEY) return { error: 'Exa search unavailable — EXA_API_KEY not configured' };
+    const { ExaProvider } = await import('@/lib/ai-providers/exa-provider');
+    const exa = new ExaProvider({ apiKey: process.env.EXA_API_KEY });
+    const response = await exa.findSimilar({ url, numResults: Math.min(numResults, 5) });
+    return response.results.map(r => ({
+      title: r.title,
+      url: r.url,
+      snippet: r.highlights?.join(' ') || r.text?.substring(0, 300) || '',
+    }));
+  } catch (error) {
+    console.error('Error in findSimilarWebContent:', error);
+    return { error: 'Similar content search failed' };
+  }
+}
+
+async function quickWebSearch(query: string) {
+  try {
+    if (!process.env.PERPLEXITY_API_KEY) return { error: 'Perplexity unavailable — PERPLEXITY_API_KEY not configured' };
+    const { PerplexityProvider } = await import('@/lib/ai-providers/perplexity-provider');
+    const perplexity = new PerplexityProvider({ apiKey: process.env.PERPLEXITY_API_KEY, model: 'sonar' });
+    const response = await perplexity.generateCompletion({ prompt: query, maxTokens: 1000, temperature: 0.1 });
+    return {
+      answer: response.content,
+      citations: (response as any).citations || [],
+    };
+  } catch (error) {
+    console.error('Error in quickWebSearch:', error);
+    return { error: 'Quick web search failed' };
+  }
+}
+
 // Helper functions for internal linking
 async function searchBlogsByKeywords(keywords: string[], limit: number = 5) {
   try {
@@ -411,42 +569,7 @@ CRITICAL SEO REQUIREMENTS:
 - Ensure content provides comprehensive value that satisfies user search queries
 - Include relevant internal links to related content (using search tools)
 
-` : ''}${researchData ? `PRE-RESEARCHED INFORMATION:
-The following research has been gathered using real-time web search. This is HIGH-QUALITY, VERIFIED data - USE IT!
-
-${researchData.narrativeSummary ? `## The Big Picture
-${researchData.narrativeSummary}
-
-` : researchData.summary ? `## Research Summary
-${researchData.summary}
-
-` : ''}${researchData.keyInsights && researchData.keyInsights.length > 0 ? `## Key Insights (Important - weave these into your narrative!)
-${researchData.keyInsights.map((i: any) => `- INSIGHT: ${i.insight}${i.supportingEvidence ? `\n  Evidence: ${i.supportingEvidence}` : ''}${i.articleAngle ? `\n  Use in article: ${i.articleAngle}` : ''}`).join('\n\n')}
-
-` : ''}${researchData.statistics && researchData.statistics.length > 0 ? `## Statistics (cite these with attribution!)
-${researchData.statistics.map((s: any) => `- ${s.fact} (Source: ${s.source}${s.year ? `, ${s.year}` : ''})${s.context ? `\n  Why it matters: ${s.context}` : ''}`).join('\n')}
-
-` : ''}${researchData.expertQuotes && researchData.expertQuotes.length > 0 ? `## Expert Quotes (use with full attribution!)
-${researchData.expertQuotes.map((q: any) => `- "${q.quote}" — ${q.expert}${q.title ? `, ${q.title}` : ''}${q.organization ? ` at ${q.organization}` : ''}${q.context ? `\n  Context: ${q.context}` : ''}`).join('\n')}
-
-` : ''}${researchData.trends && researchData.trends.length > 0 ? `## Current Trends
-${researchData.trends.map((t: any) => `- ${t.trend}${t.source ? ` (${t.source})` : ''}${t.implication ? `\n  Implication: ${t.implication}` : ''}`).join('\n')}
-
-` : ''}${researchData.counterpoints && researchData.counterpoints.length > 0 ? `## Nuances & Counterpoints (important for balanced content!)
-${researchData.counterpoints.map((c: any) => `- ${c.point}${c.context ? `\n  Context: ${c.context}` : ''}`).join('\n')}
-
-` : ''}${researchData.keyPoints && researchData.keyPoints.length > 0 ? `## Key Points to Cover
-${researchData.keyPoints.map((p: string) => `- ${p}`).join('\n')}
-
-` : ''}CRITICAL RESEARCH USAGE REQUIREMENTS:
-- The narrativeSummary gives you the STORY - use it to frame your article
-- Key Insights are the most valuable findings - weave them throughout your content
-- ALWAYS cite statistics with attribution (e.g., "According to ${researchData.statistics?.[0]?.source || 'research'}...")
-- Use expert quotes with full attribution (name, title, organization)
-- Include counterpoints for nuance - don't oversimplify
-- The research confidence level is "${researchData.confidenceLevel}" - ${researchData.confidenceLevel === 'high' ? 'rely heavily on this data' : researchData.confidenceLevel === 'medium' ? 'use this data while supplementing with general knowledge' : 'use this data sparingly and rely more on established facts'}
-
-` : ''}USER REQUIREMENTS:
+` : ''}${researchData ? formatResearchDataForPrompt(researchData) : ''}USER REQUIREMENTS:
 Topic: "${topic}"
 Target Audience: ${audience || "General audience interested in the topic"}
 Tone: ${tone || "Professional but approachable"}${brandContext || brandExamples ? ' (adjusted to match brand voice)' : ''}
@@ -477,15 +600,14 @@ CONTENT CREATION GUIDELINES:
    - Use headers (## ### only - NOT #) to structure content logically within components
    - Include bullet points and numbered lists for easy scanning
    - Add bold and italic text for emphasis where appropriate
-   - PRIORITIZE visual components over images when possible:
-     * Use bar_chart, line_chart, or pie_chart for data visualization
-     * Use comparison_table for feature/pricing comparisons
-     * Use pros_cons for advantages/disadvantages
-     * Use timeline for processes, history, or step-by-step guides
-     * Use flowchart for decision trees and workflows
-     * Use step_by_step for detailed process guides
+   - Choose the best component type for each piece of content:
+     * Data with numbers → bar_chart, line_chart, or pie_chart
+     * Feature comparisons → comparison_table or pros_cons
+     * Processes or history → timeline, flowchart, or step_by_step
+     * Visual concepts, scenes, products → image
+     * Explanatory content → rich_text with formatting
 
-3. Visual Components (PREFERRED over images):
+3. Visual Components:
    - bar_chart: For comparing metrics, survey results, market data
    - line_chart: For showing trends, growth patterns over time
    - pie_chart: For market share, demographics, percentage breakdowns
@@ -495,18 +617,13 @@ CONTENT CREATION GUIDELINES:
    - flowchart: For decision trees, user journeys, simple workflows
    - step_by_step: For numbered process guides with progress tracking
 
-4. Image Guidelines (use sparingly, only when truly beneficial):
-   - Only include images when they provide unique value that visual components cannot
-   - Prioritize: hero images, product screenshots, before/after photos, or concept illustrations
-   - Avoid: generic stock photos, decorative images, infographic-style images
-   - IMPORTANT: Always leave the caption field empty ("") unless the user explicitly requests image captions in additionalRequirements
-   - When including images, provide detailed descriptions for image generation:
-     * Describe the visual scene without any text overlays
-     * Focus on subjects, actions, environment, and mood
-     * Professional photography style and composition
-     * CRITICAL: Never include instructions for text in the image description
-   - Good example: "Modern home office with person working on laptop, bright natural lighting, minimalist desk setup with plants"
-   - Bad example: "Professional remote work text overlay on office scene" (NO TEXT IN IMAGES)
+4. Image Guidelines:
+   - Include images when they add visual value: hero shots, product visuals, concept illustrations, real-world examples, before/after comparisons
+   - The number of images should match the content's needs — a design post might use several, a technical post might use none
+   - Provide detailed imageDescription for each image: describe the visual scene with specifics about subjects, actions, environment, mood, colors, and composition
+   - Write meaningful alt text for accessibility
+   - Captions are optional — include them when they add context or attribution
+   - Good example: "Modern home office with person working on laptop, bright natural lighting, minimalist desk setup with plants, warm afternoon light"
 
 5. Table Usage:
    - Use tables strategically when data comparison or structured information enhances understanding
@@ -563,8 +680,16 @@ ${internalLinks.map((link: any) => `   - "${link.title}" (/blog/${link.slug})${l
    - Ensure smooth transitions between components
    - Place CTA components strategically (usually near end)
 
+12. Web Search for Enhancement:
+   - You have web search tools (searchWeb, quickFactCheck, findSimilarContent) to enhance your writing
+   - Use searchWeb to find specific examples, case studies, or data points to strengthen your content
+   - Use quickFactCheck to verify any claims or statistics you're uncertain about
+   - Do NOT re-research the topic from scratch — the pre-researched data above is comprehensive
+   - Limit web searches to 2-4 targeted queries maximum — be surgical, not exploratory
+   - If research data is already provided and confidence is "high", you may skip web searches entirely
+
 IMPORTANT NOTES:
-- For image descriptions, be extremely specific - this will be used to generate images with DALL-E
+- For image descriptions, be specific and detailed - these will be used for AI image generation
 - All markdown content should be properly formatted and escape special characters
 - Ensure component orders are sequential starting from 0
 - Focus on providing genuine value to readers
@@ -593,7 +718,8 @@ ${outputJsonFormat}`;
     console.log("Sending blog generation request to Anthropic API");
     console.log("[blog/generate] Pre-planned internal links:", hasPrePlannedLinks ? internalLinks.length : 'none (will use search tools)');
 
-    const searchTools = [
+    // Internal blog search tools (for internal linking)
+    const blogSearchTools = [
           {
             name: "searchBlogsByKeywords",
             description: "Search for existing blog posts using keywords. Use this to find related content for internal linking.",
@@ -674,6 +800,65 @@ ${outputJsonFormat}`;
           }
         ];
 
+    // Web search tools (for fact-checking and enrichment)
+    const webSearchTools = [
+      {
+        name: "searchWeb",
+        description: "Search the web for current information, examples, data, or details to enhance your content. Use for verification, finding specific examples, or discovering relevant content. Do NOT use this to redo the pre-researched information — use it to supplement and verify.",
+        input_schema: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "Search query for web content"
+            },
+            numResults: {
+              type: "number",
+              description: "Number of results to return (default: 3, max: 5)"
+            }
+          },
+          required: ["query"]
+        }
+      },
+      {
+        name: "findSimilarContent",
+        description: "Find web content similar to a given URL. Useful when you find a good source and want to discover related resources.",
+        input_schema: {
+          type: "object",
+          properties: {
+            url: {
+              type: "string",
+              description: "URL to find similar content for"
+            },
+            numResults: {
+              type: "number",
+              description: "Number of results to return (default: 3)"
+            }
+          },
+          required: ["url"]
+        }
+      },
+      {
+        name: "quickFactCheck",
+        description: "Quick fact verification using web search. Use for verifying specific claims, statistics, or checking if information is current. Returns a concise answer with citations.",
+        input_schema: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "The claim or question to verify"
+            }
+          },
+          required: ["query"]
+        }
+      }
+    ];
+
+    // Combine tools: always include web search, add blog search if no pre-planned links
+    const allTools = hasPrePlannedLinks
+      ? webSearchTools
+      : [...blogSearchTools, ...webSearchTools];
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -685,7 +870,7 @@ ${outputJsonFormat}`;
         model: "claude-opus-4-6",
         max_tokens: 16384,
         temperature: 0.7,
-        ...(hasPrePlannedLinks ? {} : { tools: searchTools }),
+        tools: allTools,
         messages: [
           {
             role: "user",
@@ -716,8 +901,8 @@ ${outputJsonFormat}`;
     let finalContent = '';
     let currentResult = result;
     
-    // Continue conversation until we get final blog content (max 10 iterations)
-    for (let iteration = 0; iteration < 10; iteration++) {
+    // Continue conversation until we get final blog content (max 15 iterations)
+    for (let iteration = 0; iteration < 15; iteration++) {
       console.log(`Iteration ${iteration + 1}: Processing response...`);
       
       if (currentResult.content) {
@@ -743,6 +928,7 @@ ${outputJsonFormat}`;
             let toolResult;
             try {
               switch (toolUse.name) {
+                // Internal blog search tools
                 case 'searchBlogsByKeywords':
                   toolResult = await searchBlogsByKeywords(toolUse.input.keywords, toolUse.input.limit);
                   break;
@@ -754,6 +940,16 @@ ${outputJsonFormat}`;
                   break;
                 case 'getBlogsByTags':
                   toolResult = await getBlogsByTags(toolUse.input.tags, toolUse.input.limit);
+                  break;
+                // Web search tools
+                case 'searchWeb':
+                  toolResult = await searchWebWithExa(toolUse.input.query, toolUse.input.numResults);
+                  break;
+                case 'findSimilarContent':
+                  toolResult = await findSimilarWebContent(toolUse.input.url, toolUse.input.numResults);
+                  break;
+                case 'quickFactCheck':
+                  toolResult = await quickWebSearch(toolUse.input.query);
                   break;
                 default:
                   toolResult = { error: 'Unknown tool' };
@@ -789,7 +985,7 @@ ${outputJsonFormat}`;
               model: "claude-opus-4-6",
               max_tokens: 16384,
               temperature: 0.7,
-              tools: searchTools,
+              tools: allTools,
               messages: messages,
             }),
           });
