@@ -6,6 +6,12 @@ import Topic from '@/models/Topic';
 import BrandSettings from '@/models/BrandSettings';
 import BlogPost from '@/models/BlogPost';
 import BlogComponent from '@/models/BlogComponent';
+import {
+  generateImageWithGPTImage,
+  uploadImageToImageKit,
+  buildImageStylePrompt,
+  analyzeReferenceImages,
+} from '@/lib/generation/image-utils';
 
 function wrapTool(ctx: ToolContext, toolName: string, fn: (input: any) => Promise<string>) {
   return async (input: any): Promise<string> => {
@@ -601,6 +607,164 @@ export function buildActionTools(ctx: ToolContext) {
             industryNiche: settings.industryNiche,
           },
         });
+      }),
+    }),
+
+    // ========================================================================
+    // IMAGE GENERATION TOOLS
+    // ========================================================================
+
+    betaZodTool({
+      name: 'generate_image',
+      description: 'Generate an AI image from a description and upload it to the media library. Returns the image URL. Use edit_post or edit_post_component to apply it to a post, or use regenerate_post_image to do both in one step.',
+      inputSchema: z.object({
+        description: z.string().describe('Detailed visual scene description — subjects, environment, mood, colors, composition'),
+        imageContext: z.string().optional().describe('Style/brand context (e.g., "modern editorial photography with dramatic lighting")'),
+        referenceImageUrls: z.array(z.string()).optional().describe('Reference image URLs to match the visual style of'),
+      }),
+      run: wrapTool(ctx, 'generate_image', async (input) => {
+        await dbConnect();
+
+        // Get reference images: use provided ones, or fall back to brand settings
+        let refImages = input.referenceImageUrls || [];
+        if (refImages.length === 0) {
+          const brand = await BrandSettings.findOne({ userId: ctx.clerkId }).lean() as any;
+          refImages = brand?.referenceImages || [];
+        }
+
+        // Analyze reference images for style
+        const referenceAnalysis = refImages.length > 0
+          ? await analyzeReferenceImages(refImages)
+          : '';
+
+        const stylePrompt = buildImageStylePrompt(input.imageContext || '', referenceAnalysis);
+
+        // Generate the image
+        const imageUrl = await generateImageWithGPTImage(
+          input.description,
+          stylePrompt,
+          referenceAnalysis,
+        );
+
+        if (!imageUrl) {
+          return JSON.stringify({ error: 'Image generation failed. Check that OPENAI_API_KEY is configured.' });
+        }
+
+        // Upload to ImageKit
+        const fileName = `agent-gen-${Date.now()}.png`;
+        const uploaded = await uploadImageToImageKit(imageUrl, fileName, ctx.userId);
+
+        if (!uploaded) {
+          return JSON.stringify({ error: 'Image was generated but upload to ImageKit failed.' });
+        }
+
+        return JSON.stringify({
+          success: true,
+          url: uploaded.url,
+          thumbnailUrl: uploaded.thumbnailUrl,
+          fileId: uploaded.fileId,
+          width: uploaded.width,
+          height: uploaded.height,
+          message: 'Image generated and uploaded. Use edit_post (for featured image) or edit_post_component (for component image) to apply it to a post.',
+        });
+      }),
+    }),
+
+    betaZodTool({
+      name: 'regenerate_post_image',
+      description: 'Generate a new image and immediately update a blog post with it. For featured images, omit componentId. For component images, provide the componentId. Use get_post first to find component IDs.',
+      inputSchema: z.object({
+        postId: z.string().describe('Blog post ID to update'),
+        componentId: z.string().optional().describe('Component ID to update (omit for featured image)'),
+        description: z.string().describe('Detailed visual scene description for the new image'),
+        imageContext: z.string().optional().describe('Style/brand context for the image'),
+      }),
+      run: wrapTool(ctx, 'regenerate_post_image', async (input) => {
+        await dbConnect();
+
+        // Verify post exists and belongs to user
+        const post = await BlogPost.findOne({ _id: input.postId, owner: ctx.userId });
+        if (!post) {
+          return JSON.stringify({ error: 'Post not found or not owned by this user.' });
+        }
+
+        // If componentId provided, verify it belongs to this post
+        if (input.componentId) {
+          const component = await BlogComponent.findOne({ _id: input.componentId, blogPost: input.postId });
+          if (!component) {
+            return JSON.stringify({ error: 'Component not found in this post.' });
+          }
+        }
+
+        // Get brand reference images for style
+        const brand = await BrandSettings.findOne({ userId: ctx.clerkId }).lean() as any;
+        const refImages = brand?.referenceImages || [];
+
+        const referenceAnalysis = refImages.length > 0
+          ? await analyzeReferenceImages(refImages)
+          : '';
+
+        const stylePrompt = buildImageStylePrompt(input.imageContext || '', referenceAnalysis);
+
+        // Generate the image
+        const imageUrl = await generateImageWithGPTImage(
+          input.description,
+          stylePrompt,
+          referenceAnalysis,
+        );
+
+        if (!imageUrl) {
+          return JSON.stringify({ error: 'Image generation failed.' });
+        }
+
+        // Upload to ImageKit
+        const fileName = `regen-${Date.now()}.png`;
+        const uploaded = await uploadImageToImageKit(imageUrl, fileName, ctx.userId);
+
+        if (!uploaded) {
+          return JSON.stringify({ error: 'Image generated but upload failed.' });
+        }
+
+        // Apply to post
+        if (input.componentId) {
+          // Update component image
+          await BlogComponent.findByIdAndUpdate(input.componentId, {
+            $set: {
+              url: uploaded.url,
+              thumbnailUrl: uploaded.thumbnailUrl,
+              fileId: uploaded.fileId,
+              width: uploaded.width,
+              height: uploaded.height,
+            },
+          });
+          ctx.dataChanged.push('posts');
+
+          return JSON.stringify({
+            success: true,
+            target: 'component',
+            componentId: input.componentId,
+            url: uploaded.url,
+            thumbnailUrl: uploaded.thumbnailUrl,
+            message: `Component image regenerated and updated.`,
+          });
+        } else {
+          // Update featured image
+          await BlogPost.findByIdAndUpdate(input.postId, {
+            $set: {
+              featuredImage: uploaded.url,
+              featuredImageThumbnail: uploaded.thumbnailUrl,
+            },
+          });
+          ctx.dataChanged.push('posts');
+
+          return JSON.stringify({
+            success: true,
+            target: 'featured',
+            url: uploaded.url,
+            thumbnailUrl: uploaded.thumbnailUrl,
+            message: `Featured image regenerated and updated.`,
+          });
+        }
       }),
     }),
   ];
