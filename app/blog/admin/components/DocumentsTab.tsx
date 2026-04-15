@@ -58,6 +58,8 @@ import {
   AlertCircle,
   RefreshCw,
   Link,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Dialog,
@@ -110,6 +112,8 @@ export function DocumentsTab() {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkName, setLinkName] = useState("");
   const [isLinking, setIsLinking] = useState(false);
+  const [docsPage, setDocsPage] = useState(1);
+  const DOCS_PER_PAGE = 10;
 
   // Check for google=connected param from OAuth callback
   useEffect(() => {
@@ -348,7 +352,12 @@ export function DocumentsTab() {
     try {
       const res = await fetch(`/api/documents/${id}`, { method: "DELETE" });
       if (res.ok) {
-        setDocuments((prev) => prev.filter((d) => d.id !== id));
+        setDocuments((prev) => {
+          const updated = prev.filter((d) => d.id !== id);
+          const maxPage = Math.max(1, Math.ceil(updated.length / DOCS_PER_PAGE));
+          if (docsPage > maxPage) setDocsPage(maxPage);
+          return updated;
+        });
         setSuccessMsg(`Deleted "${name}"`);
       } else {
         setError("Failed to delete document");
@@ -493,8 +502,11 @@ export function DocumentsTab() {
               </CardContent>
             </Card>
           ) : (
+            <>
             <div className="space-y-2">
-              {documents.map((doc) => (
+              {documents
+                .slice((docsPage - 1) * DOCS_PER_PAGE, docsPage * DOCS_PER_PAGE)
+                .map((doc) => (
                 <Card key={doc.id} className="hover:shadow-sm transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -552,6 +564,39 @@ export function DocumentsTab() {
                 </Card>
               ))}
             </div>
+            {documents.length > DOCS_PER_PAGE && (
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-[13px] text-[#888888]">
+                  {documents.length} document{documents.length !== 1 ? "s" : ""} total
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDocsPage((p) => Math.max(1, p - 1))}
+                    disabled={docsPage === 1}
+                    className="h-8 px-3"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Prev
+                  </Button>
+                  <span className="text-[13px] text-[#444444] px-2">
+                    Page {docsPage} of {Math.ceil(documents.length / DOCS_PER_PAGE)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDocsPage((p) => Math.min(Math.ceil(documents.length / DOCS_PER_PAGE), p + 1))}
+                    disabled={docsPage === Math.ceil(documents.length / DOCS_PER_PAGE)}
+                    className="h-8 px-3"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </>
       )}
