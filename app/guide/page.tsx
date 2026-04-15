@@ -97,9 +97,10 @@ export default function GuidePage() {
           </div>
 
           <div className="ml-14 space-y-4">
-            {/* Video placeholder */}
-            <div className="bg-[#111111] rounded-xl aspect-video flex items-center justify-center">
-              <p className="text-sm text-[#555555]">Video coming soon</p>
+            <div className="rounded-xl overflow-hidden border border-[#E0DED8]">
+              <video autoPlay loop muted playsInline className="w-full h-auto">
+                <source src="https://pub-71f1bcca1eeb4a92894ea145c8ed6bc0.r2.dev/brandsettingsnew.mp4" type="video/mp4" />
+              </video>
             </div>
 
             <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
@@ -184,9 +185,10 @@ export default function GuidePage() {
           </div>
 
           <div className="ml-14 space-y-4">
-            {/* Video placeholder */}
-            <div className="bg-[#111111] rounded-xl aspect-video flex items-center justify-center">
-              <p className="text-sm text-[#555555]">Video coming soon</p>
+            <div className="rounded-xl overflow-hidden border border-[#E0DED8]">
+              <video autoPlay loop muted playsInline className="w-full h-auto">
+                <source src="https://pub-71f1bcca1eeb4a92894ea145c8ed6bc0.r2.dev/prompt.mp4" type="video/mp4" />
+              </video>
             </div>
 
             <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
@@ -262,9 +264,12 @@ export default function GuidePage() {
           </div>
 
           <div className="ml-14 space-y-4">
-            {/* Video placeholder */}
-            <div className="bg-[#111111] rounded-xl aspect-video flex items-center justify-center">
-              <p className="text-sm text-[#555555]">Video coming soon</p>
+            <div className="rounded-xl overflow-hidden border border-[#E0DED8]">
+              <img
+                src="https://pub-71f1bcca1eeb4a92894ea145c8ed6bc0.r2.dev/Screenshot%202026-04-03%20at%2019.00.02.png"
+                alt="Google Search Console — Add property"
+                className="w-full h-auto"
+              />
             </div>
 
             <div className="bg-[#FFF8E8] border border-[#E8DCC0] rounded-lg p-4">
@@ -361,9 +366,10 @@ export default function GuidePage() {
           </div>
 
           <div className="ml-14 space-y-4">
-            {/* Video placeholder */}
-            <div className="bg-[#111111] rounded-xl aspect-video flex items-center justify-center">
-              <p className="text-sm text-[#555555]">Video coming soon</p>
+            <div className="rounded-xl overflow-hidden border border-[#E0DED8]">
+              <video autoPlay loop muted playsInline className="w-full h-auto">
+                <source src="https://pub-71f1bcca1eeb4a92894ea145c8ed6bc0.r2.dev/strategising.mp4" type="video/mp4" />
+              </video>
             </div>
 
             <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
@@ -414,9 +420,10 @@ export default function GuidePage() {
           </div>
 
           <div className="ml-14 space-y-4">
-            {/* Video placeholder */}
-            <div className="bg-[#111111] rounded-xl aspect-video flex items-center justify-center">
-              <p className="text-sm text-[#555555]">Video coming soon</p>
+            <div className="rounded-xl overflow-hidden border border-[#E0DED8]">
+              <video autoPlay loop muted playsInline className="w-full h-auto">
+                <source src="https://pub-71f1bcca1eeb4a92894ea145c8ed6bc0.r2.dev/Agentsetup.mp4" type="video/mp4" />
+              </video>
             </div>
 
             <div className="bg-white border border-[#E0DED8] rounded-lg p-6">
