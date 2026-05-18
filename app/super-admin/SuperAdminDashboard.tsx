@@ -148,9 +148,16 @@ export default function SuperAdminDashboard() {
     }
   }, [authed, fetchData]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === "Ishaqsol1234!") {
+    const response = await fetch("/api/auth/verify-admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const result = await response.json().catch(() => ({ success: false }));
+
+    if (response.ok && result.success) {
       sessionStorage.setItem("superAdminAuth", password);
       setAuthed(true);
       setAuthError(false);

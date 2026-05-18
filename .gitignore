@@ -8,6 +8,8 @@
 
 # testing
 /coverage
+playwright-report/
+tests/e2e/.auth/
 
 # next.js
 /.next/
@@ -37,3 +39,6 @@ next-env.d.ts
 
 # Vercel env files
 .env.vercel.*
+
+# local agent state
+.claude/

@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import User from "@/models/User";
 
-const ADMIN_PASSWORD = "Ishaqsol1234!";
-
 export async function GET(req: NextRequest) {
   const password = req.headers.get("x-admin-password");
-  if (password !== ADMIN_PASSWORD) {
+  if (!process.env.BLOG_ADMIN_PASSWORD || password !== process.env.BLOG_ADMIN_PASSWORD) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

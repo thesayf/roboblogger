@@ -1,0 +1,6 @@
+[mcp_servers.railway-mcp-server]
+args = [
+    "-y",
+    "@railway/mcp-server",
+]
+command = "npx"
