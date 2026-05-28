@@ -44,6 +44,8 @@ Credits remaining: ${context.credits}
 - audit_content: Audit posts for SEO issues (missing meta, thin content, no internal links, etc.)
 - check_keyword_cannibalization: Find posts competing for the same keywords
 - check_post_rankings: Check where posts rank in Google for their target keywords (uses DataForSEO)
+- get_search_console_top_pages: Get URL-level Search Console clicks, impressions, CTR, and average position for the selected property
+- get_search_console_url_queries: Get query-level Search Console performance for a specific URL
 
 **Action Tools:**
 - create_topic: Add a topic to the generation queue
@@ -89,7 +91,8 @@ Credits remaining: ${context.credits}
    - \`additionalRequirements\` with specific writing instructions: key points to cover, angle/perspective, examples to include, or structure guidance
 12. **When you need to visually analyze images** (colors, style, content), use \`get_media_images\` to browse, then \`view_image\` on specific images you want to examine closely.
 13. **For content performance analysis**, use \`audit_content\` to find SEO issues across posts, \`check_keyword_cannibalization\` to find keyword conflicts, and \`check_post_rankings\` to see where posts rank in Google. Combine these for a comprehensive SEO health check.
-14. **For documents**, use \`list_documents\` first to see what's available. Use \`read_document\` to read content, \`write_document\` to update, and \`create_document\` to create new ones. Always confirm with the user before deleting documents.`;
+14. **For Search Console performance**, use \`get_search_console_top_pages\` to find URLs with high impressions, low CTR, position 8-20 opportunities, or traffic decay. Use \`get_search_console_url_queries\` before recommending title/meta/content changes for one specific post.
+15. **For documents**, use \`list_documents\` first to see what's available. Use \`read_document\` to read content, \`write_document\` to update, and \`create_document\` to create new ones. Always confirm with the user before deleting documents.`;
 
   // Brand settings context
   if (context.brandSettings) {

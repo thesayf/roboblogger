@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
-import ApiKey, { hashApiKey, IApiKey } from '@/models/ApiKey';
+import ApiKey, { ApiPermission, hashApiKey, IApiKey } from '@/models/ApiKey';
 
 export interface ApiKeyValidation {
   valid: boolean;
@@ -92,6 +92,33 @@ export async function validateApiKey(request: NextRequest): Promise<ApiKeyValida
       error: 'Internal server error'
     };
   }
+}
+
+export function hasApiPermission(apiKey: IApiKey, permission: ApiPermission): boolean {
+  const permissions = apiKey.permissions || [];
+  if (permissions.includes(permission)) return true;
+
+  // Backward compatibility for existing keys.
+  if (permission.endsWith(':read') && permissions.includes('read')) return true;
+  if (
+    ['topics:write', 'topics:generate'].includes(permission) &&
+    permissions.includes('write')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+export function requireApiPermission(validation: ApiKeyValidation, permission: ApiPermission): NextResponse | null {
+  if (!validation.valid) return apiKeyError(validation);
+  if (!validation.apiKey || !hasApiPermission(validation.apiKey, permission)) {
+    return NextResponse.json(
+      { error: `API key missing required permission: ${permission}` },
+      { status: 403 }
+    );
+  }
+  return null;
 }
 
 /**

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
-import ApiKey, { generateApiKey } from '@/models/ApiKey';
+import ApiKey, { API_PERMISSIONS, generateApiKey } from '@/models/ApiKey';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 
 // GET /api/keys - List all API keys for the current user
@@ -39,10 +39,20 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { name } = body;
+    const requestedPermissions = Array.isArray(body.permissions) ? body.permissions : ['posts:read'];
+    const permissions = requestedPermissions.filter((permission: string) =>
+      (API_PERMISSIONS as readonly string[]).includes(permission)
+    );
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json(
         { error: 'Name is required' },
+        { status: 400 }
+      );
+    }
+    if (permissions.length === 0) {
+      return NextResponse.json(
+        { error: 'At least one valid permission is required' },
         { status: 400 }
       );
     }
@@ -65,7 +75,7 @@ export async function POST(request: NextRequest) {
       keyPrefix,
       owner: currentUser.mongoId,
       name: name.trim(),
-      permissions: ['read'],
+      permissions,
       rateLimit: 1000
     });
 

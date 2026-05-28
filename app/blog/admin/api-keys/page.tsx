@@ -4,6 +4,16 @@ import { useState, useEffect } from 'react';
 import { Key, Plus, Copy, Trash2, Check, AlertCircle, Clock, Activity, ChevronLeft, Code } from 'lucide-react';
 import Link from 'next/link';
 
+const PERMISSION_OPTIONS = [
+  { value: 'posts:read', label: 'Read posts', description: 'Fetch published blog posts for headless rendering.' },
+  { value: 'brand:read', label: 'Read brand', description: 'Read brand settings and blog context.' },
+  { value: 'topics:read', label: 'Read topics', description: 'List and inspect the topic queue.' },
+  { value: 'topics:write', label: 'Create topics', description: 'Create and update queued topics.' },
+  { value: 'topics:generate', label: 'Generate posts', description: 'Trigger blog generation from queued topics.' },
+  { value: 'seo:read', label: 'SEO research', description: 'Use keyword data and related keyword tools. Consumes credits.' },
+  { value: 'search-console:read', label: 'Search Console', description: 'Read connected Search Console performance data.' },
+];
+
 interface ApiKey {
   _id: string;
   name: string;
@@ -24,6 +34,7 @@ export default function ApiKeysPage() {
   // New key form
   const [showNewKeyForm, setShowNewKeyForm] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
+  const [newKeyPermissions, setNewKeyPermissions] = useState<string[]>(['posts:read']);
   const [isCreating, setIsCreating] = useState(false);
 
   // Newly created key (shown once)
@@ -55,7 +66,7 @@ export default function ApiKeysPage() {
 
   const createKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newKeyName.trim()) return;
+    if (!newKeyName.trim() || newKeyPermissions.length === 0) return;
 
     setIsCreating(true);
     setError('');
@@ -64,7 +75,7 @@ export default function ApiKeysPage() {
       const response = await fetch('/api/keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newKeyName.trim() })
+        body: JSON.stringify({ name: newKeyName.trim(), permissions: newKeyPermissions })
       });
 
       const data = await response.json();
@@ -72,6 +83,7 @@ export default function ApiKeysPage() {
       if (response.ok) {
         setNewlyCreatedKey(data.rawKey);
         setNewKeyName('');
+        setNewKeyPermissions(['posts:read']);
         setShowNewKeyForm(false);
         fetchKeys(); // Refresh the list
       } else {
@@ -82,6 +94,14 @@ export default function ApiKeysPage() {
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const togglePermission = (permission: string) => {
+    setNewKeyPermissions((current) =>
+      current.includes(permission)
+        ? current.filter((p) => p !== permission)
+        : [...current, permission]
+    );
   };
 
   const deleteKey = async (keyId: string) => {
@@ -196,8 +216,8 @@ export default function ApiKeysPage() {
       {/* New key form */}
       {showNewKeyForm && (
         <div className="mb-6 p-4 bg-white border border-[#E0DED8] rounded-lg">
-          <form onSubmit={createKey} className="flex items-end gap-4">
-            <div className="flex-1">
+          <form onSubmit={createKey} className="space-y-5">
+            <div>
               <label className="block text-sm font-medium text-[#444444] mb-2">
                 Key Name
               </label>
@@ -210,20 +230,47 @@ export default function ApiKeysPage() {
                 disabled={isCreating}
               />
             </div>
-            <button
-              type="submit"
-              disabled={isCreating || !newKeyName.trim()}
-              className="px-4 py-2 bg-[#111111] hover:bg-[#333333] disabled:bg-[#E0DED8] disabled:cursor-not-allowed text-white rounded-full transition-colors"
-            >
-              {isCreating ? 'Creating...' : 'Create Key'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowNewKeyForm(false)}
-              className="px-4 py-2 bg-[#F5F4F0] hover:bg-[#E0DED8] text-[#111111] rounded-full transition-colors"
-            >
-              Cancel
-            </button>
+            <div>
+              <label className="block text-sm font-medium text-[#444444] mb-3">
+                Permissions
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {PERMISSION_OPTIONS.map((permission) => (
+                  <label
+                    key={permission.value}
+                    className="flex items-start gap-3 rounded-lg border border-[#E0DED8] p-3 cursor-pointer hover:bg-[#FAFAF8]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={newKeyPermissions.includes(permission.value)}
+                      onChange={() => togglePermission(permission.value)}
+                      className="mt-1"
+                      disabled={isCreating}
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-[#111111]">{permission.label}</span>
+                      <span className="block text-xs text-[#666666] mt-0.5">{permission.description}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={isCreating || !newKeyName.trim() || newKeyPermissions.length === 0}
+                className="px-4 py-2 bg-[#111111] hover:bg-[#333333] disabled:bg-[#E0DED8] disabled:cursor-not-allowed text-white rounded-full transition-colors"
+              >
+                {isCreating ? 'Creating...' : 'Create Key'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNewKeyForm(false)}
+                className="px-4 py-2 bg-[#F5F4F0] hover:bg-[#E0DED8] text-[#111111] rounded-full transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       )}
@@ -305,6 +352,16 @@ export default function ApiKeysPage() {
                   <div>Last used {formatDate(key.lastUsedAt)}</div>
                 )}
               </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(key.permissions || []).map((permission) => (
+                  <span
+                    key={permission}
+                    className="px-2 py-1 rounded-full bg-[#F5F4F0] text-xs text-[#444444] font-mono"
+                  >
+                    {permission}
+                  </span>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -318,7 +375,7 @@ export default function ApiKeysPage() {
         </div>
 
         <p className="text-[#666666] text-sm mb-4">
-          Use your API key to fetch blog posts from your application:
+          Use scoped API keys to let websites, local agents, or automations read content, create topics, run SEO research, and trigger generation.
         </p>
 
         <div className="bg-[#111111] rounded-lg p-4 overflow-x-auto">
@@ -337,7 +394,30 @@ const response = await fetch('https://roboblogger.vercel.app/api/v1/posts/my-pos
     'Authorization': 'Bearer YOUR_API_KEY'
   }
 });
-const { post } = await response.json();`}</code>
+const { post } = await response.json();
+
+// Research keyword data (requires seo:read, consumes credits)
+const keywordRes = await fetch('https://vibeblogger.io/api/v1/research/keyword-data', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ keywords: ['ai blogging tools'] })
+});
+
+// Create topics (requires topics:write)
+const topicRes = await fetch('https://vibeblogger.io/api/v1/topics', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    topic: 'Best AI Blogging Tools for SaaS Founders',
+    seo: { primaryKeyword: 'ai blogging tools' }
+  })
+});`}</code>
           </pre>
         </div>
 
@@ -347,6 +427,12 @@ const { post } = await response.json();`}</code>
           <ul className="mt-2 space-y-1 ml-4">
             <li><code className="text-[#111111]">GET /api/v1/posts</code> - List published posts</li>
             <li><code className="text-[#111111]">GET /api/v1/posts/:slug</code> - Get post by slug</li>
+            <li><code className="text-[#111111]">GET /api/v1/brand</code> - Get brand settings</li>
+            <li><code className="text-[#111111]">GET/POST /api/v1/topics</code> - List or create topics</li>
+            <li><code className="text-[#111111]">POST /api/v1/topics/:id/generate</code> - Trigger generation</li>
+            <li><code className="text-[#111111]">POST /api/v1/research/keyword-data</code> - Get keyword metrics</li>
+            <li><code className="text-[#111111]">POST /api/v1/research/related-keywords</code> - Get related keyword ideas</li>
+            <li><code className="text-[#111111]">GET /api/v1/research/search-console/pages</code> - Get Search Console page data</li>
           </ul>
         </div>
       </div>

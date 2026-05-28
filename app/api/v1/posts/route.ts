@@ -3,7 +3,7 @@ import dbConnect from '@/lib/mongo';
 import BlogPost from '@/models/BlogPost';
 import '@/models/User'; // Required for populate('author')
 import '@/models/BlogComponent'; // Required for populate('components')
-import { validateApiKey, apiKeyError, checkRateLimit } from '@/lib/auth/validateApiKey';
+import { validateApiKey, apiKeyError, checkRateLimit, requireApiPermission } from '@/lib/auth/validateApiKey';
 import { Types } from 'mongoose';
 
 // Force dynamic rendering
@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
   if (!validation.valid) {
     return apiKeyError(validation);
   }
+  const permissionError = requireApiPermission(validation, 'posts:read');
+  if (permissionError) return permissionError;
 
   // Check rate limit
   const rateLimit = checkRateLimit(

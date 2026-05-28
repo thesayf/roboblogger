@@ -3,6 +3,7 @@ import { google } from 'googleapis';
 const SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/webmasters.readonly',
 ];
 
 // ── OAuth helpers ────────────────────────────────────────
@@ -283,4 +284,3 @@ export async function deleteDocument(
 
   await drive.files.delete({ fileId });
 }
-

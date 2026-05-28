@@ -12,6 +12,11 @@ import BlogComponent from '@/models/BlogComponent';
 import Topic from '@/models/Topic';
 import BrandSettings from '@/models/BrandSettings';
 import User from '@/models/User';
+import GoogleIntegration from '@/models/GoogleIntegration';
+import {
+  getSearchConsolePagePerformance,
+  getSearchConsoleUrlPerformance,
+} from '@/lib/search-console';
 
 function wrapTool(ctx: ToolContext, toolName: string, fn: (input: any) => Promise<string>) {
   return async (input: any): Promise<string> => {
@@ -103,6 +108,73 @@ export function buildReadTools(ctx: ToolContext) {
             completed: queueStats['completed'] || 0,
             failed: queueStats['failed'] || 0,
           },
+        });
+      }),
+    }),
+
+    betaZodTool({
+      name: 'get_search_console_top_pages',
+      description: 'Get top URL-level Google Search Console performance for the selected property: clicks, impressions, CTR, and average position. Use this to identify pages with traffic, opportunity, or performance issues.',
+      inputSchema: z.object({
+        days: z.number().min(7).max(90).optional().describe('Date range in days (default 28, max 90)'),
+        limit: z.number().min(1).max(100).optional().describe('Number of URLs to return (default 25)'),
+      }),
+      run: wrapTool(ctx, 'get_search_console_top_pages', async (input) => {
+        await dbConnect();
+        const integration = await GoogleIntegration.findOne({ userId: ctx.clerkId }).lean() as any;
+        if (!integration?.refreshToken) {
+          return JSON.stringify({ error: 'Google is not connected. Ask the user to connect Google in the Performance tab.' });
+        }
+        if (!integration.searchConsoleSiteUrl) {
+          return JSON.stringify({ error: 'No Search Console property selected. Ask the user to choose one in the Performance tab.' });
+        }
+
+        const pages = await getSearchConsolePagePerformance({
+          refreshToken: integration.refreshToken,
+          siteUrl: integration.searchConsoleSiteUrl,
+          days: input.days || 28,
+          limit: input.limit || 25,
+        });
+
+        return JSON.stringify({
+          siteUrl: integration.searchConsoleSiteUrl,
+          days: input.days || 28,
+          pages,
+        });
+      }),
+    }),
+
+    betaZodTool({
+      name: 'get_search_console_url_queries',
+      description: 'Get query-level Google Search Console performance for a specific URL: queries, clicks, impressions, CTR, and average position. Use this before recommending title/meta/content updates for an individual post.',
+      inputSchema: z.object({
+        url: z.string().describe('Exact page URL to analyze'),
+        days: z.number().min(7).max(90).optional().describe('Date range in days (default 28, max 90)'),
+        limit: z.number().min(1).max(100).optional().describe('Number of queries to return (default 25)'),
+      }),
+      run: wrapTool(ctx, 'get_search_console_url_queries', async (input) => {
+        await dbConnect();
+        const integration = await GoogleIntegration.findOne({ userId: ctx.clerkId }).lean() as any;
+        if (!integration?.refreshToken) {
+          return JSON.stringify({ error: 'Google is not connected. Ask the user to connect Google in the Performance tab.' });
+        }
+        if (!integration.searchConsoleSiteUrl) {
+          return JSON.stringify({ error: 'No Search Console property selected. Ask the user to choose one in the Performance tab.' });
+        }
+
+        const queries = await getSearchConsoleUrlPerformance({
+          refreshToken: integration.refreshToken,
+          siteUrl: integration.searchConsoleSiteUrl,
+          url: input.url,
+          days: input.days || 28,
+          limit: input.limit || 25,
+        });
+
+        return JSON.stringify({
+          siteUrl: integration.searchConsoleSiteUrl,
+          url: input.url,
+          days: input.days || 28,
+          queries,
         });
       }),
     }),

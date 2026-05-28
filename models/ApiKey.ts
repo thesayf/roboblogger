@@ -1,6 +1,20 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import crypto from 'crypto';
 
+export const API_PERMISSIONS = [
+  'read',
+  'write',
+  'posts:read',
+  'brand:read',
+  'topics:read',
+  'topics:write',
+  'topics:generate',
+  'seo:read',
+  'search-console:read',
+] as const;
+
+export type ApiPermission = typeof API_PERMISSIONS[number];
+
 export interface IApiKey extends Document {
   // Key identification
   keyHash: string; // SHA-256 hash of the actual key (we never store the raw key)
@@ -13,7 +27,7 @@ export interface IApiKey extends Document {
   name: string; // User-given name like "Production", "Development"
 
   // Permissions & limits
-  permissions: ('read' | 'write')[];
+  permissions: ApiPermission[];
   rateLimit: number; // Requests per hour
 
   // Usage tracking
@@ -53,8 +67,8 @@ const ApiKeySchema = new Schema<IApiKey>({
   },
   permissions: [{
     type: String,
-    enum: ['read', 'write'],
-    default: ['read']
+    enum: API_PERMISSIONS,
+    default: ['posts:read']
   }],
   rateLimit: {
     type: Number,

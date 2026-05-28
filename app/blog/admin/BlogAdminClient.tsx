@@ -73,6 +73,7 @@ import { SchedulerTab } from "./components/SchedulerTabNew";
 import { BrandTab } from "./components/BrandTab";
 import { RoutinesTab } from "./components/RoutinesTab";
 import { DocumentsTab } from "./components/DocumentsTab";
+import { PerformanceTab } from "./components/PerformanceTab";
 import { SubscriptionBanner } from "./components/SubscriptionBanner";
 import { TopicDetailSheet } from "./components/TopicDetailSheet";
 import { localDateTimeToUTC, utcToLocalDateTime } from "@/lib/timezone-utils";
@@ -85,7 +86,7 @@ export default function BlogAdminClient() {
   const [selectedTab, setSelectedTab] = useState(() => {
     if (typeof window !== "undefined") {
       const tab = new URLSearchParams(window.location.search).get("tab");
-      if (tab && ["posts", "pipeline", "media", "routines", "documents", "settings"].includes(tab)) {
+      if (tab && ["posts", "pipeline", "media", "routines", "documents", "performance", "settings"].includes(tab)) {
         return tab;
       }
     }
@@ -1345,6 +1346,7 @@ export default function BlogAdminClient() {
             <TabsTrigger value="media">Media</TabsTrigger>
             <TabsTrigger value="routines">Agents</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="settings">Brand</TabsTrigger>
           </TabsList>
 
@@ -2684,6 +2686,11 @@ export default function BlogAdminClient() {
           {/* Documents Tab */}
           <TabsContent value="documents" className="space-y-6">
             <DocumentsTab />
+          </TabsContent>
+
+          {/* Performance Tab */}
+          <TabsContent value="performance" className="space-y-6">
+            <PerformanceTab />
           </TabsContent>
 
           {/* Settings Tab */}
