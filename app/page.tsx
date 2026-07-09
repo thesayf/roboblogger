@@ -54,7 +54,7 @@ export default async function HomePage() {
             href="/start"
             className="text-sm font-semibold text-white bg-[#111111] px-6 py-2.5 rounded-full hover:bg-[#333333] transition-colors cursor-pointer"
           >
-            Get 100 Free Posts
+            Start your blog
           </Link>
         </div>
       </nav>
@@ -64,36 +64,36 @@ export default async function HomePage() {
           ============================================ */}
       <section className="bg-[#111111] text-white">
         <div className="max-w-[1100px] mx-auto px-6 sm:px-8 pt-20 sm:pt-28 pb-20 sm:pb-28">
-          <div className="max-w-[720px] mx-auto text-center">
+          <div className="max-w-[820px] mx-auto text-center">
             <p className="text-sm font-medium text-[#888888] uppercase tracking-[0.15em] mb-8">
-              Your AI content team
+              For startups that need to be found
             </p>
             <h1 className="font-lora text-[36px] sm:text-[60px] font-normal leading-[1.12] tracking-[-0.02em] mb-7">
-              Your blog.<br />
-              On autopilot.
+              An AI-powered blog engine for startups.{' '}<br />
+              $49/month.
             </h1>
-            <p className="text-[17px] sm:text-lg text-[#999999] leading-[1.7] max-w-[520px] mx-auto mb-10">
-              Tell Vibeblogger your niche. It researches keywords, writes posts,
-              generates images, and publishes on your schedule. Like having an
-              SEO expert on your team for $49/mo.
+            <p className="text-[17px] sm:text-lg text-[#999999] leading-[1.7] max-w-[650px] mx-auto mb-10">
+              Work with AI agents to create deep, meaningful blog posts that fit
+              your brand, connect with your users, and make your product easier
+              to find across Google and AI search.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
               <Link
                 href="/start"
                 className="text-[15px] font-semibold text-[#111111] bg-white px-9 py-3.5 rounded-full hover:bg-[#F0F0F0] transition-colors cursor-pointer inline-flex items-center justify-center gap-2"
               >
-                Get 100 free posts
+                Start your blog
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
                 href="/blog"
                 className="text-[15px] font-medium text-white border border-[#444444] px-9 py-3.5 rounded-full hover:border-[#666666] transition-colors text-center"
               >
-                See live examples
+                See example posts
               </Link>
             </div>
             <p className="text-[13px] text-[#666666]">
-              100 free posts. 5-minute setup.
+              100 starter posts included. Then $49/month.
             </p>
           </div>
 
@@ -125,16 +125,17 @@ export default async function HomePage() {
       <section className="bg-[#FAFAF8]">
         <div className="max-w-[900px] mx-auto px-6 sm:px-8 py-20 sm:py-24">
           <h2 className="font-lora text-[28px] sm:text-[36px] font-normal leading-snug text-center mb-4">
-            You know you need a blog. You don&apos;t have time.
+            Your app needs to rank. You don&apos;t have time to become the blog team.
           </h2>
-          <p className="text-[15px] text-[#666666] text-center max-w-[480px] mx-auto mb-16">
-            Every option sucks — until now.
+          <p className="text-[15px] text-[#666666] text-center max-w-[560px] mx-auto mb-16">
+            A proper blog has to live on your site, fit your brand, answer real
+            questions, and keep publishing while you are still building the product.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-10">
             <div className="bg-white border border-[#E0DED8] rounded-lg p-7">
               <div className="text-[13px] font-medium text-[#CC4444] uppercase tracking-[0.1em] mb-4">Hiring a writer</div>
               <ul className="space-y-2.5">
-                {["$300–500 per post", "Weeks of back and forth", "Quality varies wildly", "No SEO expertise included"].map((item) => (
+                {["$300-500+ per post", "You still manage strategy", "Hard to explain your product", "Slow edits and publishing"].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
                     <span className="text-[#CC4444] mt-0.5 text-sm shrink-0">✕</span>
                     <span className="text-sm text-[#666666]">{item}</span>
@@ -143,9 +144,9 @@ export default async function HomePage() {
               </ul>
             </div>
             <div className="bg-white border border-[#E0DED8] rounded-lg p-7">
-              <div className="text-[13px] font-medium text-[#CC4444] uppercase tracking-[0.1em] mb-4">Using ChatGPT</div>
+              <div className="text-[13px] font-medium text-[#CC4444] uppercase tracking-[0.1em] mb-4">Using generic AI</div>
               <ul className="space-y-2.5">
-                {["Generic AI slop", "No keyword research", "No images or formatting", "Hours of copy-paste"].map((item) => (
+                {["Generic AI slop", "No brand memory", "No search strategy", "You still copy, paste, format"].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
                     <span className="text-[#CC4444] mt-0.5 text-sm shrink-0">✕</span>
                     <span className="text-sm text-[#666666]">{item}</span>
@@ -156,7 +157,7 @@ export default async function HomePage() {
             <div className="bg-white border border-[#E0DED8] rounded-lg p-7">
               <div className="text-[13px] font-medium text-[#CC4444] uppercase tracking-[0.1em] mb-4">Doing it yourself</div>
               <ul className="space-y-2.5">
-                {["Keyword research takes hours", "Writing takes days", "Still need images & SEO", "Unsustainable long-term"].map((item) => (
+                {["Research eats weekends", "Writing competes with product", "Images and SEO still missing", "Publishing never compounds"].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
                     <span className="text-[#CC4444] mt-0.5 text-sm shrink-0">✕</span>
                     <span className="text-sm text-[#666666]">{item}</span>
@@ -177,11 +178,12 @@ export default async function HomePage() {
             The solution
           </p>
           <h2 className="font-lora text-[28px] sm:text-[40px] font-normal leading-snug text-center mb-5">
-            Meet your AI content team
+            A blog that learns your brand and publishes to your site
           </h2>
-          <p className="text-[15px] text-[#666666] text-center max-w-[500px] mx-auto mb-16">
-            A strategist that plans your content. Agents that execute it daily.
-            One product that replaces your entire content workflow.
+          <p className="text-[15px] text-[#666666] text-center max-w-[560px] mx-auto mb-16">
+            Vibeblogger gives startups AI agents that research your market, write
+            useful posts in your voice, create images, and deliver everything
+            through your own website.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-10">
@@ -191,8 +193,8 @@ export default async function HomePage() {
               </div>
               <h3 className="font-lora text-[20px] font-normal mb-3">Strategist</h3>
               <p className="text-sm text-[#666666] leading-relaxed">
-                Tell it your goals in plain English. It researches your competitors,
-                finds keyword gaps, and builds your content calendar.
+                Turns your product, audience, and competitors into topics built
+                around search demand and customer intent.
               </p>
             </div>
             <div className="text-center md:text-left">
@@ -201,8 +203,8 @@ export default async function HomePage() {
               </div>
               <h3 className="font-lora text-[20px] font-normal mb-3">Creator</h3>
               <p className="text-sm text-[#666666] leading-relaxed">
-                Researches real data, writes long-form posts with 15+ component types,
-                generates images, and optimizes every page for SEO.
+                Writes researched, structured articles that explain your point of
+                view instead of sounding like everyone else.
               </p>
             </div>
             <div className="text-center md:text-left">
@@ -211,8 +213,8 @@ export default async function HomePage() {
               </div>
               <h3 className="font-lora text-[20px] font-normal mb-3">Agents</h3>
               <p className="text-sm text-[#666666] leading-relaxed">
-                Set agents to run daily, weekly, or monthly. They audit SEO, find trending
-                topics, publish posts, and improve your results — on autopilot.
+                Queue posts, create images, audit SEO, and refresh content so your
+                blog keeps improving without a content team.
               </p>
             </div>
           </div>
@@ -227,21 +229,21 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div>
               <p className="text-sm font-medium text-[#888888] uppercase tracking-[0.15em] mb-6">
-                Set it and forget it
+                Founder-led, agent-run
               </p>
               <h2 className="font-lora text-[28px] sm:text-[36px] font-normal leading-snug mb-5">
-                Your blog grows<br />while you sleep
+                You set the tone.<br />Agents handle the workflow.
               </h2>
               <p className="text-[15px] text-[#666666] leading-relaxed mb-8">
-                Set up agents that work on your blog every day. Research trends,
-                publish posts, audit SEO issues — all on a schedule you define.
-                Wake up to a better blog than you left.
+                Give Vibeblogger your niche, brand voice, product context, and
+                topics. Agents turn that into blog posts that live on your site
+                and support discovery in Google and AI search.
               </p>
               <div className="flex flex-col gap-4">
                 {[
-                  { icon: Calendar, label: "Daily publishing on autopilot" },
-                  { icon: Search, label: "Weekly trend & keyword research" },
-                  { icon: Shield, label: "Monthly SEO audits & fixes" },
+                  { icon: Calendar, label: "Brand-aware publishing on your schedule" },
+                  { icon: Search, label: "Weekly keyword and customer-question research" },
+                  { icon: Shield, label: "SEO audits, internal links, and refreshes" },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-[#111111] rounded-full flex items-center justify-center shrink-0">
@@ -261,22 +263,22 @@ export default async function HomePage() {
                     <Zap className="w-3.5 h-3.5 text-white" />
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-[#111111]">Content Publisher</div>
-                    <div className="text-[12px] text-[#888888]">Runs daily at 9:00 AM</div>
+                    <div className="text-sm font-medium text-[#111111]">Brand Blog Agent</div>
+                    <div className="text-[12px] text-[#888888]">Runs on your schedule</div>
                   </div>
                 </div>
                 <div className="text-[11px] font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full">Active</div>
               </div>
               <div className="bg-[#FAFAF8] rounded-lg p-4 mb-5">
                 <p className="text-[13px] text-[#666666] leading-relaxed italic">
-                  &ldquo;Research trending topics in my niche, pick the best one, write a full post with images, and publish it.&rdquo;
+                  &ldquo;Research my market, write an on-brand post for founders building with AI, create images, and queue it for review.&rdquo;
                 </p>
               </div>
               <div className="flex items-center justify-between text-[12px] text-[#888888] border-t border-[#F0EEE8] pt-4">
                 <span>Last run: Today, 9:00 AM</span>
                 <span className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-green-600" />
-                  Published &ldquo;5 Sprint Planning Tips&rdquo;
+                  Queued &ldquo;How to Get Your First Users&rdquo;
                 </span>
               </div>
               {/* Second agent card */}
@@ -287,7 +289,7 @@ export default async function HomePage() {
                       <Search className="w-3.5 h-3.5 text-white" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-[#111111]">SEO Auditor</div>
+                      <div className="text-sm font-medium text-[#111111]">Search Visibility Agent</div>
                       <div className="text-[12px] text-[#888888]">Runs weekly on Mondays</div>
                     </div>
                   </div>
@@ -297,7 +299,7 @@ export default async function HomePage() {
                   <span>Last run: Monday, 8:00 AM</span>
                   <span className="flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-green-600" />
-                    Fixed 3 SEO issues
+                    Found 3 refresh opportunities
                   </span>
                 </div>
               </div>
@@ -315,11 +317,11 @@ export default async function HomePage() {
             Content quality
           </p>
           <h2 className="font-lora text-[28px] sm:text-[36px] font-normal leading-snug text-center mb-5">
-            Rich, structured content that ranks
+            Deep, structured content built to be found
           </h2>
-          <p className="text-[15px] text-[#666666] text-center max-w-[520px] mx-auto mb-16">
-            Every post is built from 15+ component types — data tables, callouts,
-            charts, images, and more. Real research, not a wall of text.
+          <p className="text-[15px] text-[#666666] text-center max-w-[560px] mx-auto mb-16">
+            Every post can include data tables, callouts, charts, images, FAQs,
+            and more. Real research, your voice, and a page that belongs on your website.
           </p>
 
           <div className="rounded-xl overflow-hidden shadow-lg border border-[#E0DED8]">
@@ -345,11 +347,11 @@ export default async function HomePage() {
             Built for developers
           </p>
           <h2 className="font-lora text-[28px] sm:text-[36px] font-normal leading-snug text-center mb-5">
-            Your blog. Your frontend. Our engine.
+            Your blog. Your website. Your brand.
           </h2>
-          <p className="text-[15px] text-[#666666] text-center max-w-[480px] mx-auto mb-14">
-            Fetch posts via API. Build with Next.js, Astro, Remix —
-            whatever you want. Structured JSON, ready to render.
+          <p className="text-[15px] text-[#888888] text-center max-w-[540px] mx-auto mb-14">
+            Fetch posts via API. Build with Next.js, Astro, Remix, or whatever
+            you use. The content lives on your product site, not a generic blog subdomain.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
@@ -405,11 +407,11 @@ export default async function HomePage() {
                   <span className="text-[#999999]">()</span>
                   {"\n"}
                   {"\n"}
-                  <span className="text-[#555555]">{"// => SEO-optimized posts with"}</span>
+                  <span className="text-[#555555]">{"// => on-brand posts with"}</span>
                   {"\n"}
                   <span className="text-[#555555]">{"//    structured components, images,"}</span>
                   {"\n"}
-                  <span className="text-[#555555]">{"//    and full metadata"}</span>
+                  <span className="text-[#555555]">{"//    links, metadata, and assets"}</span>
                 </code>
               </pre>
             </div>
@@ -420,12 +422,12 @@ export default async function HomePage() {
                 <div className="text-[11px] text-[#555555] uppercase tracking-[0.1em] mb-3">What you get back</div>
                 <div className="space-y-3">
                   {[
-                    "Full post content with structured components",
-                    "SEO metadata (title, description, Open Graph)",
+                    "Structured article components",
+                    "SEO metadata and schema-friendly content",
                     "AI-generated images with alt text",
-                    "Internal links mapped across posts",
-                    "Schema.org markup (Article, HowTo, FAQ)",
-                    "Pagination & filtering built in",
+                    "Internal links across your library",
+                    "Brand voice and audience context",
+                    "Pagination and filtering built in",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-2.5">
                       <Check className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
@@ -454,8 +456,9 @@ export default async function HomePage() {
           <h2 className="font-lora text-[28px] sm:text-[36px] font-normal leading-snug text-center mb-5">
             How it compares
           </h2>
-          <p className="text-[15px] text-[#666666] text-center max-w-[480px] mx-auto mb-14">
-            One tool that replaces your entire content stack.
+          <p className="text-[15px] text-[#666666] text-center max-w-[560px] mx-auto mb-14">
+            Built for startups that need a real blog without hiring a writer or
+            managing a content stack.
           </p>
 
           <div className="overflow-x-auto">
@@ -471,13 +474,13 @@ export default async function HomePage() {
               </thead>
               <tbody className="text-[13px]">
                 {[
-                  { label: "Cost per post", vals: ["$300–500", "Free*", "$5–15", "~$5"] },
+                  { label: "Cost per post", vals: ["$300-500+", "Free*", "$5-15", "~$5"] },
+                  { label: "Brand fit", vals: ["Takes handoff", "Weak", "Templates", "Brand settings"] },
                   { label: "SEO research", vals: ["Maybe", "No", "Partial", "Full"] },
-                  { label: "AI images", vals: ["No", "No", "No", "Yes"] },
-                  { label: "Auto-publish", vals: ["No", "No", "No", "Yes"] },
-                  { label: "Headless API", vals: ["No", "No", "No", "Yes"] },
+                  { label: "Lives on your site", vals: ["Manual", "No", "Usually no", "Headless API"] },
+                  { label: "AI search readiness", vals: ["Maybe", "No", "Partial", "Structured content"] },
                   { label: "Autonomous agents", vals: ["No", "No", "No", "Yes"] },
-                  { label: "Time per post", vals: ["3–7 days", "2–3 hours", "30–60 min", "~2 min"] },
+                  { label: "Time per post", vals: ["3-7 days", "2-3 hours", "30-60 min", "~2 min"] },
                 ].map((row, i) => (
                   <tr key={row.label} className={i < 6 ? "border-b border-[#E0DED8]" : ""}>
                     <td className="py-3.5 pr-4 text-[#444444] font-medium">{row.label}</td>
@@ -507,15 +510,15 @@ export default async function HomePage() {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-10 gap-y-10">
             {[
-              { icon: Search, title: "SEO keyword research", desc: "Real search volume, difficulty, and competitor data. Not guesswork." },
-              { icon: PenTool, title: "Long-form AI writing", desc: "2,000+ word articles that read naturally. Your brand voice, every time." },
+              { icon: Search, title: "SEO keyword research", desc: "Find search demand, customer questions, and competitor gaps before each post." },
+              { icon: PenTool, title: "Long-form AI writing", desc: "Thoughtful articles written from your brand settings, not generic prompts." },
               { icon: Image, title: "AI-generated images", desc: "Custom images generated to match your content and brand style." },
-              { icon: Code2, title: "Headless API", desc: "Structured JSON. Build your frontend however you want." },
-              { icon: Zap, title: "Autonomous agents", desc: "Set agents to work daily — publishing, auditing, and improving." },
-              { icon: TrendingUp, title: "Competitor analysis", desc: "See what keywords competitors rank for. Then outrank them." },
-              { icon: BarChart3, title: "SEO audits", desc: "Find and fix issues across your blog. Automatically." },
-              { icon: Calendar, title: "Auto-publish scheduling", desc: "Queue posts weeks ahead. They publish on time, every time." },
-              { icon: Users, title: "Brand voice settings", desc: "Set your tone, audience, and guidelines once. Every post follows them." },
+              { icon: Code2, title: "Headless API", desc: "Publish directly into your existing app site with structured JSON." },
+              { icon: Zap, title: "Autonomous agents", desc: "Run research, publishing, SEO audits, and refresh workflows on a cadence." },
+              { icon: TrendingUp, title: "Competitor analysis", desc: "See what similar products rank for, then build better posts." },
+              { icon: BarChart3, title: "SEO audits", desc: "Improve metadata, internal links, and search structure after posts go live." },
+              { icon: Calendar, title: "Auto-publish scheduling", desc: "Queue content for review or publish on your schedule." },
+              { icon: Users, title: "Brand voice settings", desc: "Set tone, audience, positioning, and rules once. Every post follows them." },
             ].map((feature) => (
               <div key={feature.title} className="flex gap-4">
                 <div className="w-9 h-9 bg-[#F5F4F0] rounded-lg flex items-center justify-center shrink-0">
@@ -537,18 +540,18 @@ export default async function HomePage() {
       <section className="bg-[#FAFAF8]">
         <div className="max-w-[600px] mx-auto px-6 sm:px-8 py-20 sm:py-24 text-center">
           <h2 className="font-lora text-[28px] sm:text-[36px] font-normal leading-snug mb-4">
-            Less than a single freelance blog post
+            A startup blog for less than one freelance article
           </h2>
           <p className="text-[15px] text-[#666666] leading-relaxed mb-2">
-            A freelance writer charges $300–500 per post.
+            A freelance writer can cost $300-500 per post.
           </p>
           <p className="text-[15px] text-[#666666] leading-relaxed mb-10">
-            Vibeblogger gives you an entire AI content team for <span className="text-[#111111] font-semibold">$49/month</span>.
+            Vibeblogger gives you research, writing, images, publishing, and agents for <span className="text-[#111111] font-semibold">$49/month</span>.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
             <SignUpButton mode="modal">
               <button className="text-[15px] font-semibold text-white bg-[#111111] px-9 py-3.5 rounded-full hover:bg-[#333333] transition-colors cursor-pointer inline-flex items-center justify-center gap-2">
-                Start with 100 free posts
+                Start your blog
                 <ArrowRight className="w-4 h-4" />
               </button>
             </SignUpButton>
@@ -559,7 +562,7 @@ export default async function HomePage() {
               See full pricing
             </Link>
           </div>
-          <p className="text-[13px] text-[#999999]">Cancel anytime</p>
+          <p className="text-[13px] text-[#999999]">100 starter posts included. Cancel anytime.</p>
         </div>
       </section>
 
@@ -574,12 +577,12 @@ export default async function HomePage() {
           <div className="space-y-10">
             {[
               {
-                q: "Will Google penalize AI content?",
-                a: "Google doesn't penalize AI content — it penalizes low-quality content. Every Vibeblogger post is backed by real keyword data and multi-source research. 86% of top-ranking pages already contain AI-assisted content."
+                q: "Will this help with Google and AI search?",
+                a: "No tool can guarantee rankings. Vibeblogger creates researched, structured, crawlable articles on your own site, with metadata, internal links, and content that helps search engines and answer engines understand what your product does."
               },
               {
                 q: "Does it actually sound human?",
-                a: "Every post follows your brand voice settings and uses 15+ content components — callouts, quotes, tables, CTAs. No walls of text. No \"in today's fast-paced world.\""
+                a: "Every post follows your brand voice settings and uses 15+ content components like callouts, quotes, tables, and CTAs. No walls of text. No \"in today's fast-paced world.\""
               },
               {
                 q: "What if I want to edit posts after?",
@@ -587,11 +590,11 @@ export default async function HomePage() {
               },
               {
                 q: "Can I use this with my existing site?",
-                a: "Yes. The headless API delivers structured JSON. Use it with Next.js, Astro, Remix, WordPress, or anything else. Your design, our content engine."
+                a: "Yes. The headless API delivers structured JSON. Use it with Next.js, Astro, Remix, WordPress, or anything else. Your design, your website, Vibeblogger content."
               },
               {
-                q: "What's included in the free plan?",
-                a: "5 blog posts, full SEO research, agent chat, and API access. Upgrade to Pro when you're ready for agents, auto-publish, and images."
+                q: "What's included in the starter offer?",
+                a: "You get 100 starter posts so you can build out a real blog before paying for a writer or committing to a content team."
               },
             ].map((faq) => (
               <div key={faq.q}>
@@ -609,16 +612,16 @@ export default async function HomePage() {
       <section className="bg-[#111111] text-white">
         <div className="max-w-[600px] mx-auto px-6 sm:px-8 py-24 sm:py-28 text-center">
           <h2 className="font-lora text-[32px] sm:text-[40px] font-normal tracking-tight mb-4">
-            Your competitors are blogging.<br />Are you?
+            Give your startup the blog it keeps putting off.
           </h2>
           <p className="text-base text-[#999999] mb-9">
-            100 free posts. 5-minute setup.
+            Deep, on-brand posts on your site. 100 starter posts included.
           </p>
           <Link
             href="/start"
             className="text-[15px] font-semibold text-[#111111] bg-white px-9 py-3.5 rounded-full hover:bg-[#F0F0F0] transition-colors cursor-pointer inline-flex items-center gap-2"
           >
-            Get your 100 free posts
+            Start your blog
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -642,7 +645,7 @@ export default async function HomePage() {
           </div>
           <div className="mt-8 pt-6 border-t border-[#E0DED8] text-center">
             <p className="text-[12px] text-[#AAAAAA]">
-              vibeblogger.io — This blog is powered by Vibeblogger
+              vibeblogger.io — AI-powered blog engine for startups
             </p>
           </div>
         </div>

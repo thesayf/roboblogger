@@ -29,7 +29,7 @@ export function generateBlogListSchema(
     "@type": "CollectionPage",
     headline: `The ${BRAND_NAME} Blog`,
     description:
-      "AI blogging tips, SEO strategies, and insights to help you publish content that ranks — with zero effort.",
+      "SEO strategies, startup content ideas, and AI blogging insights for founders building a blog that fits their brand.",
     url: `${baseUrl}/blog`,
     mainEntity: {
       "@type": "ItemList",
@@ -105,7 +105,7 @@ export function generateHomePageSchema(baseUrl = BASE_URL) {
     name: BRAND_NAME,
     url: baseUrl,
     description:
-      "AI that researches, writes, and publishes SEO-optimized blog posts for your app. Headless API. Beautiful components. Zero effort.",
+      "AI-powered blog engine for startups. Work with AI agents to create deep, meaningful blog posts that fit your brand, connect with your users, and make your product easier to find across Google and AI search.",
     publisher: {
       "@type": "Organization",
       name: BRAND_NAME,
@@ -126,9 +126,10 @@ export function generateHomePageSchema(baseUrl = BASE_URL) {
         priceCurrency: "USD",
       },
       featureList: [
-        "AI-powered blog post generation",
+        "AI-powered blog engine for startups",
         "SEO keyword research and optimization",
         "Headless API for any frontend",
+        "Brand voice settings",
         "15+ content component types",
         "AI-generated images",
         "Auto-publish scheduling",

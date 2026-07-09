@@ -16,10 +16,10 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://vibeblogger.io"),
   title: {
     template: "%s | Vibeblogger",
-    default: "Vibeblogger — Blog posts that rank. Zero effort.",
+    default: "Vibeblogger - AI-powered blog engine for startups",
   },
   description:
-    "AI that researches, writes, and publishes SEO-optimized blog posts for your app. Headless API. Beautiful components. Zero effort.",
+    "Work with AI agents to create deep, meaningful blog posts that fit your brand, connect with your users, and make your product easier to find across Google and AI search.",
   icons: {
     icon: [
       { url: "/V.png", type: "image/png", sizes: "512x512" },
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
         url: "/homepage-og.jpg",
         width: 1200,
         height: 630,
-        alt: "Vibeblogger — Blog posts that rank. Zero effort.",
+        alt: "Vibeblogger - AI-powered blog engine for startups",
       },
     ],
   },
