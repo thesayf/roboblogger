@@ -86,10 +86,12 @@ export default async function HomePage() {
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                href="/blog"
+                href="https://calendly.com/hello-vibeblogger/30min"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-[15px] font-medium text-white border border-[#444444] px-9 py-3.5 rounded-full hover:border-[#666666] transition-colors text-center"
               >
-                See example posts
+                Book a live demo
               </Link>
             </div>
             <p className="text-[13px] text-[#666666]">
