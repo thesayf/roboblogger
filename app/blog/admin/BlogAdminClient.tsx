@@ -78,6 +78,10 @@ import { SubscriptionBanner } from "./components/SubscriptionBanner";
 import { TopicDetailSheet } from "./components/TopicDetailSheet";
 import { localDateTimeToUTC, utcToLocalDateTime } from "@/lib/timezone-utils";
 import { useCredits } from "@/lib/contexts/CreditsContext";
+import {
+  GENERATION_MODE_OPTIONS,
+  type GenerationProvider,
+} from "@/lib/generation/generation-mode";
 
 export default function BlogAdminClient() {
   const router = useRouter();
@@ -134,6 +138,7 @@ export default function BlogAdminClient() {
     referenceImages: [] as string[],
     scheduledAt: "",
     priority: "medium",
+    generationProvider: "deepseek" as GenerationProvider,
     tags: [] as string[],
     notes: "",
     estimatedDuration: 5,
@@ -694,6 +699,7 @@ export default function BlogAdminClient() {
       brandContext: "",
       imageContext: "",
       priority: "medium",
+      generationProvider: "deepseek" as GenerationProvider,
       tags: [],
       notes: "",
       estimatedDuration: 5,
@@ -1719,6 +1725,35 @@ export default function BlogAdminClient() {
 
                             <div>
                               <label className="text-[13px] font-medium text-[#111111] mb-2 block">
+                                Generation Mode
+                              </label>
+                              <Select
+                                value={topicForm.generationProvider}
+                                onValueChange={(value) =>
+                                  setTopicForm((prev) => ({
+                                    ...prev,
+                                    generationProvider: value as GenerationProvider,
+                                  }))
+                                }
+                              >
+                                <SelectTrigger
+                                  className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
+                                  title="Choose Efficient or Premium generation"
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {GENERATION_MODE_OPTIONS.map((mode) => (
+                                    <SelectItem key={mode.value} value={mode.provider}>
+                                      {mode.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div>
+                              <label className="text-[13px] font-medium text-[#111111] mb-2 block">
                                 Schedule <span className="text-[#888888] font-normal">(Optional)</span>
                               </label>
                               <DateTimePicker
@@ -2334,9 +2369,9 @@ export default function BlogAdminClient() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
+                    <div className="bg-white rounded-xl border border-[#E0DED8] overflow-x-auto">
                       {/* Table Header */}
-                      <div className="grid grid-cols-[auto_1fr_110px_120px_48px] gap-4 px-5 py-3 border-b border-[#F0EEE8] bg-[#FAFAF8]">
+                      <div className="grid min-w-[760px] grid-cols-[auto_minmax(240px,1fr)_110px_110px_120px_48px] gap-4 px-5 py-3 border-b border-[#F0EEE8] bg-[#FAFAF8]">
                         <div className="flex items-center">
                           <input
                             type="checkbox"
@@ -2361,6 +2396,7 @@ export default function BlogAdminClient() {
                         </div>
                         <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Topic</span>
                         <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Status</span>
+                        <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Mode</span>
                         <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Scheduled</span>
                         <span></span>
                       </div>
@@ -2371,7 +2407,7 @@ export default function BlogAdminClient() {
                         return (
                           <div
                             key={topic._id}
-                            className={`grid grid-cols-[auto_1fr_110px_120px_48px] gap-4 px-5 py-4 border-b border-[#F0EEE8] hover:bg-[#FAFAF8] transition-colors items-center cursor-pointer ${
+                            className={`grid min-w-[760px] grid-cols-[auto_minmax(240px,1fr)_110px_110px_120px_48px] gap-4 px-5 py-4 border-b border-[#F0EEE8] hover:bg-[#FAFAF8] transition-colors items-center cursor-pointer ${
                               selectedTopics.includes(topic._id) ? "bg-blue-50" : ""
                             }`}
                             onClick={() => { setDetailTopic(topic); setShowDetailSheet(true); }}
@@ -2423,6 +2459,31 @@ export default function BlogAdminClient() {
 
                             {/* Status cell */}
                             <div>{getStatusBadgeElement(displayStatus, topic)}</div>
+
+                            {/* Generation mode cell */}
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <Select
+                                value={topic.generationProvider || "deepseek"}
+                                onValueChange={(value) => handleUpdateTopic(topic._id, {
+                                  generationProvider: value as GenerationProvider,
+                                })}
+                                disabled={topic.status === "generating" || topic.status === "completed"}
+                              >
+                                <SelectTrigger
+                                  className="h-8 w-[106px] bg-white border-[#E0DED8] text-[12px]"
+                                  title="Generation mode"
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {GENERATION_MODE_OPTIONS.map((mode) => (
+                                    <SelectItem key={mode.value} value={mode.provider}>
+                                      {mode.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
 
                             {/* Scheduled date cell */}
                             <div className="text-[13px] text-[#666666] whitespace-nowrap">

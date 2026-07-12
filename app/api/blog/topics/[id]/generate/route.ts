@@ -65,6 +65,7 @@ export async function POST(
     executeGenerationAgent({
       topicId: topic._id.toString(),
       ownerId: topic.owner.toString(),
+      provider: topic.generationProvider,
     })
       .then(result => {
         console.log(`[Generate] Agent completed for topic ${topic._id}: ${result.success ? 'success' : 'failed'}${result.postId ? ` (post ${result.postId})` : ''}${result.error ? ` — ${result.error}` : ''}`);

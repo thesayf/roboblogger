@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
+import type { GenerationProvider } from './generation-mode';
 
-export type GenerationProvider = 'anthropic' | 'deepseek';
+export type { GenerationProvider } from './generation-mode';
 
 export interface GenerationProviderConfig {
   provider: GenerationProvider;

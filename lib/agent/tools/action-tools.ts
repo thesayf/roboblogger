@@ -12,6 +12,7 @@ import {
   buildImageStylePrompt,
   analyzeReferenceImages,
 } from '@/lib/generation/image-utils';
+import { generationModeToProvider } from '@/lib/generation/generation-mode';
 
 function wrapTool(ctx: ToolContext, toolName: string, fn: (input: any) => Promise<string>) {
   return async (input: any): Promise<string> => {
@@ -59,6 +60,7 @@ export function buildActionTools(ctx: ToolContext) {
           description: z.string().optional().describe('Context hint for how to reference this post'),
         })).optional().describe('Pre-planned internal links to include in the generated post'),
         researchMode: z.enum(['guided', 'exploratory']).optional().describe('Research mode: "guided" (default) researches a specific topic, "exploratory" discovers the best angle and recommends a title — use exploratory when the user wants to find what\'s interesting in a broad area'),
+        generationMode: z.enum(['efficient', 'premium']).optional().describe('Generation mode: "efficient" uses DeepSeek V4 Pro with Claude fallback; "premium" uses Claude Opus 4.6'),
       }),
       run: wrapTool(ctx, 'create_topic', async (input) => {
         await dbConnect();
@@ -70,6 +72,7 @@ export function buildActionTools(ctx: ToolContext) {
           length: input.length,
           priority: input.priority || 'medium',
           researchMode: input.researchMode,
+          generationProvider: generationModeToProvider(input.generationMode),
           source: 'individual',
           owner: ctx.userId,
           tags: input.tags,
@@ -90,7 +93,7 @@ export function buildActionTools(ctx: ToolContext) {
         return JSON.stringify({
           success: true,
           topicId: topic._id.toString(),
-          message: `Topic "${input.topic}" added to the generation queue with ${input.priority || 'medium'} priority.`,
+          message: `Topic "${input.topic}" added to the generation queue in ${input.generationMode || 'efficient'} mode with ${input.priority || 'medium'} priority.`,
         });
       }),
     }),
@@ -120,6 +123,7 @@ export function buildActionTools(ctx: ToolContext) {
             description: z.string().optional(),
           })).optional().describe('Pre-planned internal links'),
           researchMode: z.enum(['guided', 'exploratory']).optional().describe('Research mode: "guided" or "exploratory"'),
+          generationMode: z.enum(['efficient', 'premium']).optional().describe('Generation mode: "efficient" or "premium"'),
         })).max(20).describe('Array of topics to add (max 20)'),
       }),
       run: wrapTool(ctx, 'create_topics_bulk', async (input) => {
@@ -132,6 +136,7 @@ export function buildActionTools(ctx: ToolContext) {
           length: t.length,
           priority: t.priority || 'medium',
           researchMode: t.researchMode,
+          generationProvider: generationModeToProvider(t.generationMode),
           source: 'bulk' as const,
           owner: ctx.userId,
           tags: t.tags,
@@ -182,6 +187,7 @@ export function buildActionTools(ctx: ToolContext) {
           title: z.string().describe('Post title'),
           description: z.string().optional().describe('Context hint for how to reference this post'),
         })).optional().describe('Pre-planned internal links to include in the generated post'),
+        generationMode: z.enum(['efficient', 'premium']).optional().describe('Change generation mode: "efficient" uses DeepSeek V4 Pro with Claude fallback; "premium" uses Claude Opus 4.6'),
       }),
       run: wrapTool(ctx, 'update_topic', async (input) => {
         await dbConnect();
@@ -197,6 +203,7 @@ export function buildActionTools(ctx: ToolContext) {
         if (input.imageContext) update.imageContext = input.imageContext;
         if (input.referenceImages) update.referenceImages = input.referenceImages;
         if (input.internalLinks) update.internalLinks = input.internalLinks;
+        if (input.generationMode) update.generationProvider = generationModeToProvider(input.generationMode);
         if (input.primaryKeyword || input.secondaryKeywords || input.searchIntent) {
           if (input.primaryKeyword) update['seo.primaryKeyword'] = input.primaryKeyword;
           if (input.secondaryKeywords) update['seo.secondaryKeywords'] = input.secondaryKeywords;
@@ -217,7 +224,7 @@ export function buildActionTools(ctx: ToolContext) {
 
         return JSON.stringify({
           success: true,
-          message: `Topic "${topic.topic}" updated.`,
+          message: `Topic "${topic.topic}" updated${input.generationMode ? ` to ${input.generationMode} mode` : ''}.`,
         });
       }),
     }),
@@ -246,6 +253,7 @@ export function buildActionTools(ctx: ToolContext) {
             title: z.string(),
             description: z.string().optional(),
           })).optional(),
+          generationMode: z.enum(['efficient', 'premium']).optional().describe('Generation mode: "efficient" or "premium"'),
         })).max(20).describe('Array of topic updates (max 20)'),
       }),
       run: wrapTool(ctx, 'update_topics_bulk', async (input) => {
@@ -266,6 +274,7 @@ export function buildActionTools(ctx: ToolContext) {
             if (t.imageContext) update.imageContext = t.imageContext;
             if (t.referenceImages) update.referenceImages = t.referenceImages;
             if (t.internalLinks) update.internalLinks = t.internalLinks;
+            if (t.generationMode) update.generationProvider = generationModeToProvider(t.generationMode);
             if (t.primaryKeyword || t.secondaryKeywords || t.searchIntent) {
               if (t.primaryKeyword) update['seo.primaryKeyword'] = t.primaryKeyword;
               if (t.secondaryKeywords) update['seo.secondaryKeywords'] = t.secondaryKeywords;

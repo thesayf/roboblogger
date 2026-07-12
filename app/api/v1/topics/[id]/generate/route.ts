@@ -52,6 +52,7 @@ export async function POST(
   executeGenerationAgent({
     topicId: topic._id.toString(),
     ownerId: auth.validation.ownerId!,
+    provider: topic.generationProvider,
   }).catch((error) => {
     console.error(`[API v1] Generation crashed for topic ${topic._id}:`, error);
   });

@@ -38,6 +38,10 @@ import {
   Link2,
 } from "lucide-react";
 import { utcToLocalDateTime, localDateTimeToUTC } from "@/lib/timezone-utils";
+import {
+  GENERATION_MODE_OPTIONS,
+  type GenerationProvider,
+} from "@/lib/generation/generation-mode";
 
 interface TopicDetailSheetProps {
   topic: any | null;
@@ -62,6 +66,7 @@ const defaultForm = {
   referenceImages: [] as string[],
   scheduledAt: "",
   priority: "medium",
+  generationProvider: "deepseek" as GenerationProvider,
   tags: [] as string[],
   notes: "",
   internalLinks: [] as Array<{ postId: string; slug: string; title: string; description?: string }>,
@@ -95,6 +100,7 @@ function populateForm(topic: any) {
     imageContext: topic.imageContext || "",
     referenceImages: topic.referenceImages || [],
     priority: topic.priority || "medium",
+    generationProvider: (topic.generationProvider || "deepseek") as GenerationProvider,
     tags: topic.tags || [],
     notes: topic.notes || "",
     internalLinks: topic.internalLinks || [],
@@ -319,6 +325,10 @@ export function TopicDetailSheet({
           <Field label="Tone" value={topic.tone} />
           <Field label="Length" value={topic.length} />
           <Field label="Priority" value={getPriorityBadge(topic.priority || "medium")} />
+          <Field
+            label="Mode"
+            value={GENERATION_MODE_OPTIONS.find((mode) => mode.provider === (topic.generationProvider || "deepseek"))?.label}
+          />
           <Field label="Scheduled" value={topic.scheduledAt ? formatDate(topic.scheduledAt) : null} />
           <Field label="Source" value={topic.source} />
           <Field label="Tags" value={topic.tags?.length > 0 ? <KeywordList keywords={topic.tags} /> : null} />
@@ -475,6 +485,30 @@ export function TopicDetailSheet({
               <SelectItem value="low">Low</SelectItem>
               <SelectItem value="medium">Medium</SelectItem>
               <SelectItem value="high">High</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className="text-[13px] font-medium text-[#111111] mb-2 block">Generation Mode</label>
+          <Select
+            value={formData.generationProvider}
+            onValueChange={(value) => setFormData((prev) => ({
+              ...prev,
+              generationProvider: value as GenerationProvider,
+            }))}
+          >
+            <SelectTrigger
+              className="h-10 bg-white border-[#E0DED8] focus:border-[#111111] text-[14px]"
+              title="Choose Efficient or Premium generation"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {GENERATION_MODE_OPTIONS.map((mode) => (
+                <SelectItem key={mode.value} value={mode.provider}>
+                  {mode.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

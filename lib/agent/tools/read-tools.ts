@@ -17,6 +17,7 @@ import {
   getSearchConsolePagePerformance,
   getSearchConsoleUrlPerformance,
 } from '@/lib/search-console';
+import { generationProviderToMode } from '@/lib/generation/generation-mode';
 
 function wrapTool(ctx: ToolContext, toolName: string, fn: (input: any) => Promise<string>) {
   return async (input: any): Promise<string> => {
@@ -229,7 +230,7 @@ export function buildReadTools(ctx: ToolContext) {
             .sort({ priority: -1, createdAt: -1 })
             .skip(offset)
             .limit(limit)
-            .select('topic status priority scheduledAt seo.primaryKeyword tags createdAt')
+            .select('topic status priority generationProvider scheduledAt seo.primaryKeyword tags createdAt')
             .lean(),
           Topic.countDocuments(filter),
         ]);
@@ -244,6 +245,7 @@ export function buildReadTools(ctx: ToolContext) {
             topic: t.topic,
             status: t.status,
             priority: t.priority,
+            generationMode: generationProviderToMode(t.generationProvider),
             scheduledAt: t.scheduledAt?.toISOString(),
             primaryKeyword: t.seo?.primaryKeyword,
             tags: t.tags,

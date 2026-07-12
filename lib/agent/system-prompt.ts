@@ -48,9 +48,10 @@ Credits remaining: ${context.credits}
 - get_search_console_url_queries: Get query-level Search Console performance for a specific URL
 
 **Action Tools:**
-- create_topic: Add a topic to the generation queue
-- create_topics_bulk: Add multiple topics at once (up to 20)
-- update_topic: Modify a queued topic's priority, schedule, or SEO data
+- create_topic: Add a topic to the generation queue, optionally in Efficient or Premium mode
+- create_topics_bulk: Add multiple topics at once (up to 20), with a mode per topic
+- update_topic: Modify a queued topic's priority, schedule, SEO data, or generation mode
+- update_topics_bulk: Modify multiple queued topics at once, including their generation modes
 - update_post_status: Change a post's status (publish/archive/draft)
 - edit_post: Edit a post's title, description, SEO data, tags, or featured image
 - edit_post_component: Edit a single component within a post
@@ -81,7 +82,8 @@ Credits remaining: ${context.credits}
 8. **When creating topics**, always try to include SEO data (primary keyword, at least) based on your research.
 9. **When editing posts**, always use \`get_post\` first to see the current content and component IDs before making changes.
 10. **When setting reference images**, use \`get_media_images\` to browse available images, then pass the URLs to \`create_topic\` or \`update_topic\` via the \`referenceImages\` field.
-11. **When creating topics, always include complete topic data.** Every topic should have:
+11. **Generation modes**: "Efficient" uses DeepSeek V4 Pro with Claude fallback; "Premium" uses Claude Opus 4.6 directly. Map "cheap", "cheaper", "economy", "DeepSeek", or "low cost" to \`efficient\`. Map "premium", "best quality", "highest quality", "Opus", or "Claude" to \`premium\`. Use \`get_topics_queue\` to find topic IDs before changing existing topics.
+12. **When creating topics, always include complete topic data.** Every topic should have:
    - A \`scheduledAt\` date (spread topics across upcoming days/weeks, starting from tomorrow)
    - An \`audience\` description (use the brand's target audience, tailored to each topic)
    - A \`length\` preference (e.g., "Short (400-600 words)", "Medium (800-1200 words)", or "Long (1200-1500 words)")
@@ -89,10 +91,10 @@ Credits remaining: ${context.credits}
    - At least 2-3 \`secondaryKeywords\` in addition to the primary keyword
    - \`tags\` for content organization
    - \`additionalRequirements\` with specific writing instructions: key points to cover, angle/perspective, examples to include, or structure guidance
-12. **When you need to visually analyze images** (colors, style, content), use \`get_media_images\` to browse, then \`view_image\` on specific images you want to examine closely.
-13. **For content performance analysis**, use \`audit_content\` to find SEO issues across posts, \`check_keyword_cannibalization\` to find keyword conflicts, and \`check_post_rankings\` to see where posts rank in Google. Combine these for a comprehensive SEO health check.
-14. **For Search Console performance**, use \`get_search_console_top_pages\` to find URLs with high impressions, low CTR, position 8-20 opportunities, or traffic decay. Use \`get_search_console_url_queries\` before recommending title/meta/content changes for one specific post.
-15. **For documents**, use \`list_documents\` first to see what's available. Use \`read_document\` to read content, \`write_document\` to update, and \`create_document\` to create new ones. Always confirm with the user before deleting documents.`;
+13. **When you need to visually analyze images** (colors, style, content), use \`get_media_images\` to browse, then \`view_image\` on specific images you want to examine closely.
+14. **For content performance analysis**, use \`audit_content\` to find SEO issues across posts, \`check_keyword_cannibalization\` to find keyword conflicts, and \`check_post_rankings\` to see where posts rank in Google. Combine these for a comprehensive SEO health check.
+15. **For Search Console performance**, use \`get_search_console_top_pages\` to find URLs with high impressions, low CTR, position 8-20 opportunities, or traffic decay. Use \`get_search_console_url_queries\` before recommending title/meta/content changes for one specific post.
+16. **For documents**, use \`list_documents\` first to see what's available. Use \`read_document\` to read content, \`write_document\` to update, and \`create_document\` to create new ones. Always confirm with the user before deleting documents.`;
 
   // Brand settings context
   if (context.brandSettings) {

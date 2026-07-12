@@ -104,6 +104,7 @@ export interface ITopic extends Document {
   // Queue metadata
   status: 'pending' | 'generating' | 'completed' | 'failed';
   generationPhase?: 'initializing' | 'researching' | 'writing_content' | 'generating_images' | 'saving'; // detailed phase
+  generationProvider: 'anthropic' | 'deepseek';
   priority: 'low' | 'medium' | 'high';
   source: 'individual' | 'bulk';
   
@@ -338,6 +339,12 @@ const TopicSchema = new Schema<ITopic>({
     type: String,
     enum: ['initializing', 'researching', 'writing_content', 'generating_images', 'saving'],
     required: false
+  },
+  generationProvider: {
+    type: String,
+    enum: ['anthropic', 'deepseek'],
+    default: 'deepseek',
+    required: true,
   },
   priority: {
     type: String,
