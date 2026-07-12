@@ -413,6 +413,7 @@ function buildSystemPrompt(topic: any, brand: any): string {
     prompt += `## BRAND IDENTITY\n`;
     if (brand.blogName) prompt += `Blog: ${brand.blogName}\n`;
     if (brand.blogDescription) prompt += `Description: ${brand.blogDescription}\n`;
+    if (brand.blogUrl) prompt += `Blog URL: ${brand.blogUrl}\n`;
     if (brand.targetAudience) prompt += `Target Audience: ${brand.targetAudience}\n`;
     if (brand.tone) prompt += `Tone: ${brand.tone === 'custom' ? brand.customTone : brand.tone}\n`;
     if (brand.styleGuidelines) prompt += `Style Guidelines: ${brand.styleGuidelines}\n`;
@@ -479,6 +480,7 @@ CONTENT GUIDELINES:
 - Cite sources with attribution throughout
 - Match the brand tone and style guidelines
 - Structure for easy scanning: headers, lists, short paragraphs
+- For CTA links, use the configured Blog URL when available or a relative path such as /start. Never invent a domain.
 
 `;
 
