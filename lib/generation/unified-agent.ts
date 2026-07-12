@@ -254,17 +254,8 @@ async function runGenerationAttempt(options: {
     console.log(`${tag} Starting ${config.provider}/${config.model}`);
     const client = createGenerationClient(config);
     const tools = buildGenerationTools(toolCtx);
-    const runner = client.beta.messages.toolRunner({
-      model: config.model,
-      max_tokens: 16384,
-      max_iterations: config.maxTurns,
-      system: systemPrompt,
-      tools,
-      messages: [{ role: 'user', content: userMessage }],
-      stream: false,
-    });
 
-    for await (const message of runner) {
+    const processMessage = async (message: any) => {
       turnNumber++;
       addGenerationTokenUsage(usage, message.usage);
 
@@ -293,6 +284,75 @@ async function runGenerationAttempt(options: {
         if (text.length > 0) {
           console.log(`${tag} Turn ${turnNumber} text (${text.length} chars): ${text.slice(0, 200)}...`);
         }
+      }
+
+      return toolUseBlocks;
+    };
+
+    if (config.provider === 'deepseek') {
+      const messages: any[] = [{ role: 'user', content: userMessage }];
+      const apiTools = tools.map((tool: any) => ({
+        name: tool.name,
+        description: tool.description,
+        input_schema: tool.input_schema,
+      }));
+
+      for (let iteration = 0; iteration < config.maxTurns; iteration++) {
+        const message = await client.messages.create({
+          model: config.model,
+          max_tokens: 16384,
+          system: systemPrompt,
+          tools: apiTools as any,
+          messages,
+        });
+        const toolUseBlocks = await processMessage(message);
+        messages.push({ role: 'assistant', content: message.content });
+
+        if (toolUseBlocks.length === 0) break;
+
+        const toolResults = await Promise.all(toolUseBlocks.map(async (block: any) => {
+          const tool = tools.find((candidate: any) => candidate.name === block.name) as any;
+          if (!tool) {
+            return {
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: `Error: Unknown tool ${block.name}`,
+              is_error: true,
+            };
+          }
+
+          try {
+            const result = await tool.run(tool.parse(block.input));
+            return {
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: result,
+            };
+          } catch (error) {
+            return {
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              is_error: true,
+            };
+          }
+        }));
+
+        messages.push({ role: 'user', content: toolResults });
+      }
+    } else {
+      const runner = client.beta.messages.toolRunner({
+        model: config.model,
+        max_tokens: 16384,
+        max_iterations: config.maxTurns,
+        system: systemPrompt,
+        tools,
+        messages: [{ role: 'user', content: userMessage }],
+        stream: false,
+      });
+
+      for await (const message of runner) {
+        await processMessage(message);
       }
     }
 
