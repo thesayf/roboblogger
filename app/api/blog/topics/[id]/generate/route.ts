@@ -129,6 +129,7 @@ export async function GET(
         errorMessage: topic.errorMessage,
         retryCount: topic.retryCount,
         generatedPostId: topic.generatedPostId,
+        generationMetadata: topic.generationMetadata,
         updatedAt: topic.updatedAt
       },
       blogPost

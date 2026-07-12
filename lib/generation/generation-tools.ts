@@ -25,6 +25,7 @@ export interface GenerationToolContext {
   topicId: string;
   imageContext: string;
   referenceImages: string[];
+  deferFailureStatus?: boolean;
   // Cached after first image tool call
   _referenceAnalysis?: string;
   _stylePrompt?: string;
@@ -349,6 +350,28 @@ export function buildGenerationTools(ctx: GenerationToolContext) {
         try {
           await dbConnect();
 
+          // A provider fallback may retry after the first provider already saved.
+          // Return that post instead of publishing a duplicate.
+          const topic = await Topic.findById(ctx.topicId)
+            .select('generatedPostId')
+            .lean() as any;
+          if (topic?.generatedPostId) {
+            const savedPost = await BlogPost.findOne({
+              _id: topic.generatedPostId,
+              owner: ctx.ownerId,
+            }).select('_id slug components').lean() as any;
+
+            if (savedPost) {
+              return JSON.stringify({
+                success: true,
+                alreadySaved: true,
+                postId: savedPost._id.toString(),
+                slug: savedPost.slug,
+                componentsCount: savedPost.components?.length || 0,
+              });
+            }
+          }
+
           // Check slug uniqueness
           const existing = await BlogPost.findOne({ slug: input.blogPost.slug });
           if (existing) {
@@ -424,6 +447,13 @@ export function buildGenerationTools(ctx: GenerationToolContext) {
             await topic.markAsCompleted(topic.generatedPostId);
             console.log(`[generation] Topic ${ctx.topicId} marked completed`);
           } else {
+            if (ctx.deferFailureStatus) {
+              return JSON.stringify({
+                success: false,
+                deferred: true,
+                message: 'The generation runner will handle failure and provider fallback.',
+              });
+            }
             await topic.markAsFailed(input.errorMessage || 'Generation failed');
             console.log(`[generation] Topic ${ctx.topicId} marked failed: ${input.errorMessage}`);
           }

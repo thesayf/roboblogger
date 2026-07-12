@@ -75,7 +75,7 @@ export async function GET(
 
   await dbConnect();
   const topic = await Topic.findOne({ _id: params.id, owner: auth.validation.ownerId })
-    .select('topic status generationPhase errorMessage retryCount generatedPostId updatedAt')
+    .select('topic status generationPhase errorMessage retryCount generatedPostId generationMetadata updatedAt')
     .lean() as any;
 
   if (!topic) {

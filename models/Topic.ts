@@ -118,6 +118,28 @@ export interface ITopic extends Document {
   
   // Generation results
   generatedPostId?: string; // ObjectId reference to created BlogPost
+  generationMetadata?: {
+    requestedProvider: 'anthropic' | 'deepseek';
+    finalProvider?: 'anthropic' | 'deepseek';
+    finalModel?: string;
+    attempts: Array<{
+      provider: 'anthropic' | 'deepseek';
+      model: string;
+      success: boolean;
+      turns: number;
+      toolCalls: number;
+      toolCallsByName: Record<string, number>;
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadInputTokens: number;
+      cacheCreationInputTokens: number;
+      estimatedModelCostUsd: number;
+      durationSeconds: number;
+      error?: string;
+    }>;
+    totalEstimatedModelCostUsd: number;
+    completedAt: Date;
+  };
   errorMessage?: string; // if generation failed
   failureReason?: string; // reason for failure (timeout, max retries, etc.)
   retryCount: number;
@@ -358,6 +380,10 @@ const TopicSchema = new Schema<ITopic>({
   // Generation results
   generatedPostId: {
     type: String // BlogPost ObjectId as string
+  },
+  generationMetadata: {
+    type: Schema.Types.Mixed,
+    default: null,
   },
   errorMessage: {
     type: String,

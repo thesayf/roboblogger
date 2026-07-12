@@ -7,12 +7,22 @@
  * Replaces the multi-stage Upstash Workflow pipeline.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
 import User from '@/models/User';
 import BrandSettings from '@/models/BrandSettings';
 import { buildGenerationTools, GenerationToolContext } from './generation-tools';
+import {
+  addGenerationTokenUsage,
+  createGenerationClient,
+  emptyGenerationTokenUsage,
+  estimateGenerationModelCost,
+  GenerationProvider,
+  GenerationProviderConfig,
+  GenerationTokenUsage,
+  getGenerationProviderAttempts,
+  resolveGenerationProvider,
+} from './generation-provider';
 import { outputJsonFormat } from './output-format';
 import {
   generateResearchSystemPrompt,
@@ -21,19 +31,36 @@ import {
   generateExploratoryUserPrompt,
 } from '@/lib/research/research-prompts';
 
-const MAX_TURNS = 50;
-
 export interface GenerationResult {
   success: boolean;
   postId?: string;
   error?: string;
   turns?: number;
   toolCalls?: number;
+  provider?: GenerationProvider;
+  model?: string;
+  usage?: GenerationTokenUsage & { estimatedModelCostUsd: number };
+  attempts?: number;
+}
+
+interface GenerationAttemptResult {
+  provider: GenerationProvider;
+  model: string;
+  success: boolean;
+  postId?: string;
+  error?: string;
+  turns: number;
+  toolCalls: number;
+  toolCallsByName: Record<string, number>;
+  usage: GenerationTokenUsage;
+  estimatedModelCostUsd: number;
+  durationSeconds: number;
 }
 
 export async function executeGenerationAgent(options: {
   topicId: string;
   ownerId: string;
+  provider?: GenerationProvider;
 }): Promise<GenerationResult> {
   const { topicId, ownerId } = options;
   const tag = `[Gen:${topicId.slice(-6)}]`;
@@ -69,8 +96,12 @@ export async function executeGenerationAgent(options: {
     const systemPrompt = buildSystemPrompt(topic, brand);
     const userMessage = buildUserMessage(topic);
 
+    const requestedProvider = resolveGenerationProvider(options.provider);
+    const providerAttempts = getGenerationProviderAttempts(requestedProvider);
+
     console.log(`${tag} Topic: "${topic.topic}"`);
     console.log(`${tag} Mode: ${topic.researchMode || 'guided'}`);
+    console.log(`${tag} Provider: ${requestedProvider}`);
     console.log(`${tag} System prompt: ${systemPrompt.length} chars`);
 
     // Build tools
@@ -82,80 +113,103 @@ export async function executeGenerationAgent(options: {
       referenceImages: topic.referenceImages?.length > 0
         ? topic.referenceImages
         : (brand?.referenceImages || []),
+      deferFailureStatus: true,
     };
 
-    const tools = buildGenerationTools(toolCtx);
+    const attemptResults: GenerationAttemptResult[] = [];
+    let successfulAttempt: GenerationAttemptResult | undefined;
 
-    // Create the agent runner
-    const client = new Anthropic({ maxRetries: 5 });
-    const runner = client.beta.messages.toolRunner({
-      model: 'claude-opus-4-6',
-      max_tokens: 16384,
-      system: systemPrompt,
-      tools,
-      messages: [{ role: 'user', content: userMessage }],
-      stream: false,
-    });
-
-    // Run the agent loop
-    let turnNumber = 0;
-    let postSaved = false;
-
-    for await (const messageStream of runner) {
-      turnNumber++;
-
-      const toolUseBlocks = messageStream.content.filter((b: any) => b.type === 'tool_use');
-      const textBlocks = messageStream.content.filter((b: any) => b.type === 'text');
-
-      // Log tool calls
-      for (const block of toolUseBlocks) {
-        const tb = block as any;
-        console.log(`${tag} Turn ${turnNumber}: ${tb.name}`);
-
-        // Track phase based on tool usage
-        if (['searchTopicInfo', 'searchExpertOpinions', 'searchWithExa', 'findSimilarContent', 'getFullContent'].includes(tb.name)) {
-          await Topic.findByIdAndUpdate(topicId, { generationPhase: 'researching' }).catch(() => {});
-        } else if (tb.name === 'generateImage' || tb.name === 'viewImage') {
-          await Topic.findByIdAndUpdate(topicId, { generationPhase: 'generating_images' }).catch(() => {});
-        } else if (tb.name === 'saveBlogPost') {
-          await Topic.findByIdAndUpdate(topicId, { generationPhase: 'saving' }).catch(() => {});
-          postSaved = true;
-        } else if (tb.name === 'searchInternalPosts') {
-          await Topic.findByIdAndUpdate(topicId, { generationPhase: 'writing_content' }).catch(() => {});
-        }
+    for (let index = 0; index < providerAttempts.length; index++) {
+      const config = providerAttempts[index];
+      if (index > 0) {
+        console.warn(`${tag} Falling back to ${config.provider}/${config.model}`);
+        await Topic.findByIdAndUpdate(topicId, {
+          status: 'generating',
+          generationPhase: 'initializing',
+          $unset: { errorMessage: 1, retryAfter: 1 },
+        });
       }
 
-      // Log text output
-      for (const block of textBlocks) {
-        const text = (block as any).text;
-        if (text.length > 0) {
-          console.log(`${tag} Turn ${turnNumber} text (${text.length} chars): ${text.slice(0, 200)}...`);
-        }
-      }
+      const result = await runGenerationAttempt({
+        config,
+        systemPrompt,
+        userMessage,
+        toolCtx,
+        topicId,
+        tag,
+      });
+      attemptResults.push(result);
 
-      if (turnNumber >= MAX_TURNS) {
-        console.log(`${tag} Hit max turns (${MAX_TURNS}), stopping`);
+      if (result.success) {
+        successfulAttempt = result;
         break;
       }
+
+      console.error(`${tag} ${config.provider}/${config.model} failed: ${result.error}`);
     }
 
-    // Check if the post was saved
-    const updatedTopic = await Topic.findById(topicId);
-    const finalPostId = updatedTopic?.generatedPostId;
+    const totalEstimatedModelCostUsd = Math.round(
+      attemptResults.reduce((sum, attempt) => sum + attempt.estimatedModelCostUsd, 0) * 1_000_000,
+    ) / 1_000_000;
 
-    if (!finalPostId && !postSaved) {
-      console.error(`${tag} Agent finished without saving a post`);
-      await updatedTopic?.markAsFailed('Agent completed without saving a blog post');
-      return { success: false, error: 'Agent did not save a post', turns: turnNumber };
+    const generationMetadata = {
+      requestedProvider,
+      finalProvider: successfulAttempt?.provider,
+      finalModel: successfulAttempt?.model,
+      attempts: attemptResults.map((attempt) => ({
+        provider: attempt.provider,
+        model: attempt.model,
+        success: attempt.success,
+        turns: attempt.turns,
+        toolCalls: attempt.toolCalls,
+        toolCallsByName: attempt.toolCallsByName,
+        ...attempt.usage,
+        estimatedModelCostUsd: attempt.estimatedModelCostUsd,
+        durationSeconds: attempt.durationSeconds,
+        error: attempt.error,
+      })),
+      totalEstimatedModelCostUsd,
+      completedAt: new Date(),
+    };
+
+    if (!successfulAttempt?.postId) {
+      const errorMsg = attemptResults.at(-1)?.error || 'Agent did not save a post';
+      const failedTopic = await Topic.findById(topicId);
+      if (failedTopic && failedTopic.status !== 'completed') {
+        await failedTopic.markAsFailed(errorMsg.substring(0, 500));
+      }
+      await Topic.findByIdAndUpdate(topicId, { generationMetadata });
+
+      return {
+        success: false,
+        error: errorMsg,
+        turns: attemptResults.reduce((sum, attempt) => sum + attempt.turns, 0),
+        toolCalls: attemptResults.reduce((sum, attempt) => sum + attempt.toolCalls, 0),
+        attempts: attemptResults.length,
+      };
     }
+
+    const completedTopic = await Topic.findById(topicId);
+    if (completedTopic?.status !== 'completed') {
+      await completedTopic?.markAsCompleted(successfulAttempt.postId);
+    }
+    await Topic.findByIdAndUpdate(topicId, { generationMetadata });
 
     const elapsed = Math.round((Date.now() - startTime) / 1000);
-    console.log(`${tag} ── DONE ── ${turnNumber} turns, ${elapsed}s ──────`);
+    console.log(`${tag} ── DONE ── ${successfulAttempt.turns} turns, ${elapsed}s ──────`);
 
     return {
       success: true,
-      postId: finalPostId?.toString(),
-      turns: turnNumber,
+      postId: successfulAttempt.postId,
+      turns: successfulAttempt.turns,
+      toolCalls: successfulAttempt.toolCalls,
+      provider: successfulAttempt.provider,
+      model: successfulAttempt.model,
+      usage: {
+        ...successfulAttempt.usage,
+        estimatedModelCostUsd: successfulAttempt.estimatedModelCostUsd,
+      },
+      attempts: attemptResults.length,
     };
 
   } catch (error) {
@@ -177,6 +231,105 @@ export async function executeGenerationAgent(options: {
       success: false,
       error: errorMsg,
       turns: 0,
+    };
+  }
+}
+
+async function runGenerationAttempt(options: {
+  config: GenerationProviderConfig;
+  systemPrompt: string;
+  userMessage: string;
+  toolCtx: GenerationToolContext;
+  topicId: string;
+  tag: string;
+}): Promise<GenerationAttemptResult> {
+  const { config, systemPrompt, userMessage, toolCtx, topicId, tag } = options;
+  const attemptStartTime = Date.now();
+  const usage = emptyGenerationTokenUsage();
+  const toolCallsByName: Record<string, number> = {};
+  let turnNumber = 0;
+  let toolCalls = 0;
+
+  try {
+    console.log(`${tag} Starting ${config.provider}/${config.model}`);
+    const client = createGenerationClient(config);
+    const tools = buildGenerationTools(toolCtx);
+    const runner = client.beta.messages.toolRunner({
+      model: config.model,
+      max_tokens: 16384,
+      max_iterations: config.maxTurns,
+      system: systemPrompt,
+      tools,
+      messages: [{ role: 'user', content: userMessage }],
+      stream: false,
+    });
+
+    for await (const message of runner) {
+      turnNumber++;
+      addGenerationTokenUsage(usage, message.usage);
+
+      const toolUseBlocks = message.content.filter((block: any) => block.type === 'tool_use');
+      const textBlocks = message.content.filter((block: any) => block.type === 'text');
+
+      for (const block of toolUseBlocks) {
+        const toolName = (block as any).name as string;
+        toolCalls++;
+        toolCallsByName[toolName] = (toolCallsByName[toolName] || 0) + 1;
+        console.log(`${tag} Turn ${turnNumber}: ${toolName}`);
+
+        if (['searchTopicInfo', 'searchExpertOpinions', 'searchWithExa', 'findSimilarContent', 'getFullContent'].includes(toolName)) {
+          await Topic.findByIdAndUpdate(topicId, { generationPhase: 'researching' }).catch(() => {});
+        } else if (toolName === 'generateImage' || toolName === 'viewImage') {
+          await Topic.findByIdAndUpdate(topicId, { generationPhase: 'generating_images' }).catch(() => {});
+        } else if (toolName === 'saveBlogPost') {
+          await Topic.findByIdAndUpdate(topicId, { generationPhase: 'saving' }).catch(() => {});
+        } else if (toolName === 'searchInternalPosts') {
+          await Topic.findByIdAndUpdate(topicId, { generationPhase: 'writing_content' }).catch(() => {});
+        }
+      }
+
+      for (const block of textBlocks) {
+        const text = (block as any).text;
+        if (text.length > 0) {
+          console.log(`${tag} Turn ${turnNumber} text (${text.length} chars): ${text.slice(0, 200)}...`);
+        }
+      }
+    }
+
+    const updatedTopic = await Topic.findById(topicId).select('generatedPostId').lean() as any;
+    const postId = updatedTopic?.generatedPostId?.toString();
+    const estimatedModelCostUsd = estimateGenerationModelCost(config, usage);
+    const durationSeconds = Math.round((Date.now() - attemptStartTime) / 1000);
+
+    return {
+      provider: config.provider,
+      model: config.model,
+      success: Boolean(postId),
+      postId,
+      error: postId ? undefined : 'Agent completed without saving a blog post',
+      turns: turnNumber,
+      toolCalls,
+      toolCallsByName,
+      usage,
+      estimatedModelCostUsd,
+      durationSeconds,
+    };
+  } catch (error) {
+    const updatedTopic = await Topic.findById(topicId).select('generatedPostId').lean().catch(() => null) as any;
+    const postId = updatedTopic?.generatedPostId?.toString();
+
+    return {
+      provider: config.provider,
+      model: config.model,
+      success: Boolean(postId),
+      postId,
+      error: postId ? undefined : (error instanceof Error ? error.message : String(error)),
+      turns: turnNumber,
+      toolCalls,
+      toolCallsByName,
+      usage,
+      estimatedModelCostUsd: estimateGenerationModelCost(config, usage),
+      durationSeconds: Math.round((Date.now() - attemptStartTime) / 1000),
     };
   }
 }
