@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useCallback, useRef } from 'react';
+import type { ChatImageAttachment } from '@/lib/chat/attachments';
 
 export interface ChatMessageUI {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  attachments?: ChatImageAttachment[];
   toolCalls?: Array<{
     name: string;
     input: Record<string, any>;
@@ -28,7 +30,7 @@ interface UseChatReturn {
   error: string | null;
   conversationId: string | null;
   conversations: ConversationInfo[];
-  sendMessage: (message: string) => Promise<void>;
+  sendMessage: (message: string, attachments?: ChatImageAttachment[]) => Promise<void>;
   loadConversation: (id: string) => Promise<void>;
   loadConversations: () => Promise<void>;
   loadTodayConversation: () => Promise<void>;
@@ -68,6 +70,7 @@ export function useChat(): UseChatReturn {
           id: m.id,
           role: m.role,
           content: m.content,
+          attachments: m.attachments || [],
           toolCalls: m.toolCalls?.map((tc: any) => ({
             ...tc,
             status: 'complete' as const,
@@ -106,7 +109,7 @@ export function useChat(): UseChatReturn {
   }, [loadConversation]);
 
   const sendMessage = useCallback(
-    async (message: string) => {
+    async (message: string, attachments: ChatImageAttachment[] = []) => {
       if (isStreaming) return;
 
       setError(null);
@@ -118,6 +121,7 @@ export function useChat(): UseChatReturn {
         id: `temp-${Date.now()}`,
         role: 'user',
         content: message,
+        attachments,
         createdAt: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, userMsg]);
@@ -139,7 +143,7 @@ export function useChat(): UseChatReturn {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message, conversationId }),
+          body: JSON.stringify({ message, attachments, conversationId }),
           signal: abortRef.current.signal,
         });
 

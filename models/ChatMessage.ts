@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import type { ChatImageAttachment } from '@/lib/chat/attachments';
 
 export interface IChatMessage extends Document {
   conversationId: mongoose.Types.ObjectId;
@@ -6,6 +7,7 @@ export interface IChatMessage extends Document {
   date: string; // YYYY-MM-DD
   role: 'user' | 'assistant';
   content: string;
+  attachments?: ChatImageAttachment[];
   toolCalls?: Array<{
     name: string;
     input: Record<string, any>;
@@ -38,8 +40,20 @@ const ChatMessageSchema = new Schema<IChatMessage>(
     },
     content: {
       type: String,
-      required: true,
+      default: '',
     },
+    attachments: [{
+      _id: false,
+      type: { type: String, enum: ['image'], required: true },
+      fileId: { type: String, required: true },
+      name: { type: String, required: true },
+      url: { type: String, required: true },
+      thumbnailUrl: String,
+      mimeType: { type: String, required: true },
+      size: { type: Number, required: true },
+      width: Number,
+      height: Number,
+    }],
     toolCalls: [{
       name: String,
       input: Schema.Types.Mixed,

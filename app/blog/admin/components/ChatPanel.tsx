@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useChat, type ConversationInfo } from '@/hooks/useChat';
 import ChatMessageComponent from './ChatMessage';
 import ChatInput from './ChatInput';
+import type { ChatImageAttachment } from '@/lib/chat/attachments';
 
 export default function ChatPanel({ onClose }: { onClose?: () => void }) {
   const {
@@ -52,8 +53,8 @@ export default function ChatPanel({ onClose }: { onClose?: () => void }) {
     }
   }, [dataChanged, clearDataChanged]);
 
-  const handleSend = async (message: string) => {
-    await sendMessage(message);
+  const handleSend = async (message: string, attachments: ChatImageAttachment[]) => {
+    await sendMessage(message, attachments);
   };
 
   const handleShowHistory = async () => {

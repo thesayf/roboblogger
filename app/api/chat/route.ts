@@ -10,9 +10,83 @@ import { ToolContext, ToolCallInfo } from '@/lib/agent/types';
 import { generateChatEmbedding } from '@/lib/agent/embeddings';
 import { createMemoryClient, addMemory } from '@/lib/agent/memory';
 import { calculateChatCredits, deductCredits } from '@/lib/billing/credit-service';
+import {
+  CHAT_IMAGE_MAX_BYTES,
+  CHAT_IMAGE_MAX_COUNT,
+  CHAT_IMAGE_MIME_TYPES,
+  type ChatImageAttachment,
+} from '@/lib/chat/attachments';
 
 const CHAT_MODEL = 'claude-sonnet-4-6';
 const MIN_CREDITS_PREFLIGHT = 0.02; // Minimum credits to start a chat
+const HISTORICAL_IMAGE_MESSAGE_LIMIT = 2;
+
+function normalizeAttachments(value: unknown, ownerId: string): ChatImageAttachment[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new Error('Attachments must be an array.');
+  if (value.length > CHAT_IMAGE_MAX_COUNT) {
+    throw new Error(`You can attach up to ${CHAT_IMAGE_MAX_COUNT} images.`);
+  }
+
+  const imagekitEndpoint = process.env.IMAGEKIT_URL_ENDPOINT?.replace(/\/$/, '');
+  if (!imagekitEndpoint && value.length > 0) {
+    throw new Error('Image uploads are not configured.');
+  }
+  const ownedPath = `${imagekitEndpoint}/chat-images/${ownerId}/`;
+
+  return value.map((attachment) => {
+    if (!attachment || typeof attachment !== 'object') {
+      throw new Error('Invalid image attachment.');
+    }
+
+    const candidate = attachment as Record<string, unknown>;
+    const mimeType = typeof candidate.mimeType === 'string' ? candidate.mimeType : '';
+    const url = typeof candidate.url === 'string' ? candidate.url : '';
+    const thumbnailUrl = typeof candidate.thumbnailUrl === 'string' ? candidate.thumbnailUrl : undefined;
+    const size = typeof candidate.size === 'number' ? candidate.size : Number.NaN;
+
+    if (
+      candidate.type !== 'image' ||
+      typeof candidate.fileId !== 'string' ||
+      typeof candidate.name !== 'string' ||
+      !CHAT_IMAGE_MIME_TYPES.includes(mimeType as (typeof CHAT_IMAGE_MIME_TYPES)[number]) ||
+      !Number.isFinite(size) ||
+      size <= 0 ||
+      size > CHAT_IMAGE_MAX_BYTES ||
+      !url.startsWith(ownedPath) ||
+      (thumbnailUrl && !thumbnailUrl.startsWith(imagekitEndpoint!))
+    ) {
+      throw new Error('Invalid image attachment.');
+    }
+
+    return {
+      type: 'image',
+      fileId: candidate.fileId,
+      name: candidate.name,
+      url,
+      thumbnailUrl,
+      mimeType,
+      size,
+      width: typeof candidate.width === 'number' ? candidate.width : undefined,
+      height: typeof candidate.height === 'number' ? candidate.height : undefined,
+    };
+  });
+}
+
+function buildUserContent(
+  text: string,
+  attachments: ChatImageAttachment[]
+): Anthropic.ContentBlockParam[] | string {
+  if (attachments.length === 0) return text;
+
+  return [
+    ...attachments.map((attachment): Anthropic.ImageBlockParam => ({
+      type: 'image',
+      source: { type: 'url', url: attachment.url },
+    })),
+    { type: 'text', text },
+  ];
+}
 
 export async function POST(req: Request) {
   try {
@@ -21,11 +95,26 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
-    const { message, conversationId } = await req.json();
+    const body = await req.json();
+    const message = typeof body.message === 'string' ? body.message.trim() : '';
+    const conversationId = body.conversationId;
+    let attachments: ChatImageAttachment[];
 
-    if (!message || typeof message !== 'string') {
-      return new Response(JSON.stringify({ error: 'Message is required' }), { status: 400 });
+    try {
+      attachments = normalizeAttachments(body.attachments, user.mongoId);
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: error instanceof Error ? error.message : 'Invalid attachments' }),
+        { status: 400 }
+      );
     }
+
+    if (!message && attachments.length === 0) {
+      return new Response(JSON.stringify({ error: 'Message or image is required' }), { status: 400 });
+    }
+
+    const modelMessage = message || 'Please analyse the attached image or images.';
+    const conversationTitle = message || `Image: ${attachments[0].name}`;
 
     // Credits pre-flight check (minimum to start — actual cost calculated after)
     if (user.credits < MIN_CREDITS_PREFLIGHT) {
@@ -53,7 +142,7 @@ export async function POST(req: Request) {
         conv = await Conversation.create({
           owner: user.mongoId,
           date: today,
-          title: message.slice(0, 100),
+          title: conversationTitle.slice(0, 100),
         });
       }
     }
@@ -61,21 +150,38 @@ export async function POST(req: Request) {
     // Load previous messages for this conversation
     const previousMessages = await ChatMessage.find({ conversationId: conv._id })
       .sort({ createdAt: 1 })
-      .select('role content')
+      .select('role content attachments')
       .lean() as any[];
 
+    const recentImageMessageIndexes = new Set(
+      previousMessages
+        .map((msg, index) => ({ index, hasImages: Array.isArray(msg.attachments) && msg.attachments.length > 0 }))
+        .filter(({ hasImages }) => hasImages)
+        .slice(-HISTORICAL_IMAGE_MESSAGE_LIMIT)
+        .map(({ index }) => index)
+    );
+
     // Build messages array for Claude
-    const claudeMessages: Anthropic.MessageParam[] = previousMessages.map((msg: any) => ({
-      role: msg.role === 'user' ? 'user' as const : 'assistant' as const,
-      content: msg.content,
-    }));
+    const claudeMessages: Anthropic.MessageParam[] = previousMessages.map((msg: any, index) => {
+      const role = msg.role === 'user' ? 'user' as const : 'assistant' as const;
+      const previousAttachments = Array.isArray(msg.attachments) ? msg.attachments : [];
+      const attachmentLabel = previousAttachments.length > 0
+        ? `[Previously attached images: ${previousAttachments.map((attachment: ChatImageAttachment) => attachment.name).join(', ')}]`
+        : '';
+      return {
+        role,
+        content: role === 'user' && recentImageMessageIndexes.has(index)
+          ? buildUserContent(msg.content || 'Please analyse the attached image or images.', previousAttachments)
+          : [msg.content, attachmentLabel].filter(Boolean).join('\n'),
+      };
+    });
 
     // Load context (brand settings, 7-day history, Mem0 memories)
-    const context = await loadAgentContext(user, message);
+    const context = await loadAgentContext(user, modelMessage);
 
     // Add current message with injected context
-    const contextualMessage = buildContextualMessage(message, context);
-    claudeMessages.push({ role: 'user', content: contextualMessage });
+    const contextualMessage = buildContextualMessage(modelMessage, context);
+    claudeMessages.push({ role: 'user', content: buildUserContent(contextualMessage, attachments) });
 
     const systemPrompt = buildSystemPrompt(context);
 
@@ -105,12 +211,13 @@ export async function POST(req: Request) {
         const tools = buildTools(toolCtx);
 
         // Save user message immediately so it's never lost
-        await ChatMessage.create({
+        const savedUserMessage = await ChatMessage.create({
           conversationId: conv._id,
           owner: user.mongoId,
           date: today,
           role: 'user',
           content: message,
+          attachments,
         });
 
         let assistantContent = '';
@@ -243,7 +350,7 @@ export async function POST(req: Request) {
           // Update title if this is the first message
           if (previousMessages.length === 0) {
             await Conversation.findByIdAndUpdate(conv._id, {
-              title: message.slice(0, 100),
+              title: conversationTitle.slice(0, 100),
             });
           }
 
@@ -265,15 +372,9 @@ export async function POST(req: Request) {
           (async () => {
             try {
               const [userEmb, assistantEmb] = await Promise.all([
-                generateChatEmbedding(message),
+                generateChatEmbedding(modelMessage),
                 generateChatEmbedding(assistantContent),
               ]);
-
-              const userMsg = await ChatMessage.findOne({
-                conversationId: conv._id,
-                role: 'user',
-                content: message,
-              }).sort({ createdAt: -1 });
 
               const assistantMsg = await ChatMessage.findOne({
                 conversationId: conv._id,
@@ -281,9 +382,9 @@ export async function POST(req: Request) {
                 content: assistantContent,
               }).sort({ createdAt: -1 });
 
-              if (userMsg && userEmb) {
+              if (userEmb) {
                 await ChatMessage.updateOne(
-                  { _id: userMsg._id },
+                  { _id: savedUserMessage._id },
                   { $set: { embedding: userEmb } }
                 );
               }
@@ -302,7 +403,7 @@ export async function POST(req: Request) {
           (async () => {
             try {
               const memClient = createMemoryClient();
-              await addMemory(memClient, user.clerkId, message, assistantContent);
+              await addMemory(memClient, user.clerkId, modelMessage, assistantContent);
             } catch (err) {
               console.error('[Chat] Mem0 storage failed:', err);
             }

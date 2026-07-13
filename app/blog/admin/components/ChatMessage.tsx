@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { User, Bot } from 'lucide-react';
@@ -48,8 +49,34 @@ export default function ChatMessageComponent({ message }: ChatMessageProps) {
               : 'bg-[#F5F4F0] text-[#111111] rounded-bl-md'
           }`}
         >
+          {message.attachments && message.attachments.length > 0 && (
+            <div className={`grid max-w-full gap-1.5 ${
+              message.attachments.length > 1 ? 'w-[280px] grid-cols-2' : 'w-56 grid-cols-1'
+            } ${message.content ? 'mb-2' : ''}`}>
+              {message.attachments.map((attachment) => (
+                <a
+                  key={attachment.fileId}
+                  href={attachment.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="relative block aspect-square min-w-0 overflow-hidden rounded-md bg-[#E8E6E1]"
+                  title={attachment.name}
+                >
+                  <Image
+                    src={attachment.thumbnailUrl || attachment.url}
+                    alt={attachment.name}
+                    fill
+                    sizes="280px"
+                    className="object-cover"
+                    unoptimized
+                  />
+                </a>
+              ))}
+            </div>
+          )}
+
           {isUser ? (
-            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            message.content ? <p className="text-sm whitespace-pre-wrap">{message.content}</p> : null
           ) : (
             <div className="text-sm prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:my-1 prose-pre:bg-[#E8E6E1] prose-pre:text-[#111111] prose-code:text-[#111111] prose-code:bg-[#E8E6E1] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:before:content-none prose-code:after:content-none">
               {message.content ? (
