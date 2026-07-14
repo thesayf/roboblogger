@@ -76,6 +76,7 @@ import { DocumentsTab } from "./components/DocumentsTab";
 import { PerformanceTab } from "./components/PerformanceTab";
 import { SubscriptionBanner } from "./components/SubscriptionBanner";
 import { TopicDetailSheet } from "./components/TopicDetailSheet";
+import { StrategyTab } from "./components/StrategyTab";
 import { localDateTimeToUTC, utcToLocalDateTime } from "@/lib/timezone-utils";
 import { useCredits } from "@/lib/contexts/CreditsContext";
 import {
@@ -90,7 +91,7 @@ export default function BlogAdminClient() {
   const [selectedTab, setSelectedTab] = useState(() => {
     if (typeof window !== "undefined") {
       const tab = new URLSearchParams(window.location.search).get("tab");
-      if (tab && ["posts", "pipeline", "media", "routines", "documents", "performance", "settings"].includes(tab)) {
+      if (tab && ["strategy", "posts", "pipeline", "media", "routines", "documents", "performance", "settings"].includes(tab)) {
         return tab;
       }
     }
@@ -104,6 +105,12 @@ export default function BlogAdminClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [clusterFilter, setClusterFilter] = useState("all");
+  const [seriesFilter, setSeriesFilter] = useState("all");
+  const [strategyOptions, setStrategyOptions] = useState<{
+    clusters: Array<{ _id: string; name: string }>;
+    series: Array<{ _id: string; name: string; clusterId?: string }>;
+  }>({ clusters: [], series: [] });
   const [postsPage, setPostsPage] = useState(1);
   const [postsPagination, setPostsPagination] = useState({ total: 0, pages: 1 });
   const [pipelineFilter, setPipelineFilter] = useState<"all" | "scheduled" | "pending" | "generating" | "failed">("all");
@@ -209,12 +216,54 @@ export default function BlogAdminClient() {
   // Fetch blog posts from API
   useEffect(() => {
     fetchBlogPosts();
-  }, [statusFilter, postsPage]);
+  }, [statusFilter, postsPage, clusterFilter, seriesFilter]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setPostsPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, clusterFilter, seriesFilter]);
+
+  useEffect(() => {
+    const fetchStrategyOptions = async () => {
+      try {
+        const response = await fetch("/api/blog/strategy");
+        if (!response.ok) return;
+        const strategy = await response.json();
+        setStrategyOptions({
+          clusters: (strategy.clusters || []).map((cluster: any) => ({
+            _id: cluster._id,
+            name: cluster.name,
+          })),
+          series: [
+            ...(strategy.clusters || []).flatMap((cluster: any) =>
+              (cluster.series || []).map((series: any) => ({
+                _id: series._id,
+                name: series.name,
+                clusterId: cluster._id,
+              }))
+            ),
+            ...(strategy.standaloneSeries || []).map((series: any) => ({
+              _id: series._id,
+              name: series.name,
+            })),
+          ],
+        });
+      } catch (strategyError) {
+        console.error("Failed to load strategy filters:", strategyError);
+      }
+    };
+    fetchStrategyOptions();
+    const handler = (event: Event) => {
+      const collections = (event as CustomEvent).detail?.collections || [];
+      if (collections.includes("strategy")) fetchStrategyOptions();
+    };
+    window.addEventListener("chat-data-changed", handler);
+    window.addEventListener("strategy-data-changed", fetchStrategyOptions);
+    return () => {
+      window.removeEventListener("chat-data-changed", handler);
+      window.removeEventListener("strategy-data-changed", fetchStrategyOptions);
+    };
+  }, []);
 
   // Debounce search term
   useEffect(() => {
@@ -269,6 +318,9 @@ export default function BlogAdminClient() {
       params.append("limit", "10");
       if (searchTerm) params.append("search", searchTerm);
       if (statusFilter !== "all") params.append("status", statusFilter);
+      if (clusterFilter !== "all" && clusterFilter !== "unassigned") params.append("clusterId", clusterFilter);
+      if (clusterFilter === "unassigned") params.append("unassigned", "true");
+      if (seriesFilter !== "all") params.append("seriesId", seriesFilter);
 
       const response = await fetch(`/api/blog/posts?${params.toString()}`);
       const data = await response.json();
@@ -1334,9 +1386,23 @@ export default function BlogAdminClient() {
     setSelectedTopics([]);
   };
 
+  const getStructureLabel = (item: any) => {
+    const cluster = strategyOptions.clusters.find((option) => option._id === item.clusterId);
+    const series = strategyOptions.series.find((option) => option._id === item.seriesId);
+    if (cluster && series) return `${cluster.name} · ${series.name}`;
+    if (series) return `Standalone · ${series.name}`;
+    return cluster?.name || "Unassigned";
+  };
+
+  const visibleSeriesOptions = strategyOptions.series.filter((series) => {
+    if (clusterFilter === "all") return true;
+    if (clusterFilter === "unassigned") return !series.clusterId;
+    return series.clusterId === clusterFilter;
+  });
+
   return (
     <div className="min-h-screen" style={{ background: '#FAFAF8' }}>
-      <div className="max-w-[1080px] mx-auto px-8 py-8 pb-16">
+      <div className="max-w-[1080px] mx-auto px-4 py-8 pb-16 sm:px-8">
         {/* Subscription Banner */}
         <SubscriptionBanner />
 
@@ -1346,20 +1412,27 @@ export default function BlogAdminClient() {
           onValueChange={setSelectedTab}
           className="space-y-6"
         >
-          <TabsList className="inline-flex w-auto">
-            <TabsTrigger value="posts">Posts</TabsTrigger>
-            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-            <TabsTrigger value="media">Media</TabsTrigger>
-            <TabsTrigger value="routines">Agents</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="settings">Brand</TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto pb-1">
+            <TabsList className="inline-flex w-auto">
+              <TabsTrigger value="strategy">Strategy</TabsTrigger>
+              <TabsTrigger value="posts">Posts</TabsTrigger>
+              <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+              <TabsTrigger value="media">Media</TabsTrigger>
+              <TabsTrigger value="routines">Agents</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="performance">Performance</TabsTrigger>
+              <TabsTrigger value="settings">Brand</TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="strategy" className="space-y-6">
+            <StrategyTab />
+          </TabsContent>
 
           {/* Posts Tab */}
           <TabsContent value="posts" className="space-y-6">
             {/* Toolbar */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="relative w-80">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -1369,7 +1442,7 @@ export default function BlogAdminClient() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-2">
                 <Select
                   value={statusFilter}
                   onValueChange={setStatusFilter}
@@ -1381,6 +1454,37 @@ export default function BlogAdminClient() {
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="published">Published</SelectItem>
                     <SelectItem value="draft">Draft</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={clusterFilter}
+                  onValueChange={(value) => {
+                    setClusterFilter(value);
+                    setSeriesFilter("all");
+                  }}
+                >
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="All clusters" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Clusters</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {strategyOptions.clusters.map((cluster) => (
+                      <SelectItem key={cluster._id} value={cluster._id}>{cluster.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={seriesFilter} onValueChange={setSeriesFilter}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="All series" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Series</SelectItem>
+                    {visibleSeriesOptions.map((series) => (
+                      <SelectItem key={series._id} value={series._id}>{series.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
@@ -1412,11 +1516,12 @@ export default function BlogAdminClient() {
               </div>
             ) : (
               <>
-              <div className="bg-white rounded-xl border border-[#E0DED8] overflow-hidden">
+              <div className="bg-white rounded-xl border border-[#E0DED8] overflow-x-auto">
                 {/* Table header */}
                 <div className="posts-table-header">
                   <span>Title</span>
                   <span>Status</span>
+                  <span>Structure</span>
                   <span>Author</span>
                   <span className="text-right">Date</span>
                   <span></span>
@@ -1481,6 +1586,12 @@ export default function BlogAdminClient() {
                       >
                         {post.status}
                       </Badge>
+                    </div>
+
+                    <div className="min-w-0 text-[12px] text-[#666666]">
+                      <span className="block truncate" title={getStructureLabel(post)}>
+                        {getStructureLabel(post)}
+                      </span>
                     </div>
 
                     {/* Author cell */}
@@ -2218,18 +2329,29 @@ export default function BlogAdminClient() {
 
               // Filter topics based on selected filter
               const getFilteredTopics = () => {
+                let statusFiltered: any[];
                 switch (pipelineFilter) {
                   case "scheduled":
-                    return topics.filter((t: any) => t.scheduledAt && t.status === "pending");
+                    statusFiltered = topics.filter((t: any) => t.scheduledAt && t.status === "pending");
+                    break;
                   case "pending":
-                    return topics.filter((t: any) => !t.scheduledAt && t.status === "pending");
+                    statusFiltered = topics.filter((t: any) => !t.scheduledAt && t.status === "pending");
+                    break;
                   case "generating":
-                    return topics.filter((t: any) => t.status === "generating");
+                    statusFiltered = topics.filter((t: any) => t.status === "generating");
+                    break;
                   case "failed":
-                    return topics.filter((t: any) => t.status === "failed");
+                    statusFiltered = topics.filter((t: any) => t.status === "failed");
+                    break;
                   default:
-                    return topics.filter((t: any) => t.status !== "completed");
+                    statusFiltered = topics.filter((t: any) => t.status !== "completed");
                 }
+                return statusFiltered.filter((topic: any) => {
+                  const clusterMatches = clusterFilter === "all"
+                    || (clusterFilter === "unassigned" ? !topic.clusterId && !topic.seriesId : topic.clusterId === clusterFilter);
+                  const seriesMatches = seriesFilter === "all" || topic.seriesId === seriesFilter;
+                  return clusterMatches && seriesMatches;
+                });
               };
 
               const filteredTopics = getFilteredTopics();
@@ -2290,6 +2412,29 @@ export default function BlogAdminClient() {
 
               return (
                 <>
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <Select
+                      value={clusterFilter}
+                      onValueChange={(value) => {
+                        setClusterFilter(value);
+                        setSeriesFilter("all");
+                      }}
+                    >
+                      <SelectTrigger className="w-48 bg-white"><SelectValue placeholder="All clusters" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Clusters</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {strategyOptions.clusters.map((cluster) => <SelectItem key={cluster._id} value={cluster._id}>{cluster.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select value={seriesFilter} onValueChange={setSeriesFilter}>
+                      <SelectTrigger className="w-48 bg-white"><SelectValue placeholder="All series" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Series</SelectItem>
+                        {visibleSeriesOptions.map((series) => <SelectItem key={series._id} value={series._id}>{series.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   {/* Filter Pills */}
                   <div className="flex items-center gap-2 mb-6">
                     <button
@@ -2371,7 +2516,7 @@ export default function BlogAdminClient() {
                   ) : (
                     <div className="bg-white rounded-xl border border-[#E0DED8] overflow-x-auto">
                       {/* Table Header */}
-                      <div className="grid min-w-[760px] grid-cols-[auto_minmax(240px,1fr)_110px_110px_120px_48px] gap-4 px-5 py-3 border-b border-[#F0EEE8] bg-[#FAFAF8]">
+                      <div className="grid min-w-[960px] grid-cols-[auto_minmax(240px,1fr)_110px_170px_110px_120px_48px] gap-4 px-5 py-3 border-b border-[#F0EEE8] bg-[#FAFAF8]">
                         <div className="flex items-center">
                           <input
                             type="checkbox"
@@ -2396,6 +2541,7 @@ export default function BlogAdminClient() {
                         </div>
                         <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Topic</span>
                         <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Status</span>
+                        <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Structure</span>
                         <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Mode</span>
                         <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">Scheduled</span>
                         <span></span>
@@ -2407,7 +2553,7 @@ export default function BlogAdminClient() {
                         return (
                           <div
                             key={topic._id}
-                            className={`grid min-w-[760px] grid-cols-[auto_minmax(240px,1fr)_110px_110px_120px_48px] gap-4 px-5 py-4 border-b border-[#F0EEE8] hover:bg-[#FAFAF8] transition-colors items-center cursor-pointer ${
+                            className={`grid min-w-[960px] grid-cols-[auto_minmax(240px,1fr)_110px_170px_110px_120px_48px] gap-4 px-5 py-4 border-b border-[#F0EEE8] hover:bg-[#FAFAF8] transition-colors items-center cursor-pointer ${
                               selectedTopics.includes(topic._id) ? "bg-blue-50" : ""
                             }`}
                             onClick={() => { setDetailTopic(topic); setShowDetailSheet(true); }}
@@ -2459,6 +2605,10 @@ export default function BlogAdminClient() {
 
                             {/* Status cell */}
                             <div>{getStatusBadgeElement(displayStatus, topic)}</div>
+
+                            <div className="min-w-0 text-[12px] text-[#666666]">
+                              <span className="block truncate" title={getStructureLabel(topic)}>{getStructureLabel(topic)}</span>
+                            </div>
 
                             {/* Generation mode cell */}
                             <div onClick={(e) => e.stopPropagation()}>

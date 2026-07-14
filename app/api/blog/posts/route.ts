@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const ownerOnly = url.searchParams.get("ownerOnly") === "true";
     const clusterId = url.searchParams.get("clusterId");
     const seriesId = url.searchParams.get("seriesId");
+    const unassigned = url.searchParams.get("unassigned") === "true";
 
     // Build query
     const query: any = {};
@@ -34,6 +35,10 @@ export async function GET(request: NextRequest) {
     if (author) query.author = author;
     if (clusterId) query.clusterId = clusterId;
     if (seriesId) query.seriesId = seriesId;
+    if (unassigned) {
+      query.clusterId = { $exists: false };
+      query.seriesId = { $exists: false };
+    }
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: "i" } },

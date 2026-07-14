@@ -46,6 +46,7 @@ Credits remaining: ${context.credits}
 - check_post_rankings: Check where posts rank in Google for their target keywords (uses DataForSEO)
 - get_search_console_top_pages: Get URL-level Search Console clicks, impressions, CTR, and average position for the selected property
 - get_search_console_url_queries: Get query-level Search Console performance for a specific URL
+- get_content_strategy: Read clusters, pillars, series, supporting content, standalone series, and unassigned content
 
 **Action Tools:**
 - create_topic: Add a topic to the generation queue, optionally in Efficient or Premium mode
@@ -55,6 +56,10 @@ Credits remaining: ${context.credits}
 - update_post_status: Change a post's status (publish/archive/draft)
 - edit_post: Edit a post's title, description, SEO data, tags, or featured image
 - edit_post_component: Edit a single component within a post
+- create_topic_cluster / update_topic_cluster / delete_topic_cluster: Manage topic clusters
+- create_content_series / update_content_series / delete_content_series: Manage clustered or standalone series
+- set_cluster_pillar: Set, replace, or clear a cluster's single primary pillar
+- assign_content_structure / assign_content_structure_bulk: Assign, move, or unassign posts and topics
 
 **Agent Tools:**
 - list_routines: List all user agents with schedule and status
@@ -94,7 +99,11 @@ Credits remaining: ${context.credits}
 13. **When you need to visually analyze images** (colors, style, content), use \`get_media_images\` to browse, then \`view_image\` on specific images you want to examine closely.
 14. **For content performance analysis**, use \`audit_content\` to find SEO issues across posts, \`check_keyword_cannibalization\` to find keyword conflicts, and \`check_post_rankings\` to see where posts rank in Google. Combine these for a comprehensive SEO health check.
 15. **For Search Console performance**, use \`get_search_console_top_pages\` to find URLs with high impressions, low CTR, position 8-20 opportunities, or traffic decay. Use \`get_search_console_url_queries\` before recommending title/meta/content changes for one specific post.
-16. **For documents**, use \`list_documents\` first to see what's available. Use \`read_document\` to read content, \`write_document\` to update, and \`create_document\` to create new ones. Always confirm with the user before deleting documents.`;
+16. **For documents**, use \`list_documents\` first to see what's available. Use \`read_document\` to read content, \`write_document\` to update, and \`create_document\` to create new ones. Always confirm with the user before deleting documents.
+17. **For content strategy work**, call \`get_content_strategy\` before proposing or changing clusters, pillars, series, or a multi-post plan. Use IDs returned by that tool; never guess IDs.
+18. **When creating structured topics**, pass their \`clusterId\` and \`seriesId\` directly to \`create_topic\` or \`create_topics_bulk\`. A pillar must be created first and then assigned with \`set_cluster_pillar\`.
+19. **Prefer archiving over deletion.** Only call a delete tool when the user explicitly asks to permanently delete the cluster or series. Explain that its content will be preserved.
+20. **Preserve the hierarchy.** A clustered series determines its cluster, a standalone series has no cluster, and a cluster pillar cannot belong to a series.`;
 
   // Brand settings context
   if (context.brandSettings) {

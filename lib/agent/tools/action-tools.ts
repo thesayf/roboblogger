@@ -13,6 +13,8 @@ import {
   analyzeReferenceImages,
 } from '@/lib/generation/image-utils';
 import { generationModeToProvider } from '@/lib/generation/generation-mode';
+import { resolveContentStructure } from '@/lib/content-structure';
+import { assignContentStructure } from '@/lib/content-strategy-service';
 
 function wrapTool(ctx: ToolContext, toolName: string, fn: (input: any) => Promise<string>) {
   return async (input: any): Promise<string> => {
@@ -61,9 +63,17 @@ export function buildActionTools(ctx: ToolContext) {
         })).optional().describe('Pre-planned internal links to include in the generated post'),
         researchMode: z.enum(['guided', 'exploratory']).optional().describe('Research mode: "guided" (default) researches a specific topic, "exploratory" discovers the best angle and recommends a title — use exploratory when the user wants to find what\'s interesting in a broad area'),
         generationMode: z.enum(['efficient', 'premium']).optional().describe('Generation mode: "efficient" uses DeepSeek V4 Pro with Claude fallback; "premium" uses Claude Opus 4.6'),
+        clusterId: z.string().nullable().optional().describe('Topic cluster ID, or null for no cluster'),
+        seriesId: z.string().nullable().optional().describe('Content series ID, or null for no series'),
       }),
       run: wrapTool(ctx, 'create_topic', async (input) => {
         await dbConnect();
+
+        const structure = await resolveContentStructure({
+          ownerId: ctx.userId,
+          clusterId: input.clusterId,
+          seriesId: input.seriesId,
+        });
 
         const topic = await Topic.create({
           topic: input.topic,
@@ -81,6 +91,8 @@ export function buildActionTools(ctx: ToolContext) {
           imageContext: input.imageContext,
           referenceImages: input.referenceImages,
           internalLinks: input.internalLinks,
+          clusterId: structure.clusterId,
+          seriesId: structure.seriesId,
           seo: (input.primaryKeyword || input.secondaryKeywords || input.searchIntent) ? {
             primaryKeyword: input.primaryKeyword,
             secondaryKeywords: input.secondaryKeywords,
@@ -89,6 +101,7 @@ export function buildActionTools(ctx: ToolContext) {
         });
 
         ctx.dataChanged.push('topics');
+        if (structure.clusterId || structure.seriesId) ctx.dataChanged.push('strategy');
 
         return JSON.stringify({
           success: true,
@@ -124,36 +137,50 @@ export function buildActionTools(ctx: ToolContext) {
           })).optional().describe('Pre-planned internal links'),
           researchMode: z.enum(['guided', 'exploratory']).optional().describe('Research mode: "guided" or "exploratory"'),
           generationMode: z.enum(['efficient', 'premium']).optional().describe('Generation mode: "efficient" or "premium"'),
+          clusterId: z.string().nullable().optional(),
+          seriesId: z.string().nullable().optional(),
         })).max(20).describe('Array of topics to add (max 20)'),
       }),
       run: wrapTool(ctx, 'create_topics_bulk', async (input) => {
         await dbConnect();
 
-        const docs = input.topics.map((t: any) => ({
-          topic: t.topic,
-          audience: t.audience,
-          tone: t.tone,
-          length: t.length,
-          priority: t.priority || 'medium',
-          researchMode: t.researchMode,
-          generationProvider: generationModeToProvider(t.generationMode),
-          source: 'bulk' as const,
-          owner: ctx.userId,
-          tags: t.tags,
-          scheduledAt: t.scheduledAt ? new Date(t.scheduledAt) : undefined,
-          additionalRequirements: t.additionalRequirements,
-          imageContext: t.imageContext,
-          referenceImages: t.referenceImages,
-          internalLinks: t.internalLinks,
-          seo: (t.primaryKeyword || t.secondaryKeywords || t.searchIntent) ? {
-            primaryKeyword: t.primaryKeyword,
-            secondaryKeywords: t.secondaryKeywords,
-            searchIntent: t.searchIntent,
-          } : undefined,
+        const docs = await Promise.all(input.topics.map(async (t: any) => {
+          const structure = await resolveContentStructure({
+            ownerId: ctx.userId,
+            clusterId: t.clusterId,
+            seriesId: t.seriesId,
+          });
+          return {
+            topic: t.topic,
+            audience: t.audience,
+            tone: t.tone,
+            length: t.length,
+            priority: t.priority || 'medium',
+            researchMode: t.researchMode,
+            generationProvider: generationModeToProvider(t.generationMode),
+            source: 'bulk' as const,
+            owner: ctx.userId,
+            tags: t.tags,
+            scheduledAt: t.scheduledAt ? new Date(t.scheduledAt) : undefined,
+            additionalRequirements: t.additionalRequirements,
+            imageContext: t.imageContext,
+            referenceImages: t.referenceImages,
+            internalLinks: t.internalLinks,
+            clusterId: structure.clusterId,
+            seriesId: structure.seriesId,
+            seo: (t.primaryKeyword || t.secondaryKeywords || t.searchIntent) ? {
+              primaryKeyword: t.primaryKeyword,
+              secondaryKeywords: t.secondaryKeywords,
+              searchIntent: t.searchIntent,
+            } : undefined,
+          };
         }));
 
         const created = await Topic.insertMany(docs);
         ctx.dataChanged.push('topics');
+        if (input.topics.some((topic: any) => topic.clusterId || topic.seriesId)) {
+          ctx.dataChanged.push('strategy');
+        }
 
         return JSON.stringify({
           success: true,
@@ -188,6 +215,8 @@ export function buildActionTools(ctx: ToolContext) {
           description: z.string().optional().describe('Context hint for how to reference this post'),
         })).optional().describe('Pre-planned internal links to include in the generated post'),
         generationMode: z.enum(['efficient', 'premium']).optional().describe('Change generation mode: "efficient" uses DeepSeek V4 Pro with Claude fallback; "premium" uses Claude Opus 4.6'),
+        clusterId: z.string().nullable().optional(),
+        seriesId: z.string().nullable().optional(),
       }),
       run: wrapTool(ctx, 'update_topic', async (input) => {
         await dbConnect();
@@ -220,7 +249,19 @@ export function buildActionTools(ctx: ToolContext) {
           return JSON.stringify({ error: 'Topic not found or not owned by this user.' });
         }
 
+        if (input.clusterId !== undefined || input.seriesId !== undefined) {
+          await assignContentStructure(ctx.userId, {
+            contentType: 'topic',
+            contentId: topic._id.toString(),
+            clusterId: input.clusterId !== undefined ? input.clusterId : topic.clusterId?.toString(),
+            seriesId: input.seriesId !== undefined ? input.seriesId : topic.seriesId?.toString(),
+          });
+        }
+
         ctx.dataChanged.push('topics');
+        if (input.clusterId !== undefined || input.seriesId !== undefined) {
+          ctx.dataChanged.push('strategy');
+        }
 
         return JSON.stringify({
           success: true,
@@ -254,6 +295,8 @@ export function buildActionTools(ctx: ToolContext) {
             description: z.string().optional(),
           })).optional(),
           generationMode: z.enum(['efficient', 'premium']).optional().describe('Generation mode: "efficient" or "premium"'),
+          clusterId: z.string().nullable().optional(),
+          seriesId: z.string().nullable().optional(),
         })).max(20).describe('Array of topic updates (max 20)'),
       }),
       run: wrapTool(ctx, 'update_topics_bulk', async (input) => {
@@ -290,6 +333,14 @@ export function buildActionTools(ctx: ToolContext) {
             if (!topic) {
               results.push({ topicId: t.topicId, success: false, error: 'Not found' });
             } else {
+              if (t.clusterId !== undefined || t.seriesId !== undefined) {
+                await assignContentStructure(ctx.userId, {
+                  contentType: 'topic',
+                  contentId: topic._id.toString(),
+                  clusterId: t.clusterId !== undefined ? t.clusterId : topic.clusterId?.toString(),
+                  seriesId: t.seriesId !== undefined ? t.seriesId : topic.seriesId?.toString(),
+                });
+              }
               results.push({ topicId: t.topicId, success: true });
             }
           } catch (err: any) {
@@ -298,6 +349,9 @@ export function buildActionTools(ctx: ToolContext) {
         }));
 
         ctx.dataChanged.push('topics');
+        if (input.updates.some((update: any) => update.clusterId !== undefined || update.seriesId !== undefined)) {
+          ctx.dataChanged.push('strategy');
+        }
 
         const succeeded = results.filter(r => r.success).length;
         const failed = results.filter(r => !r.success);

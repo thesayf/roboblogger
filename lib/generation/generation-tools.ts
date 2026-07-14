@@ -27,6 +27,9 @@ export interface GenerationToolContext {
   imageContext: string;
   referenceImages: string[];
   deferFailureStatus?: boolean;
+  clusterId?: string;
+  seriesId?: string;
+  pillarPostId?: string;
   // Cached after first image tool call
   _referenceAnalysis?: string;
   _stylePrompt?: string;
@@ -207,25 +210,56 @@ export function buildGenerationTools(ctx: GenerationToolContext) {
           const keywords = input.query.split(/\s+/).filter((w: string) => w.length > 2);
           const regexes = keywords.map((k: string) => new RegExp(k, 'i'));
 
-          const posts = await BlogPost.find({
-            owner: ctx.ownerId,
-            status: 'published',
-            $or: regexes.flatMap(r => [
-              { title: { $regex: r } },
-              { description: { $regex: r } },
-              { tags: { $regex: r } },
-            ]),
-          })
-            .select('title slug description category tags')
-            .sort({ createdAt: -1 })
-            .limit(input.limit || 5)
-            .lean();
+          const structureConditions: Record<string, unknown>[] = [];
+          if (ctx.pillarPostId) structureConditions.push({ _id: ctx.pillarPostId });
+          if (ctx.seriesId) structureConditions.push({ seriesId: ctx.seriesId });
+          if (ctx.clusterId) structureConditions.push({ clusterId: ctx.clusterId });
+
+          const preferred = structureConditions.length
+            ? await BlogPost.find({
+                owner: ctx.ownerId,
+                status: 'published',
+                $or: structureConditions,
+              })
+                .select('title slug description category tags clusterId seriesId')
+                .sort({ publishedAt: -1, createdAt: -1 })
+                .limit(input.limit || 5)
+                .lean()
+            : [];
+
+          const semanticConditions = regexes.flatMap(r => [
+            { title: { $regex: r } },
+            { description: { $regex: r } },
+            { tags: { $regex: r } },
+          ]);
+          const semantic = semanticConditions.length
+            ? await BlogPost.find({
+                owner: ctx.ownerId,
+                status: 'published',
+                $or: semanticConditions,
+              })
+                .select('title slug description category tags clusterId seriesId')
+                .sort({ createdAt: -1 })
+                .limit(input.limit || 5)
+                .lean()
+            : [];
+
+          const byId = new Map<string, any>();
+          [...preferred, ...semantic].forEach((post: any) => byId.set(post._id.toString(), post));
+          const posts = Array.from(byId.values()).slice(0, input.limit || 5);
 
           return JSON.stringify(posts.map((p: any) => ({
             title: p.title,
             slug: p.slug,
             description: p.description,
             category: p.category,
+            relationship: p._id.toString() === ctx.pillarPostId
+              ? 'pillar'
+              : p.seriesId?.toString() === ctx.seriesId
+                ? 'same-series'
+                : p.clusterId?.toString() === ctx.clusterId
+                  ? 'same-cluster'
+                  : 'related',
           })));
         } catch (error) {
           return JSON.stringify({ error: error instanceof Error ? error.message : 'Search failed' });

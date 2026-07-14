@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     const ownerOnly = searchParams.get('ownerOnly') === 'true';
     const clusterId = searchParams.get('clusterId');
     const seriesId = searchParams.get('seriesId');
+    const unassigned = searchParams.get('unassigned') === 'true';
 
     // Build filter object
     const filter: any = {};
@@ -37,6 +38,10 @@ export async function GET(request: NextRequest) {
     if (source) filter.source = source;
     if (clusterId) filter.clusterId = clusterId;
     if (seriesId) filter.seriesId = seriesId;
+    if (unassigned) {
+      filter.clusterId = { $exists: false };
+      filter.seriesId = { $exists: false };
+    }
     if (tags) {
       const tagArray = tags.split(',').map(tag => tag.trim());
       filter.tags = { $in: tagArray };

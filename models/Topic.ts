@@ -140,6 +140,16 @@ export interface ITopic extends Document {
     }>;
     totalEstimatedModelCostUsd: number;
     completedAt: Date;
+    contentStrategy?: {
+      version: 1;
+      role: 'pillar' | 'series' | 'supporting' | 'unstructured';
+      clusterId?: string;
+      seriesId?: string;
+      pillarPostId?: string;
+      pillarTopicId?: string;
+      inspectedPostIds: string[];
+      inspectedTopicIds: string[];
+    };
   };
   errorMessage?: string; // if generation failed
   failureReason?: string; // reason for failure (timeout, max retries, etc.)

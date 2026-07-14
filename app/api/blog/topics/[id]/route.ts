@@ -16,8 +16,15 @@ export async function GET(
 ) {
   try {
     await dbConnect();
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized - you must be logged in to view topics' },
+        { status: 401 }
+      );
+    }
 
-    const topic = await Topic.findById(params.id);
+    const topic = await Topic.findOne({ _id: params.id, owner: currentUser.mongoId });
 
     if (!topic) {
       return NextResponse.json(

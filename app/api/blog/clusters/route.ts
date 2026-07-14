@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
-import { uniqueOwnedSlug } from '@/lib/content-structure';
 import dbConnect from '@/lib/mongo';
 import TopicCluster from '@/models/TopicCluster';
+import {
+  contentStrategyServiceError,
+  createTopicCluster,
+} from '@/lib/content-strategy-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,25 +43,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    if (typeof body.name !== 'string' || !body.name.trim()) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-    }
-
-    const slug = await uniqueOwnedSlug(
-      TopicCluster,
-      currentUser.mongoId,
-      typeof body.slug === 'string' ? body.slug : body.name
-    );
-    const cluster = await TopicCluster.create({
-      owner: currentUser.mongoId,
-      name: body.name,
-      description: body.description,
-      slug,
-      status: body.status || 'draft',
-    });
+    const cluster = await createTopicCluster(currentUser.mongoId, body);
 
     return NextResponse.json(cluster, { status: 201 });
   } catch (error) {
+    const strategyError = contentStrategyServiceError(error);
+    if (strategyError) {
+      return NextResponse.json({ error: strategyError.message }, { status: strategyError.status });
+    }
     console.error('Error creating topic cluster:', error);
     return NextResponse.json({ error: 'Failed to create topic cluster' }, { status: 500 });
   }

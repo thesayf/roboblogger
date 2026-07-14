@@ -230,7 +230,7 @@ export function buildReadTools(ctx: ToolContext) {
             .sort({ priority: -1, createdAt: -1 })
             .skip(offset)
             .limit(limit)
-            .select('topic status priority generationProvider scheduledAt seo.primaryKeyword tags createdAt')
+            .select('topic status priority generationProvider scheduledAt seo.primaryKeyword tags clusterId seriesId createdAt')
             .lean(),
           Topic.countDocuments(filter),
         ]);
@@ -249,6 +249,8 @@ export function buildReadTools(ctx: ToolContext) {
             scheduledAt: t.scheduledAt?.toISOString(),
             primaryKeyword: t.seo?.primaryKeyword,
             tags: t.tags,
+            clusterId: t.clusterId?.toString(),
+            seriesId: t.seriesId?.toString(),
             createdAt: t.createdAt?.toISOString(),
           })),
         });

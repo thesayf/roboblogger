@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "backfill:embeddings": "tsx scripts/backfill-embeddings.ts"
+    "backfill:embeddings": "tsx scripts/backfill-embeddings.ts",
+    "test:strategy": "tsx --env-file=.env.local scripts/test-content-strategy.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.5",

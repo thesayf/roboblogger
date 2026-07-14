@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import {
   contentStructureErrorResponse,
-  resolveContentStructure,
-  uniqueOwnedSlug,
 } from '@/lib/content-structure';
 import dbConnect from '@/lib/mongo';
 import Series from '@/models/Series';
+import {
+  contentStrategyServiceError,
+  createContentSeries,
+} from '@/lib/content-strategy-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,30 +47,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    if (typeof body.name !== 'string' || !body.name.trim()) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-    }
-
-    const structure = await resolveContentStructure({
-      ownerId: currentUser.mongoId,
-      clusterId: body.clusterId,
-    });
-    const slug = await uniqueOwnedSlug(
-      Series,
-      currentUser.mongoId,
-      typeof body.slug === 'string' ? body.slug : body.name
-    );
-    const series = await Series.create({
-      owner: currentUser.mongoId,
-      name: body.name,
-      description: body.description,
-      slug,
-      clusterId: structure.clusterId,
-      status: body.status || 'draft',
-    });
+    const series = await createContentSeries(currentUser.mongoId, body);
 
     return NextResponse.json(series, { status: 201 });
   } catch (error) {
+    const strategyError = contentStrategyServiceError(error);
+    if (strategyError) {
+      return NextResponse.json({ error: strategyError.message }, { status: strategyError.status });
+    }
     const structureError = contentStructureErrorResponse(error);
     if (structureError) {
       return NextResponse.json({ error: structureError.message }, { status: structureError.status });

@@ -67,6 +67,8 @@ const defaultForm = {
   scheduledAt: "",
   priority: "medium",
   generationProvider: "deepseek" as GenerationProvider,
+  clusterId: "",
+  seriesId: "",
   tags: [] as string[],
   notes: "",
   internalLinks: [] as Array<{ postId: string; slug: string; title: string; description?: string }>,
@@ -101,6 +103,8 @@ function populateForm(topic: any) {
     referenceImages: topic.referenceImages || [],
     priority: topic.priority || "medium",
     generationProvider: (topic.generationProvider || "deepseek") as GenerationProvider,
+    clusterId: topic.clusterId || "",
+    seriesId: topic.seriesId || "",
     tags: topic.tags || [],
     notes: topic.notes || "",
     internalLinks: topic.internalLinks || [],
@@ -179,6 +183,29 @@ export function TopicDetailSheet({
   const [linkSearchQuery, setLinkSearchQuery] = useState("");
   const [linkSearchResults, setLinkSearchResults] = useState<any[]>([]);
   const [isSearchingLinks, setIsSearchingLinks] = useState(false);
+  const [strategyOptions, setStrategyOptions] = useState<{
+    clusters: Array<{ _id: string; name: string }>;
+    series: Array<{ _id: string; name: string; clusterId?: string }>;
+  }>({ clusters: [], series: [] });
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/blog/strategy")
+      .then((response) => response.ok ? response.json() : null)
+      .then((strategy) => {
+        if (!strategy) return;
+        setStrategyOptions({
+          clusters: (strategy.clusters || []).map((cluster: any) => ({ _id: cluster._id, name: cluster.name })),
+          series: [
+            ...(strategy.clusters || []).flatMap((cluster: any) =>
+              (cluster.series || []).map((series: any) => ({ _id: series._id, name: series.name, clusterId: cluster._id }))
+            ),
+            ...(strategy.standaloneSeries || []).map((series: any) => ({ _id: series._id, name: series.name })),
+          ],
+        });
+      })
+      .catch((error) => console.error("Failed to load strategy options:", error));
+  }, [open]);
 
   // Reset edit state when topic changes or sheet closes
   useEffect(() => {
@@ -334,6 +361,14 @@ export function TopicDetailSheet({
           <Field label="Tags" value={topic.tags?.length > 0 ? <KeywordList keywords={topic.tags} /> : null} />
           <Field label="Notes" value={topic.notes} />
           <Field
+            label="Cluster"
+            value={strategyOptions.clusters.find((cluster) => cluster._id === topic.clusterId)?.name}
+          />
+          <Field
+            label="Series"
+            value={strategyOptions.series.find((series) => series._id === topic.seriesId)?.name}
+          />
+          <Field
             label="Content"
             value={
               <div className="flex items-center gap-2">
@@ -435,6 +470,48 @@ export function TopicDetailSheet({
           placeholder="e.g., The Future of Remote Work in 2025"
           className="w-full h-11 bg-white border-[#E0DED8] focus:border-[#111111] focus:ring-[#111111] text-[15px]"
         />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-[13px] font-medium text-[#111111] mb-2 block">Topic Cluster</label>
+          <Select
+            value={formData.clusterId || "none"}
+            onValueChange={(value) => setFormData((prev) => ({
+              ...prev,
+              clusterId: value === "none" ? "" : value,
+              seriesId: "",
+            }))}
+          >
+            <SelectTrigger className="h-10 bg-white border-[#E0DED8]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Unassigned</SelectItem>
+              {strategyOptions.clusters.map((cluster) => <SelectItem key={cluster._id} value={cluster._id}>{cluster.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className="text-[13px] font-medium text-[#111111] mb-2 block">Series</label>
+          <Select
+            value={formData.seriesId || "none"}
+            onValueChange={(value) => {
+              const selected = strategyOptions.series.find((series) => series._id === value);
+              setFormData((prev) => ({
+                ...prev,
+                seriesId: value === "none" ? "" : value,
+                clusterId: selected?.clusterId || prev.clusterId,
+              }));
+            }}
+          >
+            <SelectTrigger className="h-10 bg-white border-[#E0DED8]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No series</SelectItem>
+              {strategyOptions.series
+                .filter((series) => formData.clusterId ? series.clusterId === formData.clusterId : !series.clusterId)
+                .map((series) => <SelectItem key={series._id} value={series._id}>{series.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Two column layout */}

@@ -378,7 +378,8 @@ html::-webkit-scrollbar {
 /* Editorial posts table */
 .admin-content .posts-table-header {
   display: grid;
-  grid-template-columns: 1fr 110px 140px 110px 48px;
+  grid-template-columns: minmax(260px, 1fr) 100px 180px 120px 100px 48px;
+  min-width: 900px;
   padding: 12px 20px;
   gap: 16px;
   align-items: center;
@@ -394,7 +395,8 @@ html::-webkit-scrollbar {
 
 .admin-content .posts-table-row {
   display: grid;
-  grid-template-columns: 1fr 110px 140px 110px 48px;
+  grid-template-columns: minmax(260px, 1fr) 100px 180px 120px 100px 48px;
+  min-width: 900px;
   padding: 16px 20px;
   gap: 16px;
   align-items: center;

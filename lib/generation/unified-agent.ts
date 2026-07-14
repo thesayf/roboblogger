@@ -25,6 +25,9 @@ import {
 } from './generation-provider';
 import { outputJsonFormat } from './output-format';
 import {
+  buildGenerationStrategyContext,
+} from './content-strategy-context';
+import {
   generateResearchSystemPrompt,
   generateResearchUserPrompt,
   generateExploratorySystemPrompt,
@@ -92,8 +95,10 @@ export async function executeGenerationAgent(options: {
       processingStartedAt: new Date(),
     });
 
+    const strategyContext = await buildGenerationStrategyContext(ownerId, topic);
+
     // Build the system prompt
-    const systemPrompt = buildSystemPrompt(topic, brand);
+    const systemPrompt = buildSystemPrompt(topic, brand, strategyContext.prompt);
     const userMessage = buildUserMessage(topic);
 
     const requestedProvider = resolveGenerationProvider(options.provider);
@@ -114,6 +119,9 @@ export async function executeGenerationAgent(options: {
         ? topic.referenceImages
         : (brand?.referenceImages || []),
       deferFailureStatus: true,
+      clusterId: topic.clusterId?.toString(),
+      seriesId: topic.seriesId?.toString(),
+      pillarPostId: strategyContext.metadata.pillarPostId,
     };
 
     const attemptResults: GenerationAttemptResult[] = [];
@@ -170,6 +178,7 @@ export async function executeGenerationAgent(options: {
       })),
       totalEstimatedModelCostUsd,
       completedAt: new Date(),
+      contentStrategy: strategyContext.metadata,
     };
 
     if (!successfulAttempt?.postId) {
@@ -398,7 +407,7 @@ async function runGenerationAttempt(options: {
 // PROMPT BUILDERS
 // ============================================================================
 
-function buildSystemPrompt(topic: any, brand: any): string {
+function buildSystemPrompt(topic: any, brand: any, strategyPrompt = ''): string {
   const researchMode = topic.researchMode || 'guided';
   const seoKeywords: string[] = [];
   if (topic.seo?.primaryKeyword) seoKeywords.push(topic.seo.primaryKeyword);
@@ -421,6 +430,10 @@ function buildSystemPrompt(topic: any, brand: any): string {
     if (brand.thingsToAvoid) prompt += `Things to Avoid: ${brand.thingsToAvoid}\n`;
     if (brand.exampleContent) prompt += `\nWriting Examples (match this voice):\n${brand.exampleContent}\n`;
     prompt += '\n';
+  }
+
+  if (strategyPrompt) {
+    prompt += `${strategyPrompt}\n\n`;
   }
 
   // Phase 1: Research
