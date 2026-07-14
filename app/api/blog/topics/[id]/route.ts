@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
+import BlogPost from '@/models/BlogPost';
+import TopicCluster from '@/models/TopicCluster';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
+import {
+  contentStructureErrorResponse,
+  resolveContentStructure,
+} from '@/lib/content-structure';
 
 // GET /api/blog/topics/[id] - Get a single topic by ID
 export async function GET(
@@ -70,15 +76,62 @@ export async function PUT(
       );
     }
 
+    const { clusterId, seriesId, ...nonStructureUpdates } = updateData;
+    const updateOperation: Record<string, any> = {
+      $set: {
+        ...nonStructureUpdates,
+        updatedAt: new Date()
+      }
+    };
+
+    if (clusterId !== undefined || seriesId !== undefined) {
+      const structure = await resolveContentStructure({
+        ownerId: currentUser.mongoId,
+        clusterId: clusterId !== undefined ? clusterId : existingTopic.clusterId?.toString(),
+        seriesId: seriesId !== undefined ? seriesId : existingTopic.seriesId?.toString(),
+      });
+      updateOperation.$unset = {};
+
+      if (structure.clusterId) updateOperation.$set.clusterId = structure.clusterId;
+      else updateOperation.$unset.clusterId = '';
+      if (structure.seriesId) updateOperation.$set.seriesId = structure.seriesId;
+      else updateOperation.$unset.seriesId = '';
+    }
+
     // Update the topic
     const topic = await Topic.findByIdAndUpdate(
       params.id,
-      {
-        ...updateData,
-        updatedAt: new Date()
-      },
+      updateOperation,
       { new: true, runValidators: true }
     );
+
+    if ((clusterId !== undefined || seriesId !== undefined) && topic.generatedPostId) {
+      const setFields: Record<string, unknown> = {};
+      const unsetFields: Record<string, ''> = {};
+      if (topic.clusterId) setFields.clusterId = topic.clusterId;
+      else unsetFields.clusterId = '';
+      if (topic.seriesId) setFields.seriesId = topic.seriesId;
+      else unsetFields.seriesId = '';
+      const structureUpdate = {
+        ...(Object.keys(setFields).length ? { $set: setFields } : {}),
+        ...(Object.keys(unsetFields).length ? { $unset: unsetFields } : {}),
+      };
+
+      await BlogPost.findOneAndUpdate(
+        { _id: topic.generatedPostId, owner: currentUser.mongoId },
+        structureUpdate
+      );
+      await TopicCluster.updateMany(
+        {
+          owner: currentUser.mongoId,
+          primaryPillarTopicId: topic._id,
+          ...(topic.clusterId && !topic.seriesId
+            ? { _id: { $ne: topic.clusterId } }
+            : {}),
+        },
+        { $unset: { primaryPillarTopicId: '', primaryPillarPostId: '' } }
+      );
+    }
 
     // Vercel Cron will handle scheduled generation
     // No need to manage jobs with Agenda anymore
@@ -91,6 +144,13 @@ export async function PUT(
     return NextResponse.json(topic);
 
   } catch (error) {
+    const structureError = contentStructureErrorResponse(error);
+    if (structureError) {
+      return NextResponse.json(
+        { message: structureError.message },
+        { status: structureError.status }
+      );
+    }
     console.error('Error updating topic:', error);
     return NextResponse.json(
       { message: 'Failed to update topic', error: error instanceof Error ? error.message : String(error) },
@@ -150,6 +210,11 @@ export async function DELETE(
     }
 
     // No need to cancel jobs - Vercel Cron will skip deleted topics
+
+    await TopicCluster.updateMany(
+      { owner: currentUser.mongoId, primaryPillarTopicId: topic._id },
+      { $unset: { primaryPillarTopicId: '', primaryPillarPostId: '' } }
+    );
 
     // Delete the topic
     await Topic.findByIdAndDelete(params.id);

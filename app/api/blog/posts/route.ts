@@ -4,6 +4,12 @@ import BlogPost from "@/models/BlogPost";
 import BlogComponent from "@/models/BlogComponent";
 import User from "@/models/User";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
+import Topic from "@/models/Topic";
+import TopicCluster from "@/models/TopicCluster";
+import {
+  contentStructureErrorResponse,
+  resolveContentStructure,
+} from "@/lib/content-structure";
 
 // GET /api/blog/posts - Get all blog posts
 // For admin: pass ownerOnly=true to filter by current user
@@ -19,11 +25,15 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(url.searchParams.get("limit") || "10");
     const search = url.searchParams.get("search");
     const ownerOnly = url.searchParams.get("ownerOnly") === "true";
+    const clusterId = url.searchParams.get("clusterId");
+    const seriesId = url.searchParams.get("seriesId");
 
     // Build query
     const query: any = {};
     if (status) query.status = status;
     if (author) query.author = author;
+    if (clusterId) query.clusterId = clusterId;
+    if (seriesId) query.seriesId = seriesId;
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: "i" } },
@@ -87,7 +97,17 @@ export async function POST(request: NextRequest) {
     const currentUser = await getCurrentUser();
 
     const body = await request.json();
-    const { title, description, slug, components, owner: bodyOwner, ...otherFields } = body;
+    const {
+      title,
+      description,
+      slug,
+      components,
+      owner: bodyOwner,
+      sourceTopicId,
+      clusterId,
+      seriesId,
+      ...otherFields
+    } = body;
 
     // For system calls (e.g., from topic generation), use the owner from the request body
     // For regular calls, require authentication
@@ -106,6 +126,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let structure;
+    if (sourceTopicId) {
+      const sourceTopic = await Topic.findOne({ _id: sourceTopicId, owner: ownerId })
+        .select('clusterId seriesId')
+        .lean() as { clusterId?: { toString(): string }; seriesId?: { toString(): string } } | null;
+      if (!sourceTopic) {
+        return NextResponse.json({ error: "Source topic not found" }, { status: 404 });
+      }
+      structure = await resolveContentStructure({
+        ownerId,
+        clusterId: sourceTopic.clusterId?.toString(),
+        seriesId: sourceTopic.seriesId?.toString(),
+      });
+    } else {
+      structure = await resolveContentStructure({ ownerId, clusterId, seriesId });
+    }
+
     // Check if slug already exists
     const existingPost = await BlogPost.findOne({ slug });
     if (existingPost) {
@@ -122,10 +159,20 @@ export async function POST(request: NextRequest) {
       slug,
       owner: ownerId,
       author: ownerId,
+      sourceTopicId: sourceTopicId || undefined,
+      clusterId: structure.clusterId,
+      seriesId: structure.seriesId,
       ...otherFields,
     });
 
     await blogPost.save();
+
+    if (sourceTopicId) {
+      await TopicCluster.findOneAndUpdate(
+        { owner: ownerId, primaryPillarTopicId: sourceTopicId },
+        { $set: { primaryPillarPostId: blogPost._id } }
+      );
+    }
 
     // Create components if provided
     if (components && Array.isArray(components)) {
@@ -157,6 +204,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(populatedPost, { status: 201 });
   } catch (error) {
+    const structureError = contentStructureErrorResponse(error);
+    if (structureError) {
+      return NextResponse.json(
+        { error: structureError.message },
+        { status: structureError.status }
+      );
+    }
     console.error("Error creating blog post:", error);
     return NextResponse.json(
       { error: "Failed to create blog post" },

@@ -14,6 +14,9 @@ export interface IBlogPost extends Document {
   owner: mongoose.Types.ObjectId; // User who owns this post (for multi-tenancy)
   author: mongoose.Types.ObjectId;
   authorName?: string; // Display name for the author (can be different from owner)
+  sourceTopicId?: mongoose.Types.ObjectId;
+  clusterId?: mongoose.Types.ObjectId;
+  seriesId?: mongoose.Types.ObjectId;
   components: mongoose.Types.ObjectId[];
   tags: string[];
   seoTitle?: string;
@@ -47,6 +50,9 @@ const BlogPostSchema: Schema = new Schema(
     owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
     author: { type: Schema.Types.ObjectId, ref: "User", required: true },
     authorName: { type: String }, // Display name for the author
+    sourceTopicId: { type: Schema.Types.ObjectId, ref: "Topic" },
+    clusterId: { type: Schema.Types.ObjectId, ref: "TopicCluster" },
+    seriesId: { type: Schema.Types.ObjectId, ref: "Series" },
     components: [{ type: Schema.Types.ObjectId, ref: "BlogComponent" }],
     tags: [{ type: String }],
     seoTitle: { type: String },
@@ -68,6 +74,9 @@ BlogPostSchema.index({ publishedAt: -1 });
 BlogPostSchema.index({ owner: 1 });
 BlogPostSchema.index({ owner: 1, status: 1 });
 BlogPostSchema.index({ author: 1 });
+BlogPostSchema.index({ owner: 1, clusterId: 1, publishedAt: -1 });
+BlogPostSchema.index({ owner: 1, seriesId: 1, publishedAt: -1 });
+BlogPostSchema.index({ sourceTopicId: 1 }, { sparse: true });
 
 export default mongoose.models.BlogPost ||
   mongoose.model<IBlogPost>("BlogPost", BlogPostSchema);

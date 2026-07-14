@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
+import BlogPost from '@/models/BlogPost';
+import TopicCluster from '@/models/TopicCluster';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 
 // POST /api/blog/topics/[id]/complete - Mark topic as completed with generated post ID
@@ -49,6 +51,29 @@ export async function POST(
 
     // Mark as completed using the model method
     await topic.markAsCompleted(generatedPostId);
+
+    await BlogPost.findOneAndUpdate(
+      { _id: generatedPostId, owner: currentUser.mongoId },
+      {
+        $set: {
+          sourceTopicId: topic._id,
+          ...(topic.clusterId ? { clusterId: topic.clusterId } : {}),
+          ...(topic.seriesId ? { seriesId: topic.seriesId } : {}),
+        },
+        ...(!topic.clusterId || !topic.seriesId
+          ? {
+              $unset: {
+                ...(!topic.clusterId ? { clusterId: '' } : {}),
+                ...(!topic.seriesId ? { seriesId: '' } : {}),
+              },
+            }
+          : {}),
+      }
+    );
+    await TopicCluster.findOneAndUpdate(
+      { owner: currentUser.mongoId, primaryPillarTopicId: topic._id },
+      { $set: { primaryPillarPostId: generatedPostId } }
+    );
 
     return NextResponse.json({
       success: true,

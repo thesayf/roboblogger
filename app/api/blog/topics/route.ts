@@ -5,6 +5,11 @@ import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 export const dynamic = 'force-dynamic';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
+import TopicCluster from '@/models/TopicCluster';
+import {
+  contentStructureErrorResponse,
+  resolveContentStructure,
+} from '@/lib/content-structure';
 
 // GET /api/blog/topics - Get all topics with filtering and pagination
 // For admin: pass ownerOnly=true to filter by current user
@@ -21,6 +26,8 @@ export async function GET(request: NextRequest) {
     const tags = searchParams.get('tags');
     const search = searchParams.get('search');
     const ownerOnly = searchParams.get('ownerOnly') === 'true';
+    const clusterId = searchParams.get('clusterId');
+    const seriesId = searchParams.get('seriesId');
 
     // Build filter object
     const filter: any = {};
@@ -28,6 +35,8 @@ export async function GET(request: NextRequest) {
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
     if (source) filter.source = source;
+    if (clusterId) filter.clusterId = clusterId;
+    if (seriesId) filter.seriesId = seriesId;
     if (tags) {
       const tagArray = tags.split(',').map(tag => tag.trim());
       filter.tags = { $in: tagArray };
@@ -138,8 +147,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Create topic data for bulk insert with validation
-      const topicsData = body.topics.map((topic: any) => {
+      const topicsData = await Promise.all(body.topics.map(async (topic: any) => {
         const sanitizedTopic = { ...topic };
+        const structure = await resolveContentStructure({
+          ownerId: currentUser.mongoId,
+          clusterId: topic.clusterId,
+          seriesId: topic.seriesId,
+        });
 
         // Sanitize SEO fields to prevent validation errors
         if (sanitizedTopic.seo) {
@@ -161,13 +175,15 @@ export async function POST(request: NextRequest) {
           ...sanitizedTopic,
           owner: currentUser.mongoId,
           createdBy: currentUser.clerkId,
+          clusterId: structure.clusterId,
+          seriesId: structure.seriesId,
           status: 'pending',
           retryCount: 0,
           source: topic.source || 'bulk',
           createdAt: new Date(),
           updatedAt: new Date()
         };
-      });
+      }));
 
       // Bulk insert
       const createdTopics = await Topic.insertMany(topicsData);
@@ -219,6 +235,11 @@ export async function POST(request: NextRequest) {
         ...sanitizedBody,
         owner: currentUser.mongoId,
         createdBy: currentUser.clerkId,
+        ...(await resolveContentStructure({
+          ownerId: currentUser.mongoId,
+          clusterId: body.clusterId,
+          seriesId: body.seriesId,
+        })),
         status: 'pending',
         retryCount: 0,
         source: body.source || 'individual'
@@ -238,6 +259,13 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
+    const structureError = contentStructureErrorResponse(error);
+    if (structureError) {
+      return NextResponse.json(
+        { message: structureError.message },
+        { status: structureError.status }
+      );
+    }
     console.error('Error creating topic:', error);
     return NextResponse.json(
       { message: 'Failed to create topic', error: error instanceof Error ? error.message : String(error) },
@@ -270,13 +298,31 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const updateData = { ...updates };
+    const updateOperation: Record<string, any> = {
+      $set: { ...updateData, updatedAt: new Date() },
+    };
+
+    if (updates.clusterId !== undefined || updates.seriesId !== undefined) {
+      const structure = await resolveContentStructure({
+        ownerId: currentUser.mongoId,
+        clusterId: updates.clusterId,
+        seriesId: updates.seriesId,
+      });
+      delete updateOperation.$set.clusterId;
+      delete updateOperation.$set.seriesId;
+      updateOperation.$unset = {};
+
+      if (structure.clusterId) updateOperation.$set.clusterId = structure.clusterId;
+      else updateOperation.$unset.clusterId = '';
+      if (structure.seriesId) updateOperation.$set.seriesId = structure.seriesId;
+      else updateOperation.$unset.seriesId = '';
+    }
+
     // Update multiple topics (only those owned by current user)
     const result = await Topic.updateMany(
       { _id: { $in: ids }, owner: currentUser.mongoId },
-      {
-        ...updates,
-        updatedAt: new Date()
-      }
+      updateOperation
     );
 
     return NextResponse.json({
@@ -285,6 +331,13 @@ export async function PUT(request: NextRequest) {
     });
 
   } catch (error) {
+    const structureError = contentStructureErrorResponse(error);
+    if (structureError) {
+      return NextResponse.json(
+        { message: structureError.message },
+        { status: structureError.status }
+      );
+    }
     console.error('Error updating topics:', error);
     return NextResponse.json(
       { message: 'Failed to update topics', error: error instanceof Error ? error.message : String(error) },
@@ -319,9 +372,21 @@ export async function DELETE(request: NextRequest) {
 
     const ids = idsParam.split(',');
 
+    const deletableTopics = await Topic.find({
+      _id: { $in: ids },
+      owner: currentUser.mongoId,
+      status: { $in: ['pending', 'failed'] }
+    }).select('_id').lean();
+    const deletableIds = deletableTopics.map((topic) => topic._id);
+
+    await TopicCluster.updateMany(
+      { owner: currentUser.mongoId, primaryPillarTopicId: { $in: deletableIds } },
+      { $unset: { primaryPillarTopicId: '', primaryPillarPostId: '' } }
+    );
+
     // Delete topics (only owned by current user, and only pending or failed)
     const result = await Topic.deleteMany({
-      _id: { $in: ids },
+      _id: { $in: deletableIds },
       owner: currentUser.mongoId,
       status: { $in: ['pending', 'failed'] }
     });

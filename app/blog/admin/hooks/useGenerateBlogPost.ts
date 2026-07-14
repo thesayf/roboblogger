@@ -243,6 +243,7 @@ export function useGenerateBlogPost() {
           publishedAt: new Date().toISOString(),
           createdBy: 'client-orchestrator',
           source: 'queue-generation',
+          sourceTopicId: topic._id,
           canonicalUrl: topic.seo?.canonicalUrl || null,
           openGraph: topic.seo?.openGraph || null,
           schemaType: topic.seo?.schemaType || 'BlogPosting',

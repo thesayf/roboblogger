@@ -10,6 +10,7 @@ import dbConnect from '@/lib/mongo';
 import BlogPost from '@/models/BlogPost';
 import BlogComponent from '@/models/BlogComponent';
 import Topic from '@/models/Topic';
+import TopicCluster from '@/models/TopicCluster';
 import { PerplexityProvider } from '@/lib/ai-providers/perplexity-provider';
 import { ExaProvider } from '@/lib/ai-providers/exa-provider';
 import {
@@ -353,7 +354,7 @@ export function buildGenerationTools(ctx: GenerationToolContext) {
           // A provider fallback may retry after the first provider already saved.
           // Return that post instead of publishing a duplicate.
           const topic = await Topic.findById(ctx.topicId)
-            .select('generatedPostId')
+            .select('generatedPostId clusterId seriesId')
             .lean() as any;
           if (topic?.generatedPostId) {
             const savedPost = await BlogPost.findOne({
@@ -384,12 +385,20 @@ export function buildGenerationTools(ctx: GenerationToolContext) {
             ...input.blogPost,
             owner: ctx.ownerId,
             author: ctx.ownerId,
+            sourceTopicId: ctx.topicId,
+            clusterId: topic?.clusterId,
+            seriesId: topic?.seriesId,
             status: 'published',
             publishedAt: new Date(),
             createdBy: 'system',
             source: 'queue-generation',
           });
           await blogPost.save();
+
+          await TopicCluster.findOneAndUpdate(
+            { owner: ctx.ownerId, primaryPillarTopicId: ctx.topicId },
+            { $set: { primaryPillarPostId: blogPost._id } }
+          );
 
           // Create BlogComponents
           if (input.components && input.components.length > 0) {

@@ -150,6 +150,10 @@ export interface ITopic extends Document {
   createdBy?: string; // user ID who created this topic
   tags?: string[]; // for organization and filtering
   notes?: string; // user notes about this topic
+
+  // Content strategy structure
+  clusterId?: mongoose.Types.ObjectId;
+  seriesId?: mongoose.Types.ObjectId;
   
   // Pre-planned internal links
   internalLinks?: Array<{
@@ -428,6 +432,16 @@ const TopicSchema = new Schema<ITopic>({
     trim: true,
     maxlength: 2000
   },
+
+  // Content strategy structure
+  clusterId: {
+    type: Schema.Types.ObjectId,
+    ref: 'TopicCluster'
+  },
+  seriesId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Series'
+  },
   
   // Pre-planned internal links
   internalLinks: [{
@@ -461,6 +475,8 @@ TopicSchema.index({ owner: 1, createdAt: -1 });
 TopicSchema.index({ owner: 1, status: 1 });
 TopicSchema.index({ createdBy: 1, createdAt: -1 });
 TopicSchema.index({ tags: 1 });
+TopicSchema.index({ owner: 1, clusterId: 1, createdAt: -1 });
+TopicSchema.index({ owner: 1, seriesId: 1, createdAt: -1 });
 TopicSchema.index({ scheduledAt: 1 });
 TopicSchema.index({ status: 1, scheduledAt: 1, retryAfter: 1 }); // For cron job queries
 TopicSchema.index({ status: 1, processingStartedAt: 1 }); // For detecting stuck jobs

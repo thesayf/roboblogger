@@ -3,6 +3,11 @@ import dbConnect from "@/lib/mongo";
 import BlogPost from "@/models/BlogPost";
 import BlogComponent from "@/models/BlogComponent";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
+import TopicCluster from "@/models/TopicCluster";
+import {
+  contentStructureErrorResponse,
+  resolveContentStructure,
+} from "@/lib/content-structure";
 
 // GET /api/blog/posts/[id] - Get single blog post
 export async function GET(
@@ -79,13 +84,45 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { components, ...postFields } = body;
+    const {
+      components,
+      sourceTopicId: _sourceTopicId,
+      clusterId,
+      seriesId,
+      ...postFields
+    } = body;
+    const updateOperation: Record<string, any> = { $set: postFields };
+
+    if (clusterId !== undefined || seriesId !== undefined) {
+      const structure = await resolveContentStructure({
+        ownerId: currentUser.mongoId,
+        clusterId: clusterId !== undefined ? clusterId : existingPost.clusterId?.toString(),
+        seriesId: seriesId !== undefined ? seriesId : existingPost.seriesId?.toString(),
+      });
+      updateOperation.$unset = {};
+
+      if (structure.clusterId) updateOperation.$set.clusterId = structure.clusterId;
+      else updateOperation.$unset.clusterId = '';
+      if (structure.seriesId) updateOperation.$set.seriesId = structure.seriesId;
+      else updateOperation.$unset.seriesId = '';
+
+      await TopicCluster.updateMany(
+        {
+          owner: currentUser.mongoId,
+          primaryPillarPostId: existingPost._id,
+          ...(structure.clusterId && !structure.seriesId
+            ? { _id: { $ne: structure.clusterId } }
+            : {}),
+        },
+        { $unset: { primaryPillarTopicId: '', primaryPillarPostId: '' } }
+      );
+    }
 
     // Update blog post
     const updatedPost = await BlogPost.findByIdAndUpdate(
       params.id,
-      postFields,
-      { new: true }
+      updateOperation,
+      { new: true, runValidators: true }
     );
 
     // Handle components update if provided
@@ -121,6 +158,13 @@ export async function PUT(
 
     return NextResponse.json(populatedPost);
   } catch (error) {
+    const structureError = contentStructureErrorResponse(error);
+    if (structureError) {
+      return NextResponse.json(
+        { error: structureError.message },
+        { status: structureError.status }
+      );
+    }
     console.error("Error updating blog post:", error);
     return NextResponse.json(
       { error: "Failed to update blog post" },
@@ -164,6 +208,11 @@ export async function DELETE(
 
     // Delete associated components first
     await BlogComponent.deleteMany({ blogPost: params.id });
+
+    await TopicCluster.updateMany(
+      { owner: currentUser.mongoId, primaryPillarPostId: existingPost._id },
+      { $unset: { primaryPillarPostId: '' } }
+    );
 
     // Delete the blog post
     await BlogPost.findByIdAndDelete(params.id);
