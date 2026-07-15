@@ -33,6 +33,14 @@ import {
   generateExploratorySystemPrompt,
   generateExploratoryUserPrompt,
 } from '@/lib/research/research-prompts';
+import {
+  BLOG_EVALUATION_RUBRIC_VERSION,
+  BlogEvaluationRecord,
+} from './blog-evaluation';
+import {
+  getBlogEvaluationMaxAttempts,
+  loadBlogPostEvaluationRubric,
+} from './evaluation-rubric';
 
 export interface GenerationResult {
   success: boolean;
@@ -58,6 +66,7 @@ interface GenerationAttemptResult {
   usage: GenerationTokenUsage;
   estimatedModelCostUsd: number;
   durationSeconds: number;
+  evaluations: BlogEvaluationRecord[];
 }
 
 export async function executeGenerationAgent(options: {
@@ -97,8 +106,17 @@ export async function executeGenerationAgent(options: {
 
     const strategyContext = await buildGenerationStrategyContext(ownerId, topic);
 
+    const evaluationRubric = loadBlogPostEvaluationRubric();
+    const maxEvaluationAttempts = getBlogEvaluationMaxAttempts();
+
     // Build the system prompt
-    const systemPrompt = buildSystemPrompt(topic, brand, strategyContext.prompt);
+    const systemPrompt = buildSystemPrompt(
+      topic,
+      brand,
+      strategyContext.prompt,
+      evaluationRubric,
+      maxEvaluationAttempts,
+    );
     const userMessage = buildUserMessage(topic);
 
     const requestedProvider = resolveGenerationProvider(options.provider);
@@ -122,6 +140,14 @@ export async function executeGenerationAgent(options: {
       clusterId: topic.clusterId?.toString(),
       seriesId: topic.seriesId?.toString(),
       pillarPostId: strategyContext.metadata.pillarPostId,
+      evaluationRequirements: {
+        requestedLength: topic.length,
+        includeImages: topic.includeImages,
+        includeCTA: topic.includeCTA,
+        blogUrl: brand?.blogUrl,
+        primaryKeyword: topic.seo?.primaryKeyword,
+      },
+      maxEvaluationAttempts,
     };
 
     const attemptResults: GenerationAttemptResult[] = [];
@@ -175,10 +201,15 @@ export async function executeGenerationAgent(options: {
         estimatedModelCostUsd: attempt.estimatedModelCostUsd,
         durationSeconds: attempt.durationSeconds,
         error: attempt.error,
+        evaluations: attempt.evaluations,
       })),
       totalEstimatedModelCostUsd,
       completedAt: new Date(),
       contentStrategy: strategyContext.metadata,
+      evaluation: {
+        rubricVersion: BLOG_EVALUATION_RUBRIC_VERSION,
+        final: successfulAttempt?.evaluations.at(-1),
+      },
     };
 
     if (!successfulAttempt?.postId) {
@@ -256,13 +287,18 @@ async function runGenerationAttempt(options: {
   const attemptStartTime = Date.now();
   const usage = emptyGenerationTokenUsage();
   const toolCallsByName: Record<string, number> = {};
+  const attemptToolCtx: GenerationToolContext = {
+    ...toolCtx,
+    _evaluationAttempts: [],
+    _approvedDraft: undefined,
+  };
   let turnNumber = 0;
   let toolCalls = 0;
 
   try {
     console.log(`${tag} Starting ${config.provider}/${config.model}`);
     const client = createGenerationClient(config);
-    const tools = buildGenerationTools(toolCtx);
+    const tools = buildGenerationTools(attemptToolCtx);
 
     const processMessage = async (message: any) => {
       turnNumber++;
@@ -281,6 +317,8 @@ async function runGenerationAttempt(options: {
           await Topic.findByIdAndUpdate(topicId, { generationPhase: 'researching' }).catch(() => {});
         } else if (toolName === 'generateImage' || toolName === 'viewImage') {
           await Topic.findByIdAndUpdate(topicId, { generationPhase: 'generating_images' }).catch(() => {});
+        } else if (toolName === 'evaluateBlogPost') {
+          await Topic.findByIdAndUpdate(topicId, { generationPhase: 'writing_content' }).catch(() => {});
         } else if (toolName === 'saveBlogPost') {
           await Topic.findByIdAndUpdate(topicId, { generationPhase: 'saving' }).catch(() => {});
         } else if (toolName === 'searchInternalPosts') {
@@ -382,6 +420,7 @@ async function runGenerationAttempt(options: {
       usage,
       estimatedModelCostUsd,
       durationSeconds,
+      evaluations: attemptToolCtx._evaluationAttempts || [],
     };
   } catch (error) {
     const updatedTopic = await Topic.findById(topicId).select('generatedPostId').lean().catch(() => null) as any;
@@ -399,6 +438,7 @@ async function runGenerationAttempt(options: {
       usage,
       estimatedModelCostUsd: estimateGenerationModelCost(config, usage),
       durationSeconds: Math.round((Date.now() - attemptStartTime) / 1000),
+      evaluations: attemptToolCtx._evaluationAttempts || [],
     };
   }
 }
@@ -407,7 +447,13 @@ async function runGenerationAttempt(options: {
 // PROMPT BUILDERS
 // ============================================================================
 
-function buildSystemPrompt(topic: any, brand: any, strategyPrompt = ''): string {
+function buildSystemPrompt(
+  topic: any,
+  brand: any,
+  strategyPrompt = '',
+  evaluationRubric = '',
+  maxEvaluationAttempts = 3,
+): string {
   const researchMode = topic.researchMode || 'guided';
   const seoKeywords: string[] = [];
   if (topic.seo?.primaryKeyword) seoKeywords.push(topic.seo.primaryKeyword);
@@ -475,14 +521,14 @@ This brief is your checkpoint. Get this right before moving to Phase 3.
 
 `;
 
-  // Phase 3: Write the blog post
-  prompt += `## PHASE 3: WRITE THE BLOG POST
+  // Phase 3: Write the blog post draft
+  prompt += `## PHASE 3: WRITE THE BLOG POST DRAFT
 
-Write the complete blog post and save it using the saveBlogPost tool.
+Write the complete blog post draft. Do not save it yet.
 
 Before writing, use searchInternalPosts to find related published posts for internal linking. Include 2-4 internal links naturally in your content as [anchor text](/blog/slug).
 
-The saveBlogPost tool expects this JSON structure:
+The evaluateBlogPost tool expects the complete draft in this JSON structure:
 ${outputJsonFormat}
 
 CONTENT GUIDELINES:
@@ -516,16 +562,31 @@ After generating key images, use viewImage to evaluate them. If an image doesn't
 
 `;
 
-  // Phase 5: Save and complete
-  prompt += `## PHASE 5: SAVE AND COMPLETE
+  // Phase 5: Evaluate and revise
+  prompt += `## PHASE 5: EVALUATE AND REVISE
 
-1. Call saveBlogPost with the complete blog post JSON, including all image URLs
+Use the following versioned evaluation rubric to judge the complete draft:
+
+<blog_post_evaluation_rubric>
+${evaluationRubric}
+</blog_post_evaluation_rubric>
+
+1. Call evaluateBlogPost with the complete draft and an honest 0-2 self-assessment for every rubric criterion.
+2. Give specific evidence from the draft for each score. Do not award a 2 without clear evidence.
+3. If the tool returns passed: false, revise every listed issue and evaluate the complete revised draft again.
+4. You have at most ${maxEvaluationAttempts} evaluation attempts. Never call saveBlogPost unless the latest evaluation returned passed: true.
+
+## PHASE 6: SAVE AND COMPLETE
+
+1. Call saveBlogPost with an empty object. It will save the exact draft approved by evaluateBlogPost.
 2. Call updateTopicStatus with status "completed"
 
 CRITICAL CONSTRAINTS:
 - You MUST complete all phases
-- You MUST generate images BEFORE calling saveBlogPost (so URLs are included)
-- You MUST call saveBlogPost BEFORE calling updateTopicStatus
+- You MUST generate images before evaluating the complete draft so their URLs are included
+- You MUST receive passed: true from evaluateBlogPost before calling saveBlogPost
+- You MUST revise and re-evaluate after any failed evaluation
+- You MUST call saveBlogPost before calling updateTopicStatus
 - If anything fails critically, call updateTopicStatus with status "failed" and explain the error
 `;
 

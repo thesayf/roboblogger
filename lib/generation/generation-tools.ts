@@ -19,6 +19,13 @@ import {
   buildImageStylePrompt,
   analyzeReferenceImages,
 } from './image-utils';
+import {
+  BlogEvaluationRecord,
+  BlogEvaluationRequirements,
+  BlogPostDraft,
+  BlogSelfAssessment,
+  evaluateBlogDraft,
+} from './blog-evaluation';
 
 export interface GenerationToolContext {
   ownerId: string;
@@ -30,9 +37,13 @@ export interface GenerationToolContext {
   clusterId?: string;
   seriesId?: string;
   pillarPostId?: string;
+  evaluationRequirements: BlogEvaluationRequirements;
+  maxEvaluationAttempts: number;
   // Cached after first image tool call
   _referenceAnalysis?: string;
   _stylePrompt?: string;
+  _evaluationAttempts?: BlogEvaluationRecord[];
+  _approvedDraft?: BlogPostDraft;
 }
 
 // Lazy-initialized providers
@@ -54,6 +65,39 @@ function getExa(): ExaProvider | null {
   }
   return exaProvider;
 }
+
+const blogPostDraftSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  slug: z.string(),
+  category: z.string().optional(),
+  readTime: z.number().optional(),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  featuredImage: z.string().optional(),
+  featuredImageThumbnail: z.string().optional(),
+});
+
+const blogComponentDraftSchema = z.object({
+  type: z.string(),
+  order: z.number(),
+}).passthrough();
+
+const selfAssessmentCriterionSchema = z.object({
+  score: z.number().int().min(0).max(2),
+  evidence: z.string().min(1).describe('Specific evidence from the draft that justifies this score'),
+  revisionNeeded: z.string().optional().describe('Concrete revision needed when the score is below 2'),
+});
+
+const blogSelfAssessmentSchema = z.object({
+  audienceAndIntent: selfAssessmentCriterionSchema,
+  thesisAndOriginalInsight: selfAssessmentCriterionSchema,
+  evidenceIntegrity: selfAssessmentCriterionSchema,
+  brandVoiceAndTrust: selfAssessmentCriterionSchema,
+  structureAndUsefulness: selfAssessmentCriterionSchema,
+  searchAndDistributionReadiness: selfAssessmentCriterionSchema,
+});
 
 export function buildGenerationTools(ctx: GenerationToolContext) {
   return [
@@ -357,31 +401,68 @@ export function buildGenerationTools(ctx: GenerationToolContext) {
     }),
 
     // ========================================================================
-    // SAVE AND STATUS TOOLS
+    // EVALUATION, SAVE, AND STATUS TOOLS
     // ========================================================================
 
     betaZodTool({
-      name: 'saveBlogPost',
-      description: 'Save the complete blog post to the database. Call this with the full blog post JSON including image URLs. Returns the saved post ID.',
+      name: 'evaluateBlogPost',
+      description: 'Evaluate the complete draft against the required Markdown rubric and deterministic quality checks. Call this before saveBlogPost. If it fails, revise the draft and evaluate the complete revision again.',
       inputSchema: z.object({
-        blogPost: z.object({
-          title: z.string(),
-          description: z.string(),
-          slug: z.string(),
-          category: z.string().optional(),
-          readTime: z.number().optional(),
-          seoTitle: z.string().optional(),
-          seoDescription: z.string().optional(),
-          tags: z.array(z.string()).optional(),
-          featuredImage: z.string().optional(),
-          featuredImageThumbnail: z.string().optional(),
-        }),
-        components: z.array(z.object({
-          type: z.string(),
-          order: z.number(),
-        }).passthrough()),
+        blogPost: blogPostDraftSchema,
+        components: z.array(blogComponentDraftSchema),
+        selfAssessment: blogSelfAssessmentSchema,
       }),
       run: async (input) => {
+        const attempts = ctx._evaluationAttempts || [];
+        const attempt = attempts.length + 1;
+        ctx._approvedDraft = undefined;
+
+        if (attempt > ctx.maxEvaluationAttempts) {
+          return JSON.stringify({
+            passed: false,
+            attemptsExhausted: true,
+            error: `Maximum evaluation attempts (${ctx.maxEvaluationAttempts}) reached. Do not save this draft. End the attempt so the generation runner can use its fallback policy.`,
+          });
+        }
+
+        const draft: BlogPostDraft = {
+          blogPost: input.blogPost,
+          components: input.components,
+        };
+        const evaluation = evaluateBlogDraft({
+          draft,
+          selfAssessment: input.selfAssessment as BlogSelfAssessment,
+          requirements: ctx.evaluationRequirements,
+          attempt,
+        });
+
+        attempts.push(evaluation);
+        ctx._evaluationAttempts = attempts;
+
+        if (evaluation.passed) {
+          ctx._approvedDraft = draft;
+        }
+
+        const attemptsRemaining = Math.max(ctx.maxEvaluationAttempts - attempt, 0);
+        return JSON.stringify({
+          ...evaluation,
+          maxAttempts: ctx.maxEvaluationAttempts,
+          attemptsRemaining,
+          attemptsExhausted: !evaluation.passed && attemptsRemaining === 0,
+          nextAction: evaluation.passed
+            ? 'Call saveBlogPost with an empty object to save this exact approved draft.'
+            : attemptsRemaining > 0
+              ? 'Revise every listed issue, then call evaluateBlogPost with the complete revised draft.'
+              : 'Do not save this draft. End the attempt so the generation runner can use its fallback policy.',
+        });
+      },
+    }),
+
+    betaZodTool({
+      name: 'saveBlogPost',
+      description: 'Save the exact draft most recently approved by evaluateBlogPost. Call with an empty object only after evaluation returns passed: true.',
+      inputSchema: z.object({}),
+      run: async () => {
         try {
           await dbConnect();
 
@@ -407,11 +488,23 @@ export function buildGenerationTools(ctx: GenerationToolContext) {
             }
           }
 
+          const input = ctx._approvedDraft;
+          if (!input) {
+            return JSON.stringify({
+              error: 'No approved draft is available. Call evaluateBlogPost with the complete draft and receive passed: true before saving.',
+            });
+          }
+
           // Check slug uniqueness
-          const existing = await BlogPost.findOne({ slug: input.blogPost.slug });
+          const baseSlug = input.blogPost.slug;
+          let existing = await BlogPost.findOne({ slug: input.blogPost.slug }).select('_id').lean();
           if (existing) {
-            // Auto-append timestamp to make unique
-            input.blogPost.slug = `${input.blogPost.slug}-${Date.now()}`;
+            let suffix = 2;
+            do {
+              input.blogPost.slug = `${baseSlug}-${suffix}`;
+              existing = await BlogPost.findOne({ slug: input.blogPost.slug }).select('_id').lean();
+              suffix++;
+            } while (existing);
           }
 
           // Create BlogPost

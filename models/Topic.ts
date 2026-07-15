@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import type { BlogEvaluationRecord } from '@/lib/generation/blog-evaluation';
 
 export interface ITopic extends Document {
   // Core generation parameters (from AI form)
@@ -137,6 +138,7 @@ export interface ITopic extends Document {
       estimatedModelCostUsd: number;
       durationSeconds: number;
       error?: string;
+      evaluations?: BlogEvaluationRecord[];
     }>;
     totalEstimatedModelCostUsd: number;
     completedAt: Date;
@@ -149,6 +151,10 @@ export interface ITopic extends Document {
       pillarTopicId?: string;
       inspectedPostIds: string[];
       inspectedTopicIds: string[];
+    };
+    evaluation?: {
+      rubricVersion: string;
+      final?: BlogEvaluationRecord;
     };
   };
   errorMessage?: string; // if generation failed
