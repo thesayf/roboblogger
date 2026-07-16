@@ -1,8 +1,14 @@
 import { createHash } from 'crypto';
 
-export const BLOG_EVALUATION_RUBRIC_VERSION = '1.0';
+export const BLOG_EVALUATION_RUBRIC_VERSION = '1.1';
 export const BLOG_EVALUATION_PASS_SCORE = 10;
 export const BLOG_EVALUATION_MAX_SCORE = 12;
+
+const WORD_COUNT_TOLERANCE = 0.15;
+const SEO_TITLE_IDEAL_RANGE = { min: 45, max: 65 };
+const SEO_TITLE_HARD_RANGE = { min: 30, max: 70 };
+const SEO_DESCRIPTION_IDEAL_RANGE = { min: 140, max: 165 };
+const SEO_DESCRIPTION_HARD_RANGE = { min: 80, max: 200 };
 
 export const BLOG_EVALUATION_CRITERIA = [
   'audienceAndIntent',
@@ -188,8 +194,8 @@ export function validateBlogDraft(
   const requestedRange = parseRequestedWordRange(requirements.requestedLength);
 
   if (requestedRange) {
-    const toleratedMin = Math.floor(requestedRange.min * 0.9);
-    const toleratedMax = Math.ceil(requestedRange.max * 1.1);
+    const toleratedMin = Math.floor(requestedRange.min * (1 - WORD_COUNT_TOLERANCE));
+    const toleratedMax = Math.ceil(requestedRange.max * (1 + WORD_COUNT_TOLERANCE));
     if (wordCount < toleratedMin || wordCount > toleratedMax) {
       issues.push({
         code: 'word_count_out_of_range',
@@ -200,20 +206,50 @@ export function validateBlogDraft(
   }
 
   const seoTitleLength = blogPost.seoTitle?.trim().length || 0;
-  if (seoTitleLength < 50 || seoTitleLength > 60) {
+  if (seoTitleLength === 0) {
+    issues.push({
+      code: 'missing_seo_title',
+      severity: 'error',
+      message: 'SEO title is required.',
+    });
+  } else if (seoTitleLength < SEO_TITLE_HARD_RANGE.min || seoTitleLength > SEO_TITLE_HARD_RANGE.max) {
     issues.push({
       code: 'seo_title_length',
       severity: 'error',
-      message: `SEO title must be 50-60 characters; received ${seoTitleLength}.`,
+      message: `SEO title must be ${SEO_TITLE_HARD_RANGE.min}-${SEO_TITLE_HARD_RANGE.max} characters; received ${seoTitleLength}. Aim for ${SEO_TITLE_IDEAL_RANGE.min}-${SEO_TITLE_IDEAL_RANGE.max}.`,
+    });
+  } else if (seoTitleLength < SEO_TITLE_IDEAL_RANGE.min || seoTitleLength > SEO_TITLE_IDEAL_RANGE.max) {
+    issues.push({
+      code: 'seo_title_length',
+      severity: 'warning',
+      message: `SEO title is usable at ${seoTitleLength} characters; ${SEO_TITLE_IDEAL_RANGE.min}-${SEO_TITLE_IDEAL_RANGE.max} is preferred.`,
     });
   }
 
   const seoDescriptionLength = blogPost.seoDescription?.trim().length || 0;
-  if (seoDescriptionLength < 150 || seoDescriptionLength > 160) {
+  if (seoDescriptionLength === 0) {
+    issues.push({
+      code: 'missing_seo_description',
+      severity: 'error',
+      message: 'SEO description is required.',
+    });
+  } else if (
+    seoDescriptionLength < SEO_DESCRIPTION_HARD_RANGE.min
+    || seoDescriptionLength > SEO_DESCRIPTION_HARD_RANGE.max
+  ) {
     issues.push({
       code: 'seo_description_length',
       severity: 'error',
-      message: `SEO description must be 150-160 characters; received ${seoDescriptionLength}.`,
+      message: `SEO description must be ${SEO_DESCRIPTION_HARD_RANGE.min}-${SEO_DESCRIPTION_HARD_RANGE.max} characters; received ${seoDescriptionLength}. Aim for ${SEO_DESCRIPTION_IDEAL_RANGE.min}-${SEO_DESCRIPTION_IDEAL_RANGE.max}.`,
+    });
+  } else if (
+    seoDescriptionLength < SEO_DESCRIPTION_IDEAL_RANGE.min
+    || seoDescriptionLength > SEO_DESCRIPTION_IDEAL_RANGE.max
+  ) {
+    issues.push({
+      code: 'seo_description_length',
+      severity: 'warning',
+      message: `SEO description is usable at ${seoDescriptionLength} characters; ${SEO_DESCRIPTION_IDEAL_RANGE.min}-${SEO_DESCRIPTION_IDEAL_RANGE.max} is preferred.`,
     });
   }
 

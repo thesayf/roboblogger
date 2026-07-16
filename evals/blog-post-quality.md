@@ -1,6 +1,6 @@
 # Blog Post Quality Eval
 
-Version: 1.0
+Version: 1.1
 
 Use this evaluation after research, writing, and image generation, but before the
 post is saved or published. Evaluate the complete draft, not the plan or research
@@ -19,6 +19,9 @@ The draft passes when:
 - The total score is at least 10 out of 12.
 - No criterion scores 0.
 - All deterministic checks pass.
+
+Deterministic warnings identify worthwhile polish but do not block publishing.
+Errors are reserved for missing, invalid, or materially out-of-range output.
 
 Do not inflate scores to finish the task. Cite specific evidence from the draft
 for every score. When the draft fails, revise the draft against the failed

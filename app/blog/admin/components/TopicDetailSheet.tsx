@@ -443,10 +443,12 @@ export function TopicDetailSheet({
         <div className="space-y-1">
           <Field label="Created" value={topic.createdAt ? formatDate(topic.createdAt) : null} />
           <Field label="Updated" value={topic.updatedAt ? formatDate(topic.updatedAt) : null} />
-          {topic.status === "failed" && topic.error && (
+          {topic.status === "failed" && (topic.errorMessage || topic.failureReason) && (
             <div className="flex items-start gap-2 py-1.5">
               <span className="text-[12px] uppercase tracking-wider text-[#888888] w-32 shrink-0 pt-0.5">Error</span>
-              <span className="text-[14px] text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">{topic.error}</span>
+              <span className="text-[14px] text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 break-words min-w-0">
+                {topic.errorMessage || topic.failureReason}
+              </span>
             </div>
           )}
           <Field label="Phase" value={topic.generationPhase} />

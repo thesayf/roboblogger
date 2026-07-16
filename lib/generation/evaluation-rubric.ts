@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 const RUBRIC_PATH = join(process.cwd(), 'evals', 'blog-post-quality.md');
-const DEFAULT_MAX_ATTEMPTS = 3;
+const DEFAULT_MAX_ATTEMPTS = 4;
 
 const FALLBACK_RUBRIC = `# Blog Post Quality Eval
 
@@ -29,5 +29,5 @@ export function loadBlogPostEvaluationRubric(): string {
 export function getBlogEvaluationMaxAttempts(): number {
   const parsed = Number(process.env.BLOG_EVALUATION_MAX_ATTEMPTS);
   if (!Number.isInteger(parsed) || parsed < 1) return DEFAULT_MAX_ATTEMPTS;
-  return Math.min(parsed, 5);
+  return Math.min(parsed, 6);
 }

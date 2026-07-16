@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
 import Topic from '@/models/Topic';
-import { deductCredits, BLOG_GENERATION_CREDITS } from '@/lib/billing/credit-service';
+import {
+  deductCredits,
+  refundCredits,
+  BLOG_GENERATION_CREDITS,
+} from '@/lib/billing/credit-service';
 import { executeGenerationAgent } from '@/lib/generation/unified-agent';
 
 // POST /api/blog/topics/[id]/generate - Trigger blog generation workflow
@@ -30,8 +34,10 @@ export async function POST(
 
     // Deduct credits before starting generation
     const ownerId = topic.owner?.toString();
+    let creditsDeducted = false;
+    let creditsRefunded = false;
     if (ownerId) {
-      const result = await deductCredits(
+      const creditResult = await deductCredits(
         ownerId,
         BLOG_GENERATION_CREDITS,
         'blog_generation',
@@ -39,17 +45,34 @@ export async function POST(
         { topicId: topic._id.toString() },
       );
 
-      if (!result.success) {
+      if (!creditResult.success) {
         return NextResponse.json(
           {
             message: 'Insufficient credits for blog generation',
             required: BLOG_GENERATION_CREDITS,
-            available: result.available,
+            available: creditResult.available,
           },
           { status: 402 }
         );
       }
+      creditsDeducted = true;
     }
+
+    const refundGenerationCredit = async (description: string, error?: string) => {
+      if (!creditsDeducted || creditsRefunded || !ownerId) return;
+      creditsRefunded = true;
+      try {
+        await refundCredits(
+          ownerId,
+          BLOG_GENERATION_CREDITS,
+          description,
+          { topicId: topic._id.toString(), error },
+        );
+      } catch (refundError) {
+        creditsRefunded = false;
+        console.error(`[Generate] Failed to refund topic ${topic._id}:`, refundError);
+      }
+    };
 
     // Mark as generating if not already
     if (topic.status !== 'generating') {
@@ -67,11 +90,21 @@ export async function POST(
       ownerId: topic.owner.toString(),
       provider: topic.generationProvider,
     })
-      .then(result => {
-        console.log(`[Generate] Agent completed for topic ${topic._id}: ${result.success ? 'success' : 'failed'}${result.postId ? ` (post ${result.postId})` : ''}${result.error ? ` — ${result.error}` : ''}`);
+      .then(async generationResult => {
+        console.log(`[Generate] Agent completed for topic ${topic._id}: ${generationResult.success ? 'success' : 'failed'}${generationResult.postId ? ` (post ${generationResult.postId})` : ''}${generationResult.error ? ` — ${generationResult.error}` : ''}`);
+        if (!generationResult.success) {
+          await refundGenerationCredit(
+            `Refund for failed blog generation: "${topic.topic}"`,
+            generationResult.error,
+          );
+        }
       })
-      .catch(err => {
+      .catch(async err => {
         console.error(`[Generate] Agent crashed for topic ${topic._id}:`, err);
+        await refundGenerationCredit(
+          `Refund for crashed blog generation: "${topic.topic}"`,
+          err instanceof Error ? err.message : String(err),
+        );
       });
 
     return NextResponse.json({

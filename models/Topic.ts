@@ -556,15 +556,24 @@ TopicSchema.methods.markAsCompleted = function(postId: string) {
   this.status = 'completed';
   this.generatedPostId = postId;
   this.errorMessage = undefined;
+  this.failureReason = undefined;
+  this.retryAfter = undefined;
   this.updatedAt = new Date();
   return this.save();
 };
 
 // Instance method to mark as failed
-TopicSchema.methods.markAsFailed = function(errorMessage: string) {
+TopicSchema.methods.markAsFailed = function(errorMessage: string, retryable = true) {
   this.errorMessage = errorMessage;
   this.retryCount += 1;
   this.updatedAt = new Date();
+
+  if (!retryable) {
+    this.status = 'failed';
+    this.failureReason = 'Provider billing or configuration requires attention';
+    this.retryAfter = undefined;
+    return this.save();
+  }
   
   // If we haven't exceeded max retries, set status to pending with retry time
   if (this.retryCount < 3) {

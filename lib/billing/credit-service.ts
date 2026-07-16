@@ -144,6 +144,42 @@ export async function grantCredits(
   return { newBalance: balanceAfter };
 }
 
+/**
+ * Return a previously deducted credit when the paid action produces no result.
+ * Refunds reverse usage rather than counting as purchased credits.
+ */
+export async function refundCredits(
+  userId: string,
+  amount: number,
+  description: string,
+  metadata?: Record<string, any>,
+): Promise<{ newBalance: number }> {
+  await dbConnect();
+
+  const user = await User.findOneAndUpdate(
+    { _id: userId },
+    { $inc: { credits: amount, lifetimeCreditsUsed: -amount } },
+    { new: false },
+  );
+
+  if (!user) throw new Error(`User ${userId} not found`);
+
+  const balanceBefore = user.credits;
+  const balanceAfter = balanceBefore + amount;
+
+  CreditTransaction.create({
+    user: userId,
+    amount,
+    balanceBefore,
+    balanceAfter,
+    action: 'adjustment',
+    description,
+    metadata,
+  }).catch((err: Error) => console.error('[CreditService] Failed to log refund:', err));
+
+  return { newBalance: balanceAfter };
+}
+
 type ICreditTransactionAction = 'chat' | 'blog_generation' | 'batch_generation' | 'topup_purchase' | 'subscription_grant' | 'trial_grant' | 'adjustment';
 
 export { BLOG_GENERATION_CREDITS, TOOL_COSTS, MODEL_PRICING, CREDITS_PER_DOLLAR };

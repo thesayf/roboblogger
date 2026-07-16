@@ -41,6 +41,11 @@ import {
   getBlogEvaluationMaxAttempts,
   loadBlogPostEvaluationRubric,
 } from './evaluation-rubric';
+import {
+  describeUnsavedGenerationAttempt,
+  isRetryableGenerationError,
+  summarizeGenerationFailures,
+} from './generation-errors';
 
 export interface GenerationResult {
   success: boolean;
@@ -102,6 +107,7 @@ export async function executeGenerationAgent(options: {
       status: 'generating',
       generationPhase: 'initializing',
       processingStartedAt: new Date(),
+      $unset: { errorMessage: 1, failureReason: 1, retryAfter: 1 },
     });
 
     const strategyContext = await buildGenerationStrategyContext(ownerId, topic);
@@ -160,7 +166,7 @@ export async function executeGenerationAgent(options: {
         await Topic.findByIdAndUpdate(topicId, {
           status: 'generating',
           generationPhase: 'initializing',
-          $unset: { errorMessage: 1, retryAfter: 1 },
+          $unset: { errorMessage: 1, failureReason: 1, retryAfter: 1 },
         });
       }
 
@@ -213,10 +219,14 @@ export async function executeGenerationAgent(options: {
     };
 
     if (!successfulAttempt?.postId) {
-      const errorMsg = attemptResults.at(-1)?.error || 'Agent did not save a post';
+      const errorMsg = summarizeGenerationFailures(attemptResults) || 'Agent did not save a post';
+      const primaryError = attemptResults[0]?.error || errorMsg;
       const failedTopic = await Topic.findById(topicId);
       if (failedTopic && failedTopic.status !== 'completed') {
-        await failedTopic.markAsFailed(errorMsg.substring(0, 500));
+        await failedTopic.markAsFailed(
+          errorMsg.substring(0, 500),
+          isRetryableGenerationError(primaryError),
+        );
       }
       await Topic.findByIdAndUpdate(topicId, { generationMetadata });
 
@@ -261,7 +271,10 @@ export async function executeGenerationAgent(options: {
       await dbConnect();
       const topic = await Topic.findById(topicId);
       if (topic && topic.status !== 'completed') {
-        await topic.markAsFailed(errorMsg.substring(0, 500));
+        await topic.markAsFailed(
+          errorMsg.substring(0, 500),
+          isRetryableGenerationError(errorMsg),
+        );
       }
     } catch (markError) {
       console.error(`${tag} Failed to mark topic as failed:`, markError);
@@ -408,19 +421,21 @@ async function runGenerationAttempt(options: {
     const estimatedModelCostUsd = estimateGenerationModelCost(config, usage);
     const durationSeconds = Math.round((Date.now() - attemptStartTime) / 1000);
 
+    const evaluations = attemptToolCtx._evaluationAttempts || [];
+
     return {
       provider: config.provider,
       model: config.model,
       success: Boolean(postId),
       postId,
-      error: postId ? undefined : 'Agent completed without saving a blog post',
+      error: postId ? undefined : describeUnsavedGenerationAttempt(evaluations),
       turns: turnNumber,
       toolCalls,
       toolCallsByName,
       usage,
       estimatedModelCostUsd,
       durationSeconds,
-      evaluations: attemptToolCtx._evaluationAttempts || [],
+      evaluations,
     };
   } catch (error) {
     const updatedTopic = await Topic.findById(topicId).select('generatedPostId').lean().catch(() => null) as any;
@@ -452,7 +467,7 @@ function buildSystemPrompt(
   brand: any,
   strategyPrompt = '',
   evaluationRubric = '',
-  maxEvaluationAttempts = 3,
+  maxEvaluationAttempts = 4,
 ): string {
   const researchMode = topic.researchMode || 'guided';
   const seoKeywords: string[] = [];
@@ -540,6 +555,8 @@ CONTENT GUIDELINES:
 - Match the brand tone and style guidelines
 - Structure for easy scanning: headers, lists, short paragraphs
 - For CTA links, use the configured Blog URL when available or a relative path such as /start. Never invent a domain.
+- Treat the requested word range as the complete reader-visible component text, including callouts, tables, and the CTA. Aim near the middle of the range, not its upper edge.
+- Write an SEO title around 45-65 characters and an SEO description around 140-165 characters before the first evaluation.
 
 `;
 
@@ -573,7 +590,7 @@ ${evaluationRubric}
 
 1. Call evaluateBlogPost with the complete draft and an honest 0-2 self-assessment for every rubric criterion.
 2. Give specific evidence from the draft for each score. Do not award a 2 without clear evidence.
-3. If the tool returns passed: false, revise every listed issue and evaluate the complete revised draft again.
+3. If the tool returns passed: false, revise every error in revisionInstructions and evaluate the complete revised draft again. Warnings are optional polish and do not block saving.
 4. You have at most ${maxEvaluationAttempts} evaluation attempts. Never call saveBlogPost unless the latest evaluation returned passed: true.
 
 ## PHASE 6: SAVE AND COMPLETE

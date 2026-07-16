@@ -2598,8 +2598,13 @@ export default function BlogAdminClient() {
                                   </div>
                                 );
                               })()}
-                              {topic.status === "failed" && topic.error && (
-                                <p className="text-[12px] text-red-600 mt-1 truncate">{topic.error}</p>
+                              {topic.status === "failed" && (topic.errorMessage || topic.failureReason) && (
+                                <p
+                                  className="text-[12px] text-red-600 mt-1 truncate"
+                                  title={topic.errorMessage || topic.failureReason}
+                                >
+                                  {topic.errorMessage || topic.failureReason}
+                                </p>
                               )}
                             </div>
 

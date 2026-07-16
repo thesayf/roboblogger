@@ -6,6 +6,11 @@ import {
   fingerprintBlogDraft,
 } from '../lib/generation/blog-evaluation';
 import { loadBlogPostEvaluationRubric } from '../lib/generation/evaluation-rubric';
+import {
+  describeUnsavedGenerationAttempt,
+  isRetryableGenerationError,
+  summarizeGenerationFailures,
+} from '../lib/generation/generation-errors';
 
 function textWithWordCount(count: number): string {
   return Array.from({ length: count }, (_, index) => `word${index + 1}`).join(' ');
@@ -66,7 +71,7 @@ const invalidDraft: BlogPostDraft = {
   blogPost: {
     ...validDraft.blogPost,
     slug: 'ai-consulting-metrics-1775380141612',
-    seoDescription: fixedLength('Too long', 190),
+    seoDescription: fixedLength('Too long', 220),
   },
   components: validDraft.components.map(component => (
     component.type === 'rich_text'
@@ -91,6 +96,34 @@ assert.deepEqual(
   ['seo_description_length', 'timestamp_slug', 'word_count_out_of_range'],
 );
 
+const nearRangeDraft: BlogPostDraft = {
+  ...validDraft,
+  blogPost: {
+    ...validDraft.blogPost,
+    seoTitle: fixedLength('Useful AI consulting metrics guide', 40),
+    seoDescription: fixedLength('A useful but slightly long SEO description', 175),
+  },
+  components: validDraft.components.map(component => (
+    component.type === 'rich_text'
+      ? { ...component, content: `${textWithWordCount(1700)} ai consulting metrics` }
+      : { ...component }
+  )),
+};
+
+const nearRangePassing = evaluateBlogDraft({
+  draft: nearRangeDraft,
+  selfAssessment: passingAssessment,
+  requirements,
+  attempt: 1,
+});
+
+assert.equal(nearRangePassing.passed, true);
+assert.equal(nearRangePassing.deterministicChecks.passed, true);
+assert.deepEqual(
+  nearRangePassing.deterministicChecks.issues.map(issue => issue.severity),
+  ['warning', 'warning'],
+);
+
 const lowQualityAssessment: BlogSelfAssessment = {
   ...passingAssessment,
   thesisAndOriginalInsight: {
@@ -110,6 +143,20 @@ const editoriallyFailing = evaluateBlogDraft({
 assert.equal(editoriallyFailing.passed, false);
 assert.equal(editoriallyFailing.score, 10);
 assert.match(editoriallyFailing.revisionInstructions[0], /thesisAndOriginalInsight/);
+assert.match(describeUnsavedGenerationAttempt([editoriallyFailing]), /did not pass after 1 attempt/);
+assert.match(describeUnsavedGenerationAttempt([passing]), /passed, but the agent did not save/);
+assert.equal(isRetryableGenerationError('Temporary upstream timeout'), true);
+assert.equal(
+  isRetryableGenerationError('Your credit balance is too low to access the Anthropic API'),
+  false,
+);
+assert.match(
+  summarizeGenerationFailures([
+    { provider: 'deepseek', model: 'deepseek-v4-pro', error: 'Quality evaluation failed' },
+    { provider: 'anthropic', model: 'claude-opus-4-6', error: 'Credit balance is too low' },
+  ]),
+  /deepseek\/deepseek-v4-pro.*anthropic\/claude-opus-4-6/,
+);
 assert.equal(fingerprintBlogDraft(validDraft), fingerprintBlogDraft(validDraft));
 assert.notEqual(fingerprintBlogDraft(validDraft), fingerprintBlogDraft(invalidDraft));
 
