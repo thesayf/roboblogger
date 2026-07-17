@@ -57,7 +57,15 @@ async function callDataForSEO(endpoint: string, data: any[]): Promise<any> {
     throw new Error(`DataForSEO API error: ${response.status}`);
   }
 
-  return response.json();
+  const payload = await response.json();
+  const failedTask = payload.tasks?.find((task: any) => task.status_code !== 20000);
+  if (payload.status_code !== 20000 || payload.tasks_error > 0 || failedTask) {
+    const statusCode = failedTask?.status_code || payload.status_code || 'unknown';
+    const statusMessage = failedTask?.status_message || payload.status_message || 'Unknown DataForSEO error';
+    throw new Error(`DataForSEO task failed (${statusCode}): ${statusMessage}`);
+  }
+
+  return payload;
 }
 
 // Location codes for DataForSEO (common ones)
@@ -79,6 +87,71 @@ function getLocationCode(location: string): number {
   return LOCATION_CODES[location] || LOCATION_CODES['United States'];
 }
 
+type CompetitionLevel = 'low' | 'medium' | 'high' | 'unknown';
+
+function normalizeKeywords(keywords: string[], limit: number): string[] {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const rawKeyword of keywords) {
+    const keyword = rawKeyword.trim();
+    const key = keyword.toLocaleLowerCase();
+    if (!keyword || seen.has(key)) continue;
+    seen.add(key);
+    normalized.push(keyword);
+    if (normalized.length >= limit) break;
+  }
+
+  if (normalized.length === 0) throw new Error('At least one non-empty keyword is required.');
+  return normalized;
+}
+
+function normalizePaidCompetition(item: any): { value: number | null; level: CompetitionLevel } {
+  const rawLevel = typeof item?.competition_level === 'string'
+    ? item.competition_level
+    : typeof item?.competition === 'string'
+      ? item.competition
+      : null;
+  const normalizedLevel = rawLevel?.toLocaleLowerCase();
+  const index = typeof item?.competition_index === 'number' ? item.competition_index : null;
+  const numericCompetition = typeof item?.competition === 'number' ? item.competition : null;
+  const value = index !== null
+    ? Math.max(0, Math.min(1, index / 100))
+    : numericCompetition !== null
+      ? Math.max(0, Math.min(1, numericCompetition))
+      : null;
+
+  if (normalizedLevel === 'low' || normalizedLevel === 'medium' || normalizedLevel === 'high') {
+    return { value, level: normalizedLevel };
+  }
+  if (value === null) return { value: null, level: 'unknown' };
+  return { value, level: value < 0.33 ? 'low' : value < 0.66 ? 'medium' : 'high' };
+}
+
+function normalizeMonthlySearches(value: any): Array<{ year: number; month: number; searchVolume: number }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry) => Number.isInteger(entry?.year) && Number.isInteger(entry?.month) && typeof entry?.search_volume === 'number')
+    .map((entry) => ({ year: entry.year, month: entry.month, searchVolume: entry.search_volume }))
+    .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month));
+}
+
+function deriveTrend(monthlySearches: Array<{ searchVolume: number }>): KeywordData['trend'] {
+  if (monthlySearches.length < 2) return 'unknown';
+  const newest = monthlySearches[0].searchVolume;
+  const comparison = monthlySearches[Math.min(5, monthlySearches.length - 1)].searchVolume;
+  if (comparison === 0) return newest > 0 ? 'rising' : 'stable';
+
+  const change = (newest - comparison) / comparison;
+  if (change > 0.1) return 'rising';
+  if (change < -0.1) return 'declining';
+  return 'stable';
+}
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
 // ============================================================================
 // Tool Executors
 // ============================================================================
@@ -90,56 +163,79 @@ export async function executeSearchKeywordData(input: {
   keywords: string[];
   location?: string;
   language?: string;
-}): Promise<{ keywords: KeywordData[] }> {
-  const { keywords, location = 'United States', language = 'en' } = input;
+}): Promise<{
+  keywords: KeywordData[];
+  metricDefinitions: {
+    keywordDifficulty: string;
+    paidCompetition: string;
+    searchVolume: string;
+    cpc: string;
+  };
+  location: string;
+  language: string;
+}> {
+  const { location = 'United States', language = 'en' } = input;
+  const keywords = normalizeKeywords(input.keywords, 100);
 
   console.log(`[DataForSEO] Searching keyword data for: ${keywords.join(', ')}`);
 
-  try {
-    const result = await callDataForSEO('/keywords_data/google_ads/search_volume/live', [
-      {
-        keywords: keywords.slice(0, 10), // Max 10 keywords
-        location_code: getLocationCode(location),
-        language_code: language,
-      },
-    ]);
+  const request = {
+    keywords,
+    location_code: getLocationCode(location),
+    language_code: language,
+  };
 
-    const keywordData: KeywordData[] = [];
+  const [volumeResult, difficultyResult] = await Promise.all([
+    callDataForSEO('/keywords_data/google_ads/search_volume/live', [request]),
+    callDataForSEO('/dataforseo_labs/google/bulk_keyword_difficulty/live', [request]),
+  ]);
 
-    if (result.tasks?.[0]?.result) {
-      for (const item of result.tasks[0].result) {
-        const competition = item.competition || 0;
-        keywordData.push({
-          keyword: item.keyword,
-          searchVolume: item.search_volume || 0,
-          competition: competition,
-          competitionLevel: competition < 0.33 ? 'low' : competition < 0.66 ? 'medium' : 'high',
-          cpc: item.cpc || 0,
-          keywordDifficulty: item.keyword_difficulty,
-          trend: item.monthly_searches?.[0]?.search_volume > item.monthly_searches?.[5]?.search_volume
-            ? 'rising'
-            : item.monthly_searches?.[0]?.search_volume < item.monthly_searches?.[5]?.search_volume
-            ? 'declining'
-            : 'stable',
-        });
-      }
-    }
+  const volumeItems = volumeResult.tasks?.[0]?.result || [];
+  const difficultyItems = difficultyResult.tasks?.[0]?.result?.[0]?.items || [];
+  const volumeByKeyword = new Map(
+    volumeItems.map((item: any) => [String(item.keyword).toLocaleLowerCase(), item]),
+  );
+  const difficultyByKeyword = new Map<string, number | null>(
+    difficultyItems.map((item: any): [string, number | null] => [
+      String(item.keyword).toLocaleLowerCase(),
+      numberOrNull(item.keyword_difficulty),
+    ]),
+  );
 
-    console.log(`[DataForSEO] Found data for ${keywordData.length} keywords`);
-    return { keywords: keywordData };
-  } catch (error) {
-    console.error('[DataForSEO] Error fetching keyword data:', error);
-    // Return empty results rather than failing completely
+  const keywordData: KeywordData[] = keywords.map((keyword) => {
+    const key = keyword.toLocaleLowerCase();
+    const volumeItem: any = volumeByKeyword.get(key);
+    const keywordDifficulty = difficultyByKeyword.has(key) ? difficultyByKeyword.get(key)! : null;
+    const paidCompetition = normalizePaidCompetition(volumeItem);
+    const monthlySearches = normalizeMonthlySearches(volumeItem?.monthly_searches);
+
     return {
-      keywords: keywords.map(k => ({
-        keyword: k,
-        searchVolume: 0,
-        competition: 0,
-        competitionLevel: 'low' as const,
-        cpc: 0,
-      })),
+      keyword: volumeItem?.keyword || keyword,
+      searchVolume: numberOrNull(volumeItem?.search_volume),
+      competition: paidCompetition.value,
+      competitionLevel: paidCompetition.level,
+      paidCompetition: paidCompetition.value,
+      paidCompetitionLevel: paidCompetition.level,
+      cpc: numberOrNull(volumeItem?.cpc),
+      keywordDifficulty,
+      trend: deriveTrend(monthlySearches),
+      monthlySearches,
+      dataAvailable: Boolean(volumeItem || keywordDifficulty !== null),
     };
-  }
+  });
+
+  console.log(`[DataForSEO] Found search data for ${keywordData.filter((item) => item.dataAvailable).length}/${keywordData.length} keywords`);
+  return {
+    keywords: keywordData,
+    metricDefinitions: {
+      keywordDifficulty: 'Organic difficulty of ranking in the Google top 10, from 0 to 100.',
+      paidCompetition: 'Google Ads advertiser competition from 0 to 1. This is not organic SEO difficulty.',
+      searchVolume: 'Approximate average monthly Google searches for the selected location.',
+      cpc: 'Historical Google Ads cost per click in USD, regardless of the selected search location.',
+    },
+    location,
+    language,
+  };
 }
 
 /**
@@ -149,49 +245,58 @@ export async function executeSearchRelatedKeywords(input: {
   seedKeyword: string;
   limit?: number;
   location?: string;
+  language?: string;
 }): Promise<{ relatedKeywords: RelatedKeyword[] }> {
-  const { seedKeyword, limit = 20, location = 'United States' } = input;
+  const { seedKeyword, limit = 20, location = 'United States', language = 'en' } = input;
+  const safeLimit = Math.max(1, Math.min(limit, 100));
 
   console.log(`[DataForSEO] Finding related keywords for: ${seedKeyword}`);
 
-  try {
-    const result = await callDataForSEO('/keywords_data/google_ads/keywords_for_keywords/live', [
-      {
-        keywords: [seedKeyword],
-        location_code: getLocationCode(location),
-        language_code: 'en',
-        include_seed_keyword: false,
-        limit: Math.min(limit, 50),
-      },
-    ]);
+  const depth = safeLimit <= 8 ? 1 : safeLimit <= 72 ? 2 : 3;
+  const result = await callDataForSEO('/dataforseo_labs/google/related_keywords/live', [
+    {
+      keyword: seedKeyword.trim(),
+      location_code: getLocationCode(location),
+      language_code: language,
+      include_seed_keyword: false,
+      include_serp_info: true,
+      depth,
+      limit: safeLimit,
+      order_by: ['keyword_data.keyword_info.search_volume,desc'],
+    },
+  ]);
 
-    const relatedKeywords: RelatedKeyword[] = [];
+  const items = result.tasks?.[0]?.result?.[0]?.items || [];
+  const relatedKeywords: RelatedKeyword[] = items.map((item: any) => {
+    const keywordData = item.keyword_data || {};
+    const keywordInfo = keywordData.keyword_info || {};
+    const keyword = String(keywordData.keyword || '');
+    const paidCompetition = normalizePaidCompetition(keywordInfo);
+    const monthlySearches = normalizeMonthlySearches(keywordInfo.monthly_searches);
+    const depthValue = typeof item.depth === 'number' ? item.depth : 1;
+    const isQuestion = /^(how|what|why|when|where|who|can|does|is)\b/i.test(keyword) || keyword.includes('?');
+    const isLongTail = keyword.split(/\s+/).length >= 4;
 
-    if (result.tasks?.[0]?.result) {
-      for (const item of result.tasks[0].result) {
-        const competition = item.competition || 0;
-        const isQuestion = item.keyword.includes('how') || item.keyword.includes('what') ||
-          item.keyword.includes('why') || item.keyword.includes('when') || item.keyword.includes('?');
-        const isLongTail = item.keyword.split(' ').length >= 4;
+    return {
+      keyword,
+      searchVolume: numberOrNull(keywordInfo.search_volume),
+      competition: paidCompetition.value,
+      competitionLevel: paidCompetition.level,
+      paidCompetition: paidCompetition.value,
+      paidCompetitionLevel: paidCompetition.level,
+      cpc: numberOrNull(keywordInfo.cpc),
+      keywordDifficulty: numberOrNull(keywordData.keyword_properties?.keyword_difficulty),
+      trend: deriveTrend(monthlySearches),
+      monthlySearches,
+      searchIntent: keywordData.search_intent_info?.main_intent || null,
+      dataAvailable: Boolean(keyword),
+      relevanceScore: Math.max(0.1, 1 - (depthValue * 0.2)),
+      searchType: isQuestion ? 'question' : isLongTail ? 'long-tail' : 'related',
+    };
+  });
 
-        relatedKeywords.push({
-          keyword: item.keyword,
-          searchVolume: item.search_volume || 0,
-          competition: competition,
-          competitionLevel: competition < 0.33 ? 'low' : competition < 0.66 ? 'medium' : 'high',
-          cpc: item.cpc || 0,
-          relevanceScore: item.relevance || 0.5,
-          searchType: isQuestion ? 'question' : isLongTail ? 'long-tail' : 'related',
-        });
-      }
-    }
-
-    console.log(`[DataForSEO] Found ${relatedKeywords.length} related keywords`);
-    return { relatedKeywords };
-  } catch (error) {
-    console.error('[DataForSEO] Error fetching related keywords:', error);
-    return { relatedKeywords: [] };
-  }
+  console.log(`[DataForSEO] Found ${relatedKeywords.length} related keywords`);
+  return { relatedKeywords };
 }
 
 /**

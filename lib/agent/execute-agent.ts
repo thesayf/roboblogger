@@ -7,6 +7,14 @@ import { buildSystemPrompt, buildContextualMessage } from './system-prompt';
 import { buildTools } from './tools';
 import { ToolContext, ToolCallInfo } from './types';
 import { CurrentUser } from '@/lib/auth/getCurrentUser';
+import {
+  AGENT_COMPACTION_PROMPT,
+  buildCompletionCorrection,
+  getTaskPlanCompletionIssue,
+  MAX_AGENT_ITERATIONS,
+  MAX_COMPLETION_CORRECTIONS,
+  requiresResearchPlan,
+} from './long-task';
 
 const CREDITS_PER_EXCHANGE = 0.1;
 
@@ -99,6 +107,7 @@ export async function executeAgent(options: {
   };
 
   const tools = buildTools(toolCtx);
+  const taskPlanRequired = requiresResearchPlan(message);
   console.log(`${tag} Tools available: ${tools.map((t: any) => t.name).join(', ')}`);
 
   // Phase: thinking
@@ -116,17 +125,27 @@ export async function executeAgent(options: {
     tools,
     messages: [{ role: 'user', content: contextualMessage }],
     stream: false,
+    max_iterations: MAX_AGENT_ITERATIONS,
+    compactionControl: {
+      enabled: true,
+      contextTokenThreshold: 100000,
+      summaryPrompt: AGENT_COMPACTION_PROMPT,
+    },
   });
 
   let assistantContent = '';
   let totalCreditsUsed = 0;
   let turnNumber = 0;
+  let completionCorrections = 0;
+  let lastStopReason: string | null = null;
+  let incompleteReason: string | null = null;
 
   console.log(`${tag} Entering toolRunner loop...`);
 
   for await (const messageStream of runner) {
     turnNumber++;
     totalCreditsUsed += CREDITS_PER_EXCHANGE;
+    lastStopReason = messageStream.stop_reason;
     const turnStart = Date.now();
 
     console.log(`${tag} ── Turn ${turnNumber} ──────────────────────────`);
@@ -176,14 +195,44 @@ export async function executeAgent(options: {
       }
     }
 
-    // Process text blocks
+    let iterationText = '';
     for (const block of textBlocks) {
       const text = (block as any).text;
-      assistantContent += text;
+      iterationText += text;
       console.log(`${tag}   text (first 300 chars): ${text.slice(0, 300)}`);
     }
 
     console.log(`${tag}   turn ${turnNumber} completed in ${Date.now() - turnStart}ms`);
+
+    const completionIssue = messageStream.stop_reason === 'max_tokens'
+      ? 'The response hit the output-token limit before it could finish.'
+      : messageStream.stop_reason === 'tool_use'
+        ? null
+        : getTaskPlanCompletionIssue(taskPlanRequired, toolCtx.taskPlan);
+
+    if (completionIssue) {
+      if (
+        totalCreditsUsed < maxCredits &&
+        completionCorrections < MAX_COMPLETION_CORRECTIONS
+      ) {
+        completionCorrections++;
+        console.log(`${tag}   Completion gate rejected response: ${completionIssue}`);
+        runner.pushMessages({
+          role: 'user',
+          content: buildCompletionCorrection(completionIssue),
+        });
+        await logProgress(executionId, 'thinking', {
+          type: 'phase',
+          message: `Completion check found unfinished work; continuing (${completionCorrections}/${MAX_COMPLETION_CORRECTIONS})...`,
+        });
+        continue;
+      }
+
+      incompleteReason = `Agent could not complete the requested work: ${completionIssue}`;
+      break;
+    }
+
+    assistantContent += iterationText;
 
     // If there are more turns coming, log that we're thinking again
     if (totalCreditsUsed < maxCredits && messageStream.stop_reason === 'tool_use') {
@@ -197,12 +246,19 @@ export async function executeAgent(options: {
     // Stop if we've hit the credit cap
     if (totalCreditsUsed >= maxCredits) {
       console.log(`${tag}   ⚠ Credit limit reached (${totalCreditsUsed} >= ${maxCredits}), breaking loop`);
-      await logProgress(executionId, 'thinking', {
-        type: 'text',
-        message: 'Credit limit reached, finishing up...',
-      });
+      if (messageStream.stop_reason === 'tool_use') {
+        incompleteReason = `Routine credit limit reached after ${turnNumber} turns while more tool work was still required. Increase the routine's max credits and retry.`;
+        await logProgress(executionId, 'failed', {
+          type: 'error',
+          message: incompleteReason,
+        });
+      }
       break;
     }
+  }
+
+  if (!incompleteReason && lastStopReason === 'tool_use') {
+    incompleteReason = `Agent reached the ${MAX_AGENT_ITERATIONS}-iteration safety limit before completing the task.`;
   }
 
   // Deduct credits
@@ -211,6 +267,29 @@ export async function executeAgent(options: {
     await User.findByIdAndUpdate(user.mongoId, {
       $inc: { credits: -totalCreditsUsed, lifetimeCreditsUsed: totalCreditsUsed },
     });
+  }
+
+  if (incompleteReason) {
+    if (executionId) {
+      try {
+        await RoutineExecution.findByIdAndUpdate(executionId, {
+          $set: {
+            phase: 'failed',
+            creditsUsed: totalCreditsUsed,
+            dataChanged: Array.from(new Set(dataChanged)),
+            response: assistantContent.slice(0, 5000),
+            error: incompleteReason,
+          },
+        });
+      } catch (err) {
+        console.error(`${tag} Failed to persist incomplete execution stats:`, err);
+      }
+    }
+    await logProgress(executionId, 'failed', {
+      type: 'error',
+      message: incompleteReason,
+    });
+    throw new Error(incompleteReason);
   }
 
   // Phase: completed — persist final stats so data survives even if later workflow steps fail

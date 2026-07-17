@@ -4,6 +4,7 @@ import React from 'react';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 const TOOL_LABELS: Record<string, string> = {
+  manage_task_plan: 'Updating research plan',
   search_keyword_data: 'Searching keyword data',
   search_related_keywords: 'Finding related keywords',
   search_trending_topics: 'Searching trending topics',

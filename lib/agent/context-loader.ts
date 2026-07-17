@@ -10,7 +10,8 @@ import { CurrentUser } from '@/lib/auth/getCurrentUser';
 
 export async function loadAgentContext(
   user: CurrentUser,
-  currentMessage: string
+  currentMessage: string,
+  options: { includeChatHistory?: boolean } = {},
 ): Promise<AgentContext> {
   await dbConnect();
 
@@ -19,7 +20,7 @@ export async function loadAgentContext(
     loadBrandSettings(user.clerkId),
     loadRecentPosts(user.mongoId),
     loadQueueStats(user.mongoId),
-    load7DayChatHistory(user.mongoId),
+    options.includeChatHistory === false ? Promise.resolve('') : load7DayChatHistory(user.mongoId),
     loadMem0Memories(user.clerkId, currentMessage),
   ]);
 

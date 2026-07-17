@@ -5,9 +5,11 @@ import { buildActionTools } from './action-tools';
 import { buildRoutineTools } from './routine-tools';
 import { buildDocumentTools } from './document-tools';
 import { buildStrategyTools } from './strategy-tools';
+import { buildPlanningTools } from './planning-tools';
 
 export function buildTools(ctx: ToolContext) {
   return [
+    ...buildPlanningTools(ctx),
     ...buildResearchTools(ctx),
     ...buildReadTools(ctx),
     ...buildActionTools(ctx),

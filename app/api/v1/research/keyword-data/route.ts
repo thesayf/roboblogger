@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   }
 
   const result = await executeSearchKeywordData({
-    keywords: body.keywords.slice(0, 10),
+    keywords: body.keywords.slice(0, 100),
     location: body.location,
     language: body.language,
   });

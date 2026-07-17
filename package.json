@@ -9,7 +9,8 @@
     "lint": "next lint",
     "backfill:embeddings": "tsx scripts/backfill-embeddings.ts",
     "test:strategy": "tsx --env-file=.env.local scripts/test-content-strategy.ts",
-    "test:evaluation": "tsx scripts/test-blog-evaluation.ts"
+    "test:evaluation": "tsx scripts/test-blog-evaluation.ts",
+    "test:agent-research": "tsx scripts/test-agent-research.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.5",

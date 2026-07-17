@@ -16,6 +16,14 @@ import {
   CHAT_IMAGE_MIME_TYPES,
   type ChatImageAttachment,
 } from '@/lib/chat/attachments';
+import {
+  AGENT_COMPACTION_PROMPT,
+  buildCompletionCorrection,
+  getTaskPlanCompletionIssue,
+  MAX_AGENT_ITERATIONS,
+  MAX_COMPLETION_CORRECTIONS,
+  requiresResearchPlan,
+} from '@/lib/agent/long-task';
 
 const CHAT_MODEL = 'claude-sonnet-4-6';
 const MIN_CREDITS_PREFLIGHT = 0.02; // Minimum credits to start a chat
@@ -177,7 +185,9 @@ export async function POST(req: Request) {
     });
 
     // Load context (brand settings, 7-day history, Mem0 memories)
-    const context = await loadAgentContext(user, modelMessage);
+    // The full current conversation is already in claudeMessages. Avoid injecting a
+    // second, truncated copy of it through the rolling seven-day context.
+    const context = await loadAgentContext(user, modelMessage, { includeChatHistory: false });
 
     // Add current message with injected context
     const contextualMessage = buildContextualMessage(modelMessage, context);
@@ -207,6 +217,7 @@ export async function POST(req: Request) {
           dataChanged,
           toolCalls,
         };
+        const taskPlanRequired = requiresResearchPlan(modelMessage);
 
         const tools = buildTools(toolCtx);
 
@@ -282,19 +293,27 @@ export async function POST(req: Request) {
             tools,
             messages: claudeMessages,
             stream: true,
+            max_iterations: MAX_AGENT_ITERATIONS,
+            compactionControl: {
+              enabled: true,
+              contextTokenThreshold: 100000,
+              summaryPrompt: AGENT_COMPACTION_PROMPT,
+            },
           });
 
           // Track token usage across all toolRunner iterations
           const tokenUsage = { inputTokens: 0, outputTokens: 0 };
+          let completionCorrections = 0;
+          let lastStopReason: string | null = null;
 
           for await (const messageStream of runner) {
+            let iterationText = '';
             for await (const event of messageStream) {
               if (
                 event.type === 'content_block_delta' &&
                 event.delta.type === 'text_delta'
               ) {
-                send('text_delta', { text: event.delta.text });
-                assistantContent += event.delta.text;
+                iterationText += event.delta.text;
               }
               // Accumulate token usage from each iteration
               if (event.type === 'message_start' && event.message?.usage) {
@@ -304,8 +323,42 @@ export async function POST(req: Request) {
                 tokenUsage.outputTokens += (event as any).usage.output_tokens || 0;
               }
             }
+            const completedMessage = await messageStream.finalMessage();
+            lastStopReason = completedMessage.stop_reason;
+            const completionIssue = completedMessage.stop_reason === 'max_tokens'
+              ? 'The response hit the output-token limit before it could finish.'
+              : completedMessage.stop_reason === 'tool_use'
+                ? null
+                : getTaskPlanCompletionIssue(taskPlanRequired, toolCtx.taskPlan);
+
+            if (completionIssue && completionCorrections < MAX_COMPLETION_CORRECTIONS) {
+              completionCorrections++;
+              runner.pushMessages({
+                role: 'user',
+                content: buildCompletionCorrection(completionIssue),
+              });
+              send('task_status', {
+                status: 'continuing',
+                issue: completionIssue,
+                correction: completionCorrections,
+              });
+              continue;
+            }
+            if (completionIssue) {
+              throw new Error(`Agent could not complete the requested work: ${completionIssue}`);
+            }
+
+            if (iterationText) {
+              send('text_delta', { text: iterationText });
+              assistantContent += iterationText;
+            }
+
             // Flush after each toolRunner iteration (after tool calls complete)
             await flushAssistantContent();
+          }
+
+          if (lastStopReason === 'tool_use') {
+            throw new Error(`Agent reached the ${MAX_AGENT_ITERATIONS}-iteration safety limit before completing the task.`);
           }
 
           clearInterval(flushInterval);

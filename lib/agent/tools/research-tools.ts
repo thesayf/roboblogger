@@ -34,9 +34,9 @@ export function buildResearchTools(ctx: ToolContext) {
   return [
     betaZodTool({
       name: 'search_keyword_data',
-      description: 'Get SEO metrics for keywords including search volume, CPC, competition, and difficulty from DataForSEO. Use this to evaluate keyword opportunities.',
+      description: 'Get decision-grade SEO metrics from DataForSEO. Returns search volume, CPC in USD, paidCompetition (Google Ads), and keywordDifficulty (organic ranking difficulty, 0-100). Never substitute paidCompetition for organic difficulty, assume CPC uses the target country currency, or treat a low difficulty score as a ranking guarantee. Missing data is returned as null, never as a fake zero.',
       inputSchema: z.object({
-        keywords: z.array(z.string()).max(10).describe('Keywords to analyze (max 10)'),
+        keywords: z.array(z.string()).min(1).max(100).describe('Specific keywords to analyze in one batch (max 100)'),
         location: z.string().optional().describe('Location for search data, e.g., "United States"'),
         language: z.string().optional().describe('Language code, e.g., "en"'),
       }),
@@ -48,11 +48,12 @@ export function buildResearchTools(ctx: ToolContext) {
 
     betaZodTool({
       name: 'search_related_keywords',
-      description: 'Find related and long-tail keywords for a seed keyword using DataForSEO. Great for expanding keyword lists and finding low-competition opportunities.',
+      description: 'Find related and long-tail keywords using DataForSEO Labs. Returns organic keywordDifficulty separately from Google Ads paidCompetition, plus search volume and search intent. Use keywordDifficulty for organic SEO opportunity comparisons.',
       inputSchema: z.object({
         seedKeyword: z.string().describe('The main keyword to find related terms for'),
-        limit: z.number().optional().describe('Maximum results to return (default 20, max 50)'),
+        limit: z.number().int().min(1).max(100).optional().describe('Maximum results to return (default 20, max 100)'),
         location: z.string().optional().describe('Location for search data'),
+        language: z.string().optional().describe('Language code, e.g., "en"'),
       }),
       run: wrapTool(ctx, 'search_related_keywords', async (input) => {
         const result = await executeSearchRelatedKeywords(input);

@@ -8,22 +8,22 @@ import Anthropic from '@anthropic-ai/sdk';
 export const topicResearchTools: Anthropic.Tool[] = [
   {
     name: 'searchKeywordData',
-    description: `Get SEO metrics for keywords using DataForSEO. Returns search volume, competition level, CPC, and keyword difficulty.
+    description: `Get SEO metrics for keywords using DataForSEO. Returns search volume, CPC in USD, Google Ads competition, and organic keyword difficulty on a 0-100 scale.
 Use this to:
 - Validate keyword opportunities
 - Compare keyword potential
 - Find the best primary keywords for topics
 - Understand keyword competition
 
-Call with specific keywords you want to analyze. You can search up to 10 keywords at once.`,
+Do not confuse paidCompetition with organic keywordDifficulty, assume CPC uses the target country's currency, or treat low difficulty as a ranking guarantee. Call with specific keywords you want to analyze. You can search up to 100 keywords at once.`,
     input_schema: {
       type: 'object' as const,
       properties: {
         keywords: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Array of keywords to get SEO data for (max 10)',
-          maxItems: 10
+          description: 'Array of keywords to get SEO data for (max 100)',
+          maxItems: 100
         },
         location: {
           type: 'string',
@@ -58,7 +58,7 @@ Returns related keywords with their SEO metrics.`,
         },
         limit: {
           type: 'number',
-          description: 'Maximum number of related keywords to return (default 20, max 50)',
+          description: 'Maximum number of related keywords to return (default 20, max 100)',
           default: 20
         },
         location: {
@@ -206,12 +206,19 @@ Returns potential content gaps with supporting evidence.`,
  */
 export interface KeywordData {
   keyword: string;
-  searchVolume: number;
-  competition: number; // 0-1 scale
-  competitionLevel: 'low' | 'medium' | 'high';
-  cpc?: number;
-  keywordDifficulty?: number;
-  trend?: 'rising' | 'stable' | 'declining';
+  searchVolume: number | null;
+  /** @deprecated Use paidCompetition. This is Google Ads competition, not organic difficulty. */
+  competition: number | null;
+  /** @deprecated Use paidCompetitionLevel. */
+  competitionLevel: 'low' | 'medium' | 'high' | 'unknown';
+  paidCompetition: number | null;
+  paidCompetitionLevel: 'low' | 'medium' | 'high' | 'unknown';
+  cpc: number | null;
+  keywordDifficulty: number | null;
+  trend: 'rising' | 'stable' | 'declining' | 'unknown';
+  monthlySearches?: Array<{ year: number; month: number; searchVolume: number }>;
+  searchIntent?: 'informational' | 'navigational' | 'commercial' | 'transactional' | null;
+  dataAvailable: boolean;
 }
 
 export interface RelatedKeyword extends KeywordData {

@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
     seedKeyword: body.seedKeyword,
     limit: body.limit,
     location: body.location,
+    language: body.language,
   });
 
   return withCors(NextResponse.json({
