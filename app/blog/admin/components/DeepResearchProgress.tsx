@@ -38,6 +38,13 @@ export default function DeepResearchProgress({ run }: { run: DeepResearchRunSnap
   const active = run.status === 'queued' || run.status === 'running';
   const planItems = run.plan?.items || [];
   const resolved = planItems.filter((item) => item.status === 'completed' || item.status === 'blocked').length;
+  const title = active
+    ? 'Researching your question'
+    : run.status === 'completed'
+      ? 'Research complete'
+      : run.status === 'partial'
+        ? 'Research completed with limitations'
+        : 'Research';
 
   const cancel = async () => {
     if (!active || isCancelling) return;
@@ -58,7 +65,7 @@ export default function DeepResearchProgress({ run }: { run: DeepResearchRunSnap
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-medium text-[#111111]">Deep Research</p>
+              <p className="truncate text-sm font-medium text-[#111111]">{title}</p>
               <StatusIcon run={run} />
             </div>
             <p className="truncate text-xs text-[#777777]" title={run.phaseDetail}>
@@ -73,8 +80,8 @@ export default function DeepResearchProgress({ run }: { run: DeepResearchRunSnap
             onClick={cancel}
             disabled={isCancelling}
             className="flex h-8 w-8 flex-none items-center justify-center rounded-md text-[#777777] transition-colors hover:bg-[#F0EFEA] hover:text-[#111111] disabled:opacity-40"
-            aria-label="Cancel deep research"
-            title="Cancel deep research"
+            aria-label="Cancel research"
+            title="Cancel research"
           >
             {isCancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Square className="h-3.5 w-3.5" />}
           </button>

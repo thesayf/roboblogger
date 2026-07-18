@@ -136,6 +136,51 @@ async function main() {
     assert(toolNames.includes('manage_task_plan'));
     assert(toolNames.includes('search_keyword_data'));
     assert(toolNames.includes('search_related_keywords'));
+    assert(!toolNames.includes('start_deep_research'));
+
+    const delegationEvents: Array<{ event: string; data: any }> = [];
+    const delegationContext: ToolContext = {
+      userId: 'test-user',
+      clerkId: 'test-clerk',
+      sendEvent: (event, data) => delegationEvents.push({ event, data }),
+      dataChanged: [],
+      toolCalls: [],
+      deepResearch: {
+        start: async (objective) => ({
+          workflowRunId: 'workflow-1',
+          conversationId: 'conversation-1',
+          assistantMessageId: 'assistant-1',
+          run: {
+            id: 'research-1',
+            objective,
+            status: 'queued',
+            phase: 'queued',
+            phaseDetail: 'Research queued',
+            progress: 0,
+            creditsUsed: 0,
+            createdAt: new Date().toISOString(),
+          },
+        }),
+      },
+    };
+    const chatTools = buildTools(delegationContext);
+    const startDeepResearch = chatTools.find((tool) => tool.name === 'start_deep_research') as any;
+    assert(startDeepResearch);
+    const delegationResult = JSON.parse(await startDeepResearch.run({
+      objective: 'Research the UK startup SEO market with keyword and competitor evidence.',
+    }));
+    assert.equal(delegationResult.started, true);
+    assert.equal(delegationContext.deepResearch?.startedRunId, 'research-1');
+    assert.equal(
+      delegationEvents.find((entry) => entry.event === 'deep_research_started')?.data.run.id,
+      'research-1',
+    );
+
+    const repeatedDelegation = JSON.parse(await startDeepResearch.run({
+      objective: 'Start the same comprehensive market research again.',
+    }));
+    assert.equal(repeatedDelegation.runId, 'research-1');
+    assert.equal(delegationContext.toolCalls.length, 2);
 
     const manageTaskPlan = tools.find((tool) => tool.name === 'manage_task_plan') as any;
     const planResult = JSON.parse(await manageTaskPlan.run({

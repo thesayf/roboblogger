@@ -24,6 +24,7 @@ import {
   MAX_COMPLETION_CORRECTIONS,
   requiresResearchPlan,
 } from '@/lib/agent/long-task';
+import { startDeepResearchRun } from '@/lib/deep-research/start';
 
 const CHAT_MODEL = 'claude-sonnet-4-6';
 const MIN_CREDITS_PREFLIGHT = 0.02; // Minimum credits to start a chat
@@ -193,7 +194,7 @@ export async function POST(req: Request) {
     const contextualMessage = buildContextualMessage(modelMessage, context);
     claudeMessages.push({ role: 'user', content: buildUserContent(contextualMessage, attachments) });
 
-    const systemPrompt = buildSystemPrompt(context);
+    const systemPrompt = buildSystemPrompt(context, { deepResearchEnabled: attachments.length === 0 });
 
     // Create SSE stream
     const stream = new ReadableStream({
@@ -209,17 +210,7 @@ export async function POST(req: Request) {
 
         const dataChanged: string[] = [];
         const toolCalls: ToolCallInfo[] = [];
-
-        const toolCtx: ToolContext = {
-          userId: user.mongoId,
-          clerkId: user.clerkId,
-          sendEvent: send,
-          dataChanged,
-          toolCalls,
-        };
         const taskPlanRequired = requiresResearchPlan(modelMessage);
-
-        const tools = buildTools(toolCtx);
 
         // Save user message immediately so it's never lost
         const savedUserMessage = await ChatMessage.create({
@@ -234,6 +225,33 @@ export async function POST(req: Request) {
         let assistantContent = '';
         let assistantMsgId: string | null = null;
         let lastSavedLength = 0;
+
+        const toolCtx: ToolContext = {
+          userId: user.mongoId,
+          clerkId: user.clerkId,
+          sendEvent: send,
+          dataChanged,
+          toolCalls,
+          deepResearch: attachments.length === 0 ? {
+            start: async (objective) => {
+              const started = await startDeepResearchRun({
+                ownerId: user.mongoId,
+                ownerClerkId: user.clerkId,
+                conversationId: conv._id.toString(),
+                date: today,
+                objective,
+                availableCredits: user.credits,
+                onAssistantCreated: (messageId) => {
+                  assistantMsgId = messageId;
+                },
+              });
+              assistantMsgId = started.assistantMessageId;
+              return started;
+            },
+          } : undefined,
+        };
+
+        const tools = buildTools(toolCtx);
 
         // Periodically flush assistant content to DB so it survives crashes/timeouts
         const flushAssistantContent = async () => {
@@ -325,11 +343,12 @@ export async function POST(req: Request) {
             }
             const completedMessage = await messageStream.finalMessage();
             lastStopReason = completedMessage.stop_reason;
+            const delegatedResearch = Boolean(toolCtx.deepResearch?.startedRunId);
             const completionIssue = completedMessage.stop_reason === 'max_tokens'
               ? 'The response hit the output-token limit before it could finish.'
               : completedMessage.stop_reason === 'tool_use'
                 ? null
-                : getTaskPlanCompletionIssue(taskPlanRequired, toolCtx.taskPlan);
+                : getTaskPlanCompletionIssue(taskPlanRequired && !delegatedResearch, toolCtx.taskPlan);
 
             if (completionIssue && completionCorrections < MAX_COMPLETION_CORRECTIONS) {
               completionCorrections++;
@@ -409,6 +428,7 @@ export async function POST(req: Request) {
 
           send('done', {
             conversationId: conv._id.toString(),
+            deepResearchRunId: toolCtx.deepResearch?.startedRunId,
             creditsUsed,
             newBalance: deductResult.success ? deductResult.newBalance : undefined,
             costBreakdown: {

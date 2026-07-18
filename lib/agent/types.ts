@@ -1,3 +1,5 @@
+import type { DeepResearchRunSnapshot } from '@/lib/deep-research/types';
+
 export interface AgentContext {
   userId: string;
   mongoId: string;
@@ -58,6 +60,15 @@ export interface ToolContext {
   dataChanged: string[];
   toolCalls: ToolCallInfo[];
   taskPlan?: TaskPlanState;
+  deepResearch?: {
+    startedRunId?: string;
+    start: (objective: string) => Promise<{
+      workflowRunId: string;
+      conversationId: string;
+      assistantMessageId: string;
+      run: DeepResearchRunSnapshot;
+    }>;
+  };
 }
 
-export type SSEEventType = 'text_delta' | 'tool_start' | 'tool_end' | 'task_status' | 'done' | 'error';
+export type SSEEventType = 'text_delta' | 'tool_start' | 'tool_end' | 'task_status' | 'deep_research_started' | 'done' | 'error';

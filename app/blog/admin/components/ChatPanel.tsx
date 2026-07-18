@@ -53,8 +53,8 @@ export default function ChatPanel({ onClose }: { onClose?: () => void }) {
     }
   }, [dataChanged, clearDataChanged]);
 
-  const handleSend = async (message: string, attachments: ChatImageAttachment[], mode: 'chat' | 'deep-research') => {
-    await sendMessage(message, attachments, mode);
+  const handleSend = async (message: string, attachments: ChatImageAttachment[]) => {
+    await sendMessage(message, attachments);
   };
 
   const handleShowHistory = async () => {

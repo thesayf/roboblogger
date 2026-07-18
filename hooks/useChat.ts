@@ -4,8 +4,6 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ChatImageAttachment } from '@/lib/chat/attachments';
 import type { DeepResearchRunSnapshot } from '@/lib/deep-research/types';
 
-export type ChatSendMode = 'chat' | 'deep-research';
-
 export interface ChatMessageUI {
   id: string;
   role: 'user' | 'assistant';
@@ -34,7 +32,7 @@ interface UseChatReturn {
   error: string | null;
   conversationId: string | null;
   conversations: ConversationInfo[];
-  sendMessage: (message: string, attachments?: ChatImageAttachment[], mode?: ChatSendMode) => Promise<void>;
+  sendMessage: (message: string, attachments?: ChatImageAttachment[]) => Promise<void>;
   loadConversation: (id: string) => Promise<void>;
   loadConversations: () => Promise<void>;
   loadTodayConversation: () => Promise<void>;
@@ -79,6 +77,7 @@ function friendlyToolName(toolName: string): string {
     update_routine: 'Updating routine...',
     update_topics_bulk: 'Updating topics...',
     edit_posts_bulk: 'Editing posts...',
+    start_deep_research: 'Starting thorough research...',
   };
   return map[toolName] || `Running ${toolName}...`;
 }
@@ -206,6 +205,18 @@ export function useChat(): UseChatReturn {
         );
         break;
 
+      case 'deep_research_started':
+        setStreamingStatus('Researching in the background...');
+        if (data.conversationId) setConversationId(data.conversationId);
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantId
+              ? { ...message, deepResearchRun: data.run }
+              : message
+          )
+        );
+        break;
+
       case 'done':
         if (data.conversationId) setConversationId(data.conversationId);
         if (data.dataChanged?.length > 0) {
@@ -220,7 +231,7 @@ export function useChat(): UseChatReturn {
   }, []);
 
   const sendMessage = useCallback(
-    async (message: string, attachments: ChatImageAttachment[] = [], mode: ChatSendMode = 'chat') => {
+    async (message: string, attachments: ChatImageAttachment[] = []) => {
       if (isStreaming) return;
 
       setError(null);
@@ -249,35 +260,6 @@ export function useChat(): UseChatReturn {
       setMessages((prev) => [...prev, assistantMsg]);
 
       try {
-        if (mode === 'deep-research') {
-          setStreamingStatus('Starting deep research...');
-          const res = await fetch('/api/deep-research', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ objective: message, conversationId }),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            if (data.code === 'INSUFFICIENT_CREDITS' || res.status === 402) {
-              throw new Error(data.error || 'You need more credits to start deep research.');
-            }
-            throw new Error(data.error || `HTTP ${res.status}`);
-          }
-
-          setConversationId(data.conversationId);
-          setMessages((prev) => prev.map((item) => {
-            if (item.id === assistantId) {
-              return {
-                ...item,
-                id: data.assistantMessageId,
-                deepResearchRun: data.run,
-              };
-            }
-            return item;
-          }));
-          return;
-        }
-
         abortRef.current = new AbortController();
 
         const res = await fetch('/api/chat', {
@@ -301,6 +283,7 @@ export function useChat(): UseChatReturn {
         const decoder = new TextDecoder();
         let buffer = '';
         let receivedDone = false;
+        let receivedResearchStart = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -320,6 +303,7 @@ export function useChat(): UseChatReturn {
               try {
                 const data = JSON.parse(line.slice(6));
                 if (currentEvent === 'done') receivedDone = true;
+                if (currentEvent === 'deep_research_started') receivedResearchStart = true;
                 handleSSEEvent(currentEvent, data, assistantId);
               } catch {
                 // Skip malformed events
@@ -330,7 +314,7 @@ export function useChat(): UseChatReturn {
         }
 
         // Stream ended without a proper 'done' event — likely a timeout or crash
-        if (!receivedDone) {
+        if (!receivedDone && !receivedResearchStart) {
           setError('Connection lost — the response may be incomplete. Your message has been saved.');
         }
       } catch (err: any) {
@@ -339,7 +323,7 @@ export function useChat(): UseChatReturn {
           // Remove empty assistant message on error
           setMessages((prev) =>
             prev.filter(
-              (m) => m.id !== assistantId || m.content.length > 0
+              (m) => m.id !== assistantId || m.content.length > 0 || Boolean(m.deepResearchRun)
             )
           );
         }

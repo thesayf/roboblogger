@@ -1,7 +1,22 @@
 import { AgentContext } from './types';
 
-export function buildSystemPrompt(context: AgentContext): string {
+interface SystemPromptOptions {
+  deepResearchEnabled?: boolean;
+}
+
+export function buildSystemPrompt(context: AgentContext, options: SystemPromptOptions = {}): string {
   const today = new Date().toISOString().split('T')[0];
+  const deepResearchCapability = options.deepResearchEnabled
+    ? '- start_deep_research: Delegate a substantial multi-source brief to a durable research workflow that returns the evaluated report to this conversation\n'
+    : '';
+  const deepResearchGuidance = options.deepResearchEnabled
+    ? `
+21. **Delegate genuinely substantial research.** Call \`start_deep_research\` when the user explicitly asks for deep, thorough, proper, comprehensive, evidence-backed, or take-your-time research, or when the requested market, competitor, keyword, or strategy report clearly needs many independent sources and data checks. Preserve the user's complete scope in the objective. Do not delegate quick questions, ordinary conversation, simple lookups, normal content actions, requests answerable from existing blog data, or tasks that depend on attached images.
+22. **After research delegation, stop.** Once \`start_deep_research\` succeeds, do not call \`manage_task_plan\`, research tools, or action tools and do not attempt the report yourself. Briefly tell the user that the research is underway in this conversation and that they can leave and return. The durable workflow owns the plan, evidence collection, evaluation, and final response.`
+    : '';
+  const longTaskFirstStep = options.deepResearchEnabled
+    ? '1. First decide whether rule 21 requires `start_deep_research`. If it does, delegate immediately and do not create a chat task plan. Otherwise call `manage_task_plan` before the first research call and break the request into concrete, testable items that preserve the user\'s full scope.'
+    : '1. Call `manage_task_plan` before the first research call. Break the request into concrete, testable items that preserve the user\'s full scope.';
 
   let prompt = `You are a blog strategy assistant built by Vibeblogger, working for ${context.brandSettings?.blogName || 'this blog'}. You help users devise blog strategies, research keywords, analyze competitors, identify content gaps, and manage their content pipeline.
 
@@ -25,7 +40,7 @@ Credits remaining: ${context.credits}
 ## Your Capabilities
 
 **Research Tools:**
-- manage_task_plan: Create and update the execution checklist for complex multi-step work
+${deepResearchCapability}- manage_task_plan: Create and update the execution checklist for complex multi-step work
 - search_keyword_data: Get search volume, CPC, paid-ad competition, and organic keyword difficulty for up to 100 specific keywords
 - search_related_keywords: Find related and long-tail opportunities with organic difficulty and search intent
 - search_trending_topics: Discover trending topics in any niche
@@ -105,11 +120,12 @@ Credits remaining: ${context.credits}
 18. **When creating structured topics**, pass their \`clusterId\` and \`seriesId\` directly to \`create_topic\` or \`create_topics_bulk\`. A pillar must be created first and then assigned with \`set_cluster_pillar\`.
 19. **Prefer archiving over deletion.** Only call a delete tool when the user explicitly asks to permanently delete the cluster or series. Explain that its content will be preserved.
 20. **Preserve the hierarchy.** A clustered series determines its cluster, a standalone series has no cluster, and a cluster pillar cannot belong to a series.
+${deepResearchGuidance}
 
 ## Long-Running Task Protocol
 
 For complex research, audits, or strategies with multiple deliverables:
-1. Call \`manage_task_plan\` before the first research call. Break the request into concrete, testable items that preserve the user's full scope.
+${longTaskFirstStep}
 2. Keep exactly one item in progress. Update the plan after each phase with compact evidence from the tools you used.
 3. Batch keyword checks with \`search_keyword_data\` where possible. Treat null as unavailable data, not zero volume or low difficulty.
 4. Check every requested deliverable against the plan before answering. Do not rush to a summary merely because some useful evidence has been found.
