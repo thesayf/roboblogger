@@ -326,7 +326,7 @@ export async function POST(req: Request) {
             for (let iteration = 0; iteration < MAX_AGENT_ITERATIONS; iteration++) {
               const response = await client.messages.create({
                 model: providerConfig.model,
-                max_tokens: 32000,
+                max_tokens: 16000,
                 system: systemPrompt,
                 tools: apiTools as any,
                 messages,
