@@ -2,15 +2,21 @@
 
 import Image from 'next/image';
 import React, { useState, useRef, useEffect } from 'react';
-import { Loader2, Paperclip, Send, X } from 'lucide-react';
+import { Loader2, Paperclip, Send, Sparkles, X, Zap } from 'lucide-react';
 import {
   CHAT_IMAGE_MAX_COUNT,
   type ChatImageAttachment,
   validateChatImageFile,
 } from '@/lib/chat/attachments';
+import {
+  CHAT_MODE_OPTIONS,
+  DEFAULT_CHAT_MODE,
+  normalizeChatMode,
+  type ChatMode,
+} from '@/lib/chat/chat-mode';
 
 interface ChatInputProps {
-  onSend: (message: string, attachments: ChatImageAttachment[]) => Promise<void>;
+  onSend: (message: string, attachments: ChatImageAttachment[], mode: ChatMode) => Promise<void>;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -27,6 +33,7 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [chatMode, setChatMode] = useState<ChatMode>(DEFAULT_CHAT_MODE);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef(new Set<string>());
@@ -48,8 +55,21 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
     };
   }, []);
 
+  useEffect(() => {
+    setChatMode(normalizeChatMode(window.localStorage.getItem('vibeblogger-chat-mode')));
+  }, []);
+
+  const selectChatMode = (mode: ChatMode) => {
+    setChatMode(mode);
+    window.localStorage.setItem('vibeblogger-chat-mode', mode);
+  };
+
   const addFiles = (files: File[]) => {
     if (disabled || isUploading || files.length === 0) return;
+
+    if (chatMode === 'efficient') {
+      selectChatMode('premium');
+    }
 
     const existingKeys = new Set(
       pendingImages.map(({ file }) => `${file.name}:${file.size}:${file.lastModified}`)
@@ -128,7 +148,7 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
 
     try {
       const attachments = await uploadImages();
-      await onSend(trimmed, attachments);
+      await onSend(trimmed, attachments, chatMode);
       setValue('');
       clearImages();
     } catch (error) {
@@ -222,13 +242,40 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
 
       {uploadError && <p className="mb-2 text-xs text-red-600">{uploadError}</p>}
 
+      <div className="mb-2 inline-flex rounded-md border border-[#D8D5CE] bg-[#F5F4F0] p-0.5" role="group" aria-label="Chat quality">
+        {CHAT_MODE_OPTIONS.map((mode) => {
+          const selected = chatMode === mode.value;
+          const Icon = mode.value === 'efficient' ? Zap : Sparkles;
+          return (
+            <button
+              key={mode.value}
+              type="button"
+              onClick={() => selectChatMode(mode.value)}
+              disabled={inputDisabled || (mode.value === 'efficient' && pendingImages.length > 0)}
+              aria-pressed={selected}
+              title={mode.value === 'efficient' && pendingImages.length > 0
+                ? 'Remove images to use Efficient mode'
+                : `${mode.label}: ${mode.description}`}
+              className={`flex h-7 items-center gap-1.5 rounded px-2 text-xs transition-colors ${
+                selected
+                  ? 'bg-white font-medium text-[#111111] shadow-sm'
+                  : 'text-[#777777] hover:text-[#111111]'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {mode.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="flex items-end gap-2">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={inputDisabled || pendingImages.length >= CHAT_IMAGE_MAX_COUNT}
           aria-label="Attach images"
-          title="Attach images"
+          title={chatMode === 'efficient' ? 'Attach images (uses Premium)' : 'Attach images'}
           className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-[#666666] transition-colors hover:bg-[#F5F4F0] hover:text-[#111111] disabled:cursor-not-allowed disabled:opacity-30"
         >
           <Paperclip className="h-4 w-4" />

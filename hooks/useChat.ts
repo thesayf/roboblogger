@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ChatImageAttachment } from '@/lib/chat/attachments';
+import { DEFAULT_CHAT_MODE, type ChatMode } from '@/lib/chat/chat-mode';
 import type { DeepResearchRunSnapshot } from '@/lib/deep-research/types';
 
 export interface ChatMessageUI {
@@ -32,7 +33,7 @@ interface UseChatReturn {
   error: string | null;
   conversationId: string | null;
   conversations: ConversationInfo[];
-  sendMessage: (message: string, attachments?: ChatImageAttachment[]) => Promise<void>;
+  sendMessage: (message: string, attachments?: ChatImageAttachment[], mode?: ChatMode) => Promise<void>;
   loadConversation: (id: string) => Promise<void>;
   loadConversations: () => Promise<void>;
   loadTodayConversation: () => Promise<void>;
@@ -231,7 +232,11 @@ export function useChat(): UseChatReturn {
   }, []);
 
   const sendMessage = useCallback(
-    async (message: string, attachments: ChatImageAttachment[] = []) => {
+    async (
+      message: string,
+      attachments: ChatImageAttachment[] = [],
+      mode: ChatMode = DEFAULT_CHAT_MODE,
+    ) => {
       if (isStreaming) return;
 
       setError(null);
@@ -265,7 +270,7 @@ export function useChat(): UseChatReturn {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message, attachments, conversationId }),
+          body: JSON.stringify({ message, attachments, conversationId, mode }),
           signal: abortRef.current.signal,
         });
 

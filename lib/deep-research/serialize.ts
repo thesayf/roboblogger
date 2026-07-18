@@ -1,4 +1,5 @@
 import type { DeepResearchRunSnapshot } from './types';
+import { normalizeChatMode } from '@/lib/chat/chat-mode';
 
 function toIsoString(value: unknown): string | undefined {
   if (!value) return undefined;
@@ -9,6 +10,9 @@ export function serializeDeepResearchRun(run: any): DeepResearchRunSnapshot {
   return {
     id: run._id.toString(),
     objective: run.objective,
+    mode: normalizeChatMode(run.mode),
+    provider: run.provider === 'deepseek' ? 'deepseek' : 'anthropic',
+    model: run.modelName || (run.provider === 'deepseek' ? 'deepseek-v4-pro' : 'claude-sonnet-4-6'),
     status: run.status,
     phase: run.phase,
     phaseDetail: run.phaseDetail || '',

@@ -5,6 +5,8 @@ import DeepResearchRun from '@/models/DeepResearchRun';
 import { buildAcceptanceCriteria } from './evaluation';
 import { serializeDeepResearchRun } from './serialize';
 import type { DeepResearchRunSnapshot } from './types';
+import { DEFAULT_CHAT_MODE, normalizeChatMode, type ChatMode } from '@/lib/chat/chat-mode';
+import { getAgentProviderConfig } from '@/lib/agent/provider';
 
 export const MIN_DEEP_RESEARCH_CREDITS = 1;
 export const MAX_DEEP_RESEARCH_OBJECTIVE_LENGTH = 12000;
@@ -27,6 +29,7 @@ export interface StartDeepResearchInput {
   date: string;
   objective: string;
   availableCredits: number;
+  mode?: ChatMode;
   createUserMessage?: boolean;
   onAssistantCreated?: (assistantMessageId: string) => void;
 }
@@ -73,6 +76,8 @@ export async function startDeepResearchRun(
 ): Promise<StartDeepResearchResult> {
   const objective = input.objective.trim();
   validateDeepResearchStart(objective, input.availableCredits);
+  const mode = normalizeChatMode(input.mode || DEFAULT_CHAT_MODE);
+  const providerConfig = getAgentProviderConfig(mode);
 
   if (input.createUserMessage) {
     await ChatMessage.create({
@@ -90,6 +95,9 @@ export async function startDeepResearchRun(
     ownerClerkId: input.ownerClerkId,
     conversationId: input.conversationId,
     objective,
+    mode,
+    provider: providerConfig.provider,
+    modelName: providerConfig.model,
     acceptanceCriteria: buildAcceptanceCriteria(objective),
     workflowToken,
     liveLog: [{

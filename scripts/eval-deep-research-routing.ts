@@ -55,6 +55,9 @@ async function evaluateCase(client: Anthropic, testCase: typeof cases[number]) {
           run: {
             id: 'eval-run',
             objective,
+            mode: 'premium',
+            provider: 'anthropic',
+            model: 'claude-sonnet-4-6',
             status: 'queued',
             phase: 'queued',
             phaseDetail: 'Research queued',

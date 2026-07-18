@@ -1,3 +1,5 @@
+import type { ChatMode } from '@/lib/chat/chat-mode';
+
 export type DeepResearchStatus =
   | 'queued'
   | 'running'
@@ -77,6 +79,9 @@ export interface DeepResearchEvaluation {
 export interface DeepResearchRunSnapshot {
   id: string;
   objective: string;
+  mode: ChatMode;
+  provider: 'anthropic' | 'deepseek';
+  model: string;
   status: DeepResearchStatus;
   phase: DeepResearchPhase;
   phaseDetail: string;

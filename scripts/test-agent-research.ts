@@ -153,6 +153,9 @@ async function main() {
           run: {
             id: 'research-1',
             objective,
+            mode: 'premium',
+            provider: 'anthropic',
+            model: 'claude-sonnet-4-6',
             status: 'queued',
             phase: 'queued',
             phaseDetail: 'Research queued',

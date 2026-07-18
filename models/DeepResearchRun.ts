@@ -7,6 +7,7 @@ import type {
   DeepResearchStatus,
   DeepResearchToolCall,
 } from '@/lib/deep-research/types';
+import type { ChatMode } from '@/lib/chat/chat-mode';
 
 export interface IDeepResearchRun extends Document {
   owner: mongoose.Types.ObjectId;
@@ -14,6 +15,9 @@ export interface IDeepResearchRun extends Document {
   conversationId: mongoose.Types.ObjectId;
   assistantMessageId?: mongoose.Types.ObjectId;
   objective: string;
+  mode: ChatMode;
+  provider: 'anthropic' | 'deepseek';
+  modelName: string;
   status: DeepResearchStatus;
   phase: DeepResearchPhase;
   phaseDetail: string;
@@ -73,6 +77,9 @@ const DeepResearchRunSchema = new Schema<IDeepResearchRun>({
   conversationId: { type: Schema.Types.ObjectId, ref: 'Conversation', required: true },
   assistantMessageId: { type: Schema.Types.ObjectId, ref: 'ChatMessage' },
   objective: { type: String, required: true, maxlength: 12000 },
+  mode: { type: String, enum: ['efficient', 'premium'], default: 'premium', required: true },
+  provider: { type: String, enum: ['anthropic', 'deepseek'], default: 'anthropic', required: true },
+  modelName: { type: String, default: 'claude-sonnet-4-6', required: true },
   status: {
     type: String,
     enum: ['queued', 'running', 'completed', 'partial', 'failed', 'cancelled'],

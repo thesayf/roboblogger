@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
 import dbConnect from '@/lib/mongo';
@@ -12,6 +11,14 @@ import type { CurrentUser } from '@/lib/auth/getCurrentUser';
 import type { ToolCallInfo, ToolContext } from '@/lib/agent/types';
 import { AGENT_COMPACTION_PROMPT, MAX_AGENT_ITERATIONS } from '@/lib/agent/long-task';
 import { calculateChatCredits, deductCredits } from '@/lib/billing/credit-service';
+import { normalizeChatMode } from '@/lib/chat/chat-mode';
+import {
+  createAgentClient,
+  executeManualToolCalls,
+  getAgentProviderConfig,
+  toManualApiTools,
+  type AgentProviderConfig,
+} from '@/lib/agent/provider';
 import {
   extractSourceUrls,
   runDeterministicEvaluation,
@@ -24,11 +31,15 @@ import type {
   ResearchPlanItem,
 } from './types';
 
-const RESEARCH_MODEL = 'claude-sonnet-4-6';
 const MAX_RESEARCH_CORRECTIONS = 3;
 
 function asPlain<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
+}
+
+function getRunProviderConfig(run: { mode?: unknown; modelName?: string }): AgentProviderConfig {
+  const config = getAgentProviderConfig(normalizeChatMode(run.mode));
+  return run.modelName ? { ...config, model: run.modelName } : config;
 }
 function extractJsonObject(text: string): Record<string, any> {
   const trimmed = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -198,14 +209,15 @@ export async function planDeepResearch(runId: string, user: CurrentUser) {
 
   await setPhase(runId, 'planning', 'Defining the research questions and evidence requirements...', 8);
   const context = await loadAgentContext(user, run.objective, { includeChatHistory: false });
-  const client = new Anthropic({ maxRetries: 5 });
+  const providerConfig = getRunProviderConfig(run);
+  const client = createAgentClient(providerConfig);
 
   let plan: DeepResearchPlan;
   try {
     const response = await client.messages.create({
-      model: RESEARCH_MODEL,
+      model: providerConfig.model,
       max_tokens: 5000,
-      temperature: 0.1,
+      ...(providerConfig.provider === 'anthropic' ? { temperature: 0.1 } : {}),
       system: `You are the planning stage of a durable deep-research system. Design a decision-grade plan before any research begins. Preserve the user's full objective, make workstreams mutually useful, and require real evidence rather than generic opinions. Return JSON only.`,
       messages: [{
         role: 'user',
@@ -366,35 +378,17 @@ export async function collectDeepResearch(
     ...buildReadTools(toolCtx),
   ];
 
-  const client = new Anthropic({ maxRetries: 5 });
-  const runner = client.beta.messages.toolRunner({
-    model: RESEARCH_MODEL,
-    max_tokens: 16000,
-    temperature: 0.15,
-    system: `You are the evidence-collection stage of a durable deep-research system for Vibeblogger. Work methodically until every workstream is resolved. Use tools for real data; do not answer from memory when a tool can verify it. Triangulate important claims. Preserve organic keyword difficulty separately from paid competition. Never invent URLs, metrics, competitor findings, or completed work.\n\nAfter each workstream, call record_research_workstream with concrete evidence and source URLs. Only after every workstream is completed or honestly blocked should you write a detailed evidence memo. The memo must be at least 1,800 characters and include: findings by workstream, numeric evidence, contradictions, source index, limitations, and implications for the user's decision. It is an internal memo, not the polished final answer.\n\n${brandContext(context)}`,
-    tools,
-    messages: [{
-      role: 'user',
-      content: `OBJECTIVE\n${run.objective}\n\nRESEARCH PLAN\n${JSON.stringify(plan, null, 2)}\n\nACCEPTANCE CRITERIA\n${JSON.stringify(run.acceptanceCriteria, null, 2)}\n\nEVIDENCE FROM EARLIER ATTEMPTS\n${summarizeExistingEvidence(asPlain(run.toolCalls || []))}\n\n${options.revisionFeedback?.length ? `EVALUATION GAPS TO FIX\n${options.revisionFeedback.map((item) => `- ${item}`).join('\n')}\n\n` : ''}Complete the unresolved workstreams with tools, persist each result, then return the evidence memo.`,
-    }],
-    stream: false,
-    max_iterations: MAX_AGENT_ITERATIONS,
-    compactionControl: {
-      enabled: true,
-      contextTokenThreshold: 100000,
-      summaryPrompt: AGENT_COMPACTION_PROMPT,
-    },
-  });
+  const providerConfig = getRunProviderConfig(run);
+  const client = createAgentClient(providerConfig);
+  const systemPrompt = `You are the evidence-collection stage of a durable deep-research system for Vibeblogger. Work methodically until every workstream is resolved. Use tools for real data; do not answer from memory when a tool can verify it. Triangulate important claims. Preserve organic keyword difficulty separately from paid competition. Never invent URLs, metrics, competitor findings, or completed work.\n\nAfter each workstream, call record_research_workstream with concrete evidence and source URLs. Only after every workstream is completed or honestly blocked should you write a detailed evidence memo. The memo must be at least 1,800 characters and include: findings by workstream, numeric evidence, contradictions, source index, limitations, and implications for the user's decision. It is an internal memo, not the polished final answer.\n\n${brandContext(context)}`;
+  const userPrompt = `OBJECTIVE\n${run.objective}\n\nRESEARCH PLAN\n${JSON.stringify(plan, null, 2)}\n\nACCEPTANCE CRITERIA\n${JSON.stringify(run.acceptanceCriteria, null, 2)}\n\nEVIDENCE FROM EARLIER ATTEMPTS\n${summarizeExistingEvidence(asPlain(run.toolCalls || []))}\n\n${options.revisionFeedback?.length ? `EVALUATION GAPS TO FIX\n${options.revisionFeedback.map((item) => `- ${item}`).join('\n')}\n\n` : ''}Complete the unresolved workstreams with tools, persist each result, then return the evidence memo.`;
 
   let persistedCallCount = 0;
   let corrections = 0;
   let memo = '';
   let lastStopReason: string | null = null;
 
-  for await (const message of runner) {
-    lastStopReason = message.stop_reason;
-    await addUsage(runId, message.usage.input_tokens, message.usage.output_tokens);
-
+  const persistNewCalls = async () => {
     const newCalls = toolCalls.slice(persistedCallCount).map((call): DeepResearchToolCall => ({
       name: call.name,
       input: call.input,
@@ -409,32 +403,95 @@ export async function collectDeepResearch(
         $push: { toolCalls: { $each: newCalls } },
       });
     }
+  };
 
+  const processMessage = async (message: any) => {
+    lastStopReason = message.stop_reason;
+    await addUsage(runId, message.usage.input_tokens, message.usage.output_tokens);
+    await persistNewCalls();
     const text = message.content
       .filter((block: any) => block.type === 'text')
       .map((block: any) => block.text)
       .join('\n')
       .trim();
+    return text;
+  };
 
-    if (message.stop_reason === 'tool_use') continue;
-
+  const getCompletionIssue = (text: string) => {
     const unresolved = plan.items.filter((item) => item.status === 'pending' || item.status === 'in_progress');
-    const completionIssue = unresolved.length > 0
+    return unresolved.length > 0
       ? `Unresolved workstreams: ${unresolved.map((item) => `${item.id}: ${item.title}`).join('; ')}`
       : text.length < 1800
         ? `The evidence memo is only ${text.length} characters; it must be at least 1,800 characters and preserve the collected evidence.`
         : null;
+  };
 
-    if (completionIssue && corrections < MAX_RESEARCH_CORRECTIONS) {
-      corrections += 1;
-      runner.pushMessages({
-        role: 'user',
-        content: `The research phase cannot finish yet. ${completionIssue}. Continue using tools, update every workstream with record_research_workstream, and then return the complete evidence memo.`,
+  const correctionPrompt = (completionIssue: string) =>
+    `The research phase cannot finish yet. ${completionIssue}. Continue using tools, update every workstream with record_research_workstream, and then return the complete evidence memo.`;
+
+  if (providerConfig.provider === 'deepseek') {
+    const messages: any[] = [{ role: 'user', content: userPrompt }];
+    const apiTools = toManualApiTools(tools);
+
+    for (let iteration = 0; iteration < MAX_AGENT_ITERATIONS; iteration++) {
+      const message = await client.messages.create({
+        model: providerConfig.model,
+        max_tokens: 16000,
+        system: systemPrompt,
+        tools: apiTools as any,
+        messages,
       });
-      continue;
+      const text = await processMessage(message);
+      const toolUseBlocks = message.content.filter((block: any) => block.type === 'tool_use');
+      messages.push({ role: 'assistant', content: message.content });
+
+      if (toolUseBlocks.length > 0) {
+        const toolResults = await executeManualToolCalls(tools, toolUseBlocks);
+        await persistNewCalls();
+        messages.push({ role: 'user', content: toolResults });
+        continue;
+      }
+
+      const completionIssue = getCompletionIssue(text);
+      if (completionIssue && corrections < MAX_RESEARCH_CORRECTIONS) {
+        corrections += 1;
+        messages.push({ role: 'user', content: correctionPrompt(completionIssue) });
+        continue;
+      }
+      if (completionIssue) throw new Error(`Research collection incomplete: ${completionIssue}`);
+      memo = text;
+      break;
     }
-    if (completionIssue) throw new Error(`Research collection incomplete: ${completionIssue}`);
-    memo = text;
+  } else {
+    const runner = client.beta.messages.toolRunner({
+      model: providerConfig.model,
+      max_tokens: 16000,
+      temperature: 0.15,
+      system: systemPrompt,
+      tools,
+      messages: [{ role: 'user', content: userPrompt }],
+      stream: false,
+      max_iterations: MAX_AGENT_ITERATIONS,
+      compactionControl: {
+        enabled: true,
+        contextTokenThreshold: 100000,
+        summaryPrompt: AGENT_COMPACTION_PROMPT,
+      },
+    });
+
+    for await (const message of runner) {
+      const text = await processMessage(message);
+      if (message.stop_reason === 'tool_use') continue;
+
+      const completionIssue = getCompletionIssue(text);
+      if (completionIssue && corrections < MAX_RESEARCH_CORRECTIONS) {
+        corrections += 1;
+        runner.pushMessages({ role: 'user', content: correctionPrompt(completionIssue) });
+        continue;
+      }
+      if (completionIssue) throw new Error(`Research collection incomplete: ${completionIssue}`);
+      memo = text;
+    }
   }
 
   if (lastStopReason === 'tool_use') {
@@ -470,16 +527,17 @@ export async function evaluateDeepResearch(runId: string) {
   });
 
   const sourceUrls = extractSourceUrls(asPlain(run.toolCalls || []));
-  const client = new Anthropic({ maxRetries: 5 });
+  const providerConfig = getRunProviderConfig(run);
+  const client = createAgentClient(providerConfig);
   let modelPassed = false;
   let modelScore = 0;
   let modelFeedback: string[] = [];
 
   try {
     const response = await client.messages.create({
-      model: RESEARCH_MODEL,
+      model: providerConfig.model,
       max_tokens: 4000,
-      temperature: 0,
+      ...(providerConfig.provider === 'anthropic' ? { temperature: 0 } : {}),
       system: `You are an independent research-quality evaluator. Judge only the supplied evidence. Do not repair the work, infer missing sources, or reward polished prose over substantiation. Return JSON only.`,
       messages: [{
         role: 'user',
@@ -541,10 +599,11 @@ async function billDeepResearch(runId: string, userId: string) {
   if (run.billedAt) return run.creditsUsed;
 
   const billing = calculateChatCredits({
-    model: RESEARCH_MODEL,
+    model: run.modelName || getRunProviderConfig(run).model,
     inputTokens: run.tokenUsage?.inputTokens || 0,
     outputTokens: run.tokenUsage?.outputTokens || 0,
     toolCalls: (run.toolCalls || []).map((call: any) => ({ name: call.name })),
+    pricing: getRunProviderConfig(run).pricing,
   });
   const claimed = await DeepResearchRun.findOneAndUpdate(
     { _id: runId, $or: [{ billedAt: { $exists: false } }, { billedAt: null }] },
@@ -560,6 +619,9 @@ async function billDeepResearch(runId: string, userId: string) {
     'Deep research run',
     {
       deepResearchRunId: runId,
+      mode: run.mode,
+      provider: run.provider,
+      model: run.modelName,
       inputTokens: run.tokenUsage?.inputTokens || 0,
       outputTokens: run.tokenUsage?.outputTokens || 0,
       toolCalls: (run.toolCalls || []).map((call: any) => call.name),
@@ -588,11 +650,12 @@ export async function synthesizeDeepResearch(runId: string, user: CurrentUser) {
 
   await setPhase(runId, 'synthesizing', 'Turning the verified evidence into a decision-ready report...', 90);
   const sourceUrls = extractSourceUrls(asPlain(run.toolCalls || []));
-  const client = new Anthropic({ maxRetries: 5 });
+  const providerConfig = getRunProviderConfig(run);
+  const client = createAgentClient(providerConfig);
   const response = await client.messages.create({
-    model: RESEARCH_MODEL,
+    model: providerConfig.model,
     max_tokens: 18000,
-    temperature: 0.2,
+    ...(providerConfig.provider === 'anthropic' ? { temperature: 0.2 } : {}),
     system: `You are the final synthesis stage of Vibeblogger Deep Research. Produce a clear, decision-ready Markdown report from the supplied evidence only. Lead with the answer, then show the evidence, implications, prioritized actions, and limitations. Cite traceable sources as Markdown links near the claims they support. Never invent a citation or metric. If evaluation did not pass, state the limitations plainly and do not present the report as complete.`,
     messages: [{
       role: 'user',

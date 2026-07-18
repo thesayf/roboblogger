@@ -69,7 +69,7 @@ export default function DeepResearchProgress({ run }: { run: DeepResearchRunSnap
               <StatusIcon run={run} />
             </div>
             <p className="truncate text-xs text-[#777777]" title={run.phaseDetail}>
-              {run.phaseDetail || PHASE_LABELS[run.phase] || run.phase}
+              {run.mode === 'efficient' ? 'Efficient' : 'Premium'}: {run.phaseDetail || PHASE_LABELS[run.phase] || run.phase}
             </p>
           </div>
         </div>

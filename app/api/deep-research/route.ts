@@ -9,6 +9,7 @@ import {
   startDeepResearchRun,
   validateDeepResearchStart,
 } from '@/lib/deep-research/start';
+import { normalizeChatMode } from '@/lib/chat/chat-mode';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const objective = typeof body.objective === 'string' ? body.objective.trim() : '';
     const conversationId = typeof body.conversationId === 'string' ? body.conversationId : undefined;
+    const mode = normalizeChatMode(body.mode);
 
     try {
       validateDeepResearchStart(objective, user.credits);
@@ -55,6 +57,7 @@ export async function POST(request: NextRequest) {
         date: today,
         objective,
         availableCredits: user.credits,
+        mode,
         createUserMessage: true,
       });
       return NextResponse.json({

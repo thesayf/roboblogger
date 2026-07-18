@@ -25,8 +25,14 @@ import {
   requiresResearchPlan,
 } from '@/lib/agent/long-task';
 import { startDeepResearchRun } from '@/lib/deep-research/start';
+import { normalizeChatMode } from '@/lib/chat/chat-mode';
+import {
+  createAgentClient,
+  executeManualToolCalls,
+  getAgentProviderConfig,
+  toManualApiTools,
+} from '@/lib/agent/provider';
 
-const CHAT_MODEL = 'claude-sonnet-4-6';
 const MIN_CREDITS_PREFLIGHT = 0.02; // Minimum credits to start a chat
 const HISTORICAL_IMAGE_MESSAGE_LIMIT = 2;
 
@@ -107,6 +113,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const message = typeof body.message === 'string' ? body.message.trim() : '';
     const conversationId = body.conversationId;
+    const requestedMode = normalizeChatMode(body.mode);
     let attachments: ChatImageAttachment[];
 
     try {
@@ -124,6 +131,8 @@ export async function POST(req: Request) {
 
     const modelMessage = message || 'Please analyse the attached image or images.';
     const conversationTitle = message || `Image: ${attachments[0].name}`;
+    const chatMode = attachments.length > 0 ? 'premium' : requestedMode;
+    const providerConfig = getAgentProviderConfig(chatMode);
 
     // Credits pre-flight check (minimum to start — actual cost calculated after)
     if (user.credits < MIN_CREDITS_PREFLIGHT) {
@@ -170,8 +179,8 @@ export async function POST(req: Request) {
         .map(({ index }) => index)
     );
 
-    // Build messages array for Claude
-    const claudeMessages: Anthropic.MessageParam[] = previousMessages.map((msg: any, index) => {
+    // DeepSeek V4 is text-only, so only Premium replays historical image blocks.
+    const agentMessages: Anthropic.MessageParam[] = previousMessages.map((msg: any, index) => {
       const role = msg.role === 'user' ? 'user' as const : 'assistant' as const;
       const previousAttachments = Array.isArray(msg.attachments) ? msg.attachments : [];
       const attachmentLabel = previousAttachments.length > 0
@@ -179,20 +188,20 @@ export async function POST(req: Request) {
         : '';
       return {
         role,
-        content: role === 'user' && recentImageMessageIndexes.has(index)
+        content: providerConfig.provider === 'anthropic' && role === 'user' && recentImageMessageIndexes.has(index)
           ? buildUserContent(msg.content || 'Please analyse the attached image or images.', previousAttachments)
           : [msg.content, attachmentLabel].filter(Boolean).join('\n'),
       };
     });
 
     // Load context (brand settings, 7-day history, Mem0 memories)
-    // The full current conversation is already in claudeMessages. Avoid injecting a
+    // The full current conversation is already in agentMessages. Avoid injecting a
     // second, truncated copy of it through the rolling seven-day context.
     const context = await loadAgentContext(user, modelMessage, { includeChatHistory: false });
 
     // Add current message with injected context
     const contextualMessage = buildContextualMessage(modelMessage, context);
-    claudeMessages.push({ role: 'user', content: buildUserContent(contextualMessage, attachments) });
+    agentMessages.push({ role: 'user', content: buildUserContent(contextualMessage, attachments) });
 
     const systemPrompt = buildSystemPrompt(context, { deepResearchEnabled: attachments.length === 0 });
 
@@ -241,6 +250,7 @@ export async function POST(req: Request) {
                 date: today,
                 objective,
                 availableCredits: user.credits,
+                mode: chatMode,
                 onAssistantCreated: (messageId) => {
                   assistantMsgId = messageId;
                 },
@@ -303,77 +313,134 @@ export async function POST(req: Request) {
         }, 15000);
 
         try {
-          const client = new Anthropic({ maxRetries: 5 });
-          const runner = client.beta.messages.toolRunner({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 32000,
-            system: systemPrompt,
-            tools,
-            messages: claudeMessages,
-            stream: true,
-            max_iterations: MAX_AGENT_ITERATIONS,
-            compactionControl: {
-              enabled: true,
-              contextTokenThreshold: 100000,
-              summaryPrompt: AGENT_COMPACTION_PROMPT,
-            },
-          });
-
-          // Track token usage across all toolRunner iterations
+          const client = createAgentClient(providerConfig);
           const tokenUsage = { inputTokens: 0, outputTokens: 0 };
           let completionCorrections = 0;
           let lastStopReason: string | null = null;
 
-          for await (const messageStream of runner) {
-            let iterationText = '';
-            for await (const event of messageStream) {
-              if (
-                event.type === 'content_block_delta' &&
-                event.delta.type === 'text_delta'
-              ) {
-                iterationText += event.delta.text;
+          if (providerConfig.provider === 'deepseek') {
+            const messages: Anthropic.MessageParam[] = [...agentMessages];
+            const apiTools = toManualApiTools(tools);
+            let completed = false;
+
+            for (let iteration = 0; iteration < MAX_AGENT_ITERATIONS; iteration++) {
+              const response = await client.messages.create({
+                model: providerConfig.model,
+                max_tokens: 32000,
+                system: systemPrompt,
+                tools: apiTools as any,
+                messages,
+              });
+              tokenUsage.inputTokens += response.usage.input_tokens || 0;
+              tokenUsage.outputTokens += response.usage.output_tokens || 0;
+              lastStopReason = response.stop_reason;
+
+              const iterationText = response.content
+                .filter((block: any) => block.type === 'text')
+                .map((block: any) => block.text)
+                .join('');
+              const toolUseBlocks = response.content.filter((block: any) => block.type === 'tool_use');
+              messages.push({ role: 'assistant', content: response.content });
+
+              if (toolUseBlocks.length > 0) {
+                if (iterationText) {
+                  send('text_delta', { text: iterationText });
+                  assistantContent += iterationText;
+                }
+                const toolResults = await executeManualToolCalls(tools, toolUseBlocks);
+                messages.push({ role: 'user', content: toolResults as any });
+                await flushAssistantContent();
+                continue;
               }
-              // Accumulate token usage from each iteration
-              if (event.type === 'message_start' && event.message?.usage) {
-                tokenUsage.inputTokens += event.message.usage.input_tokens || 0;
-              }
-              if (event.type === 'message_delta' && (event as any).usage) {
-                tokenUsage.outputTokens += (event as any).usage.output_tokens || 0;
-              }
-            }
-            const completedMessage = await messageStream.finalMessage();
-            lastStopReason = completedMessage.stop_reason;
-            const delegatedResearch = Boolean(toolCtx.deepResearch?.startedRunId);
-            const completionIssue = completedMessage.stop_reason === 'max_tokens'
-              ? 'The response hit the output-token limit before it could finish.'
-              : completedMessage.stop_reason === 'tool_use'
-                ? null
+
+              const delegatedResearch = Boolean(toolCtx.deepResearch?.startedRunId);
+              const completionIssue = response.stop_reason === 'max_tokens'
+                ? 'The response hit the output-token limit before it could finish.'
                 : getTaskPlanCompletionIssue(taskPlanRequired && !delegatedResearch, toolCtx.taskPlan);
 
-            if (completionIssue && completionCorrections < MAX_COMPLETION_CORRECTIONS) {
-              completionCorrections++;
-              runner.pushMessages({
-                role: 'user',
-                content: buildCompletionCorrection(completionIssue),
-              });
-              send('task_status', {
-                status: 'continuing',
-                issue: completionIssue,
-                correction: completionCorrections,
-              });
-              continue;
-            }
-            if (completionIssue) {
-              throw new Error(`Agent could not complete the requested work: ${completionIssue}`);
+              if (completionIssue && completionCorrections < MAX_COMPLETION_CORRECTIONS) {
+                completionCorrections++;
+                messages.push({ role: 'user', content: buildCompletionCorrection(completionIssue) });
+                send('task_status', {
+                  status: 'continuing',
+                  issue: completionIssue,
+                  correction: completionCorrections,
+                });
+                await flushAssistantContent();
+                continue;
+              }
+              if (completionIssue) {
+                throw new Error(`Agent could not complete the requested work: ${completionIssue}`);
+              }
+
+              if (iterationText) {
+                send('text_delta', { text: iterationText });
+                assistantContent += iterationText;
+              }
+              completed = true;
+              await flushAssistantContent();
+              break;
             }
 
-            if (iterationText) {
-              send('text_delta', { text: iterationText });
-              assistantContent += iterationText;
-            }
+            if (!completed) lastStopReason = 'tool_use';
+          } else {
+            const runner = client.beta.messages.toolRunner({
+              model: providerConfig.model,
+              max_tokens: 32000,
+              system: systemPrompt,
+              tools,
+              messages: agentMessages,
+              stream: true,
+              max_iterations: MAX_AGENT_ITERATIONS,
+              compactionControl: {
+                enabled: true,
+                contextTokenThreshold: 100000,
+                summaryPrompt: AGENT_COMPACTION_PROMPT,
+              },
+            });
 
-            // Flush after each toolRunner iteration (after tool calls complete)
-            await flushAssistantContent();
+            for await (const messageStream of runner) {
+              let iterationText = '';
+              for await (const event of messageStream) {
+                if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+                  iterationText += event.delta.text;
+                }
+                if (event.type === 'message_start' && event.message?.usage) {
+                  tokenUsage.inputTokens += event.message.usage.input_tokens || 0;
+                }
+                if (event.type === 'message_delta' && (event as any).usage) {
+                  tokenUsage.outputTokens += (event as any).usage.output_tokens || 0;
+                }
+              }
+              const completedMessage = await messageStream.finalMessage();
+              lastStopReason = completedMessage.stop_reason;
+              const delegatedResearch = Boolean(toolCtx.deepResearch?.startedRunId);
+              const completionIssue = completedMessage.stop_reason === 'max_tokens'
+                ? 'The response hit the output-token limit before it could finish.'
+                : completedMessage.stop_reason === 'tool_use'
+                  ? null
+                  : getTaskPlanCompletionIssue(taskPlanRequired && !delegatedResearch, toolCtx.taskPlan);
+
+              if (completionIssue && completionCorrections < MAX_COMPLETION_CORRECTIONS) {
+                completionCorrections++;
+                runner.pushMessages({ role: 'user', content: buildCompletionCorrection(completionIssue) });
+                send('task_status', {
+                  status: 'continuing',
+                  issue: completionIssue,
+                  correction: completionCorrections,
+                });
+                continue;
+              }
+              if (completionIssue) {
+                throw new Error(`Agent could not complete the requested work: ${completionIssue}`);
+              }
+
+              if (iterationText) {
+                send('text_delta', { text: iterationText });
+                assistantContent += iterationText;
+              }
+              await flushAssistantContent();
+            }
           }
 
           if (lastStopReason === 'tool_use') {
@@ -385,10 +452,11 @@ export async function POST(req: Request) {
 
           // Calculate actual credit cost based on usage
           const billing = calculateChatCredits({
-            model: CHAT_MODEL,
+            model: providerConfig.model,
             inputTokens: tokenUsage.inputTokens,
             outputTokens: tokenUsage.outputTokens,
             toolCalls,
+            pricing: providerConfig.pricing,
           });
 
           // Final save of assistant message (may already exist from periodic flushes)
@@ -403,10 +471,13 @@ export async function POST(req: Request) {
             `Chat exchange${toolCalls.length > 0 ? ` (${toolCalls.length} tool calls)` : ''}`,
             {
               conversationId: conv._id.toString(),
+              mode: chatMode,
+              provider: providerConfig.provider,
+              model: providerConfig.model,
               toolCalls: toolCalls.map(tc => tc.name),
-              claudeInputTokens: tokenUsage.inputTokens,
-              claudeOutputTokens: tokenUsage.outputTokens,
-              claudeCost: billing.claudeCost,
+              inputTokens: tokenUsage.inputTokens,
+              outputTokens: tokenUsage.outputTokens,
+              modelCost: billing.modelCost,
               toolCost: billing.toolCost,
               totalApiCost: billing.totalApiCost,
             },
@@ -429,12 +500,15 @@ export async function POST(req: Request) {
           send('done', {
             conversationId: conv._id.toString(),
             deepResearchRunId: toolCtx.deepResearch?.startedRunId,
+            mode: chatMode,
+            provider: providerConfig.provider,
+            model: providerConfig.model,
             creditsUsed,
             newBalance: deductResult.success ? deductResult.newBalance : undefined,
             costBreakdown: {
-              claudeTokens: { input: tokenUsage.inputTokens, output: tokenUsage.outputTokens },
+              modelTokens: { input: tokenUsage.inputTokens, output: tokenUsage.outputTokens },
               toolCalls: toolCalls.map(tc => tc.name),
-              claudeCost: Math.round(billing.claudeCost * 10000) / 10000,
+              modelCost: Math.round(billing.modelCost * 10000) / 10000,
               toolCost: Math.round(billing.toolCost * 10000) / 10000,
               totalApiCost: Math.round(billing.totalApiCost * 10000) / 10000,
             },
@@ -492,7 +566,7 @@ export async function POST(req: Request) {
 
           const isOverloaded = error?.status === 529 || error?.error?.type === 'overloaded_error';
           const message = isOverloaded
-            ? 'Claude is currently overloaded. Please try again in a few seconds.'
+            ? `${providerConfig.provider === 'deepseek' ? 'DeepSeek' : 'Claude'} is currently overloaded. Please try again in a few seconds.`
             : error.message || 'An error occurred';
           send('error', { message, code: isOverloaded ? 'OVERLOADED' : undefined });
         } finally {

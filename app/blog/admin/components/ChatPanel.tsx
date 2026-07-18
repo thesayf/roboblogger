@@ -7,6 +7,7 @@ import { useChat, type ConversationInfo } from '@/hooks/useChat';
 import ChatMessageComponent from './ChatMessage';
 import ChatInput from './ChatInput';
 import type { ChatImageAttachment } from '@/lib/chat/attachments';
+import type { ChatMode } from '@/lib/chat/chat-mode';
 
 export default function ChatPanel({ onClose }: { onClose?: () => void }) {
   const {
@@ -53,8 +54,8 @@ export default function ChatPanel({ onClose }: { onClose?: () => void }) {
     }
   }, [dataChanged, clearDataChanged]);
 
-  const handleSend = async (message: string, attachments: ChatImageAttachment[]) => {
-    await sendMessage(message, attachments);
+  const handleSend = async (message: string, attachments: ChatImageAttachment[], mode: ChatMode) => {
+    await sendMessage(message, attachments, mode);
   };
 
   const handleShowHistory = async () => {

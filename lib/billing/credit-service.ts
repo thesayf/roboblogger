@@ -2,7 +2,7 @@ import User from '@/models/User';
 import CreditTransaction from '@/models/CreditTransaction';
 import dbConnect from '@/lib/mongo';
 
-// Claude model pricing (USD per million tokens)
+// Default model pricing (USD per million tokens)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   'claude-sonnet-4-6': { input: 3, output: 15 },
   'claude-sonnet-4-5-20250929': { input: 3, output: 15 },
@@ -33,6 +33,10 @@ export interface ChatUsage {
   inputTokens: number;
   outputTokens: number;
   toolCalls: Array<{ name: string }>;
+  pricing?: {
+    input: number;
+    output: number;
+  };
 }
 
 /**
@@ -40,13 +44,14 @@ export interface ChatUsage {
  */
 export function calculateChatCredits(usage: ChatUsage): {
   credits: number;
+  modelCost: number;
   claudeCost: number;
   toolCost: number;
   totalApiCost: number;
 } {
-  const pricing = MODEL_PRICING[usage.model] || MODEL_PRICING['claude-sonnet-4-6'];
+  const pricing = usage.pricing || MODEL_PRICING[usage.model] || MODEL_PRICING['claude-sonnet-4-6'];
 
-  const claudeCost =
+  const modelCost =
     (usage.inputTokens * pricing.input / 1_000_000) +
     (usage.outputTokens * pricing.output / 1_000_000);
 
@@ -55,10 +60,10 @@ export function calculateChatCredits(usage: ChatUsage): {
     0
   );
 
-  const totalApiCost = claudeCost + toolCost;
+  const totalApiCost = modelCost + toolCost;
   const credits = Math.max(MIN_CREDITS_PER_CHAT, Math.round(totalApiCost * CREDITS_PER_DOLLAR * 100) / 100);
 
-  return { credits, claudeCost, toolCost, totalApiCost };
+  return { credits, modelCost, claudeCost: modelCost, toolCost, totalApiCost };
 }
 
 /**

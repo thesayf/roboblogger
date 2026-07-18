@@ -10,10 +10,16 @@ export interface ICreditTransaction extends Document {
   metadata?: {
     // Chat-specific
     conversationId?: string;
+    mode?: 'efficient' | 'premium';
+    provider?: 'anthropic' | 'deepseek';
+    model?: string;
     toolCalls?: string[];
     claudeInputTokens?: number;
     claudeOutputTokens?: number;
+    inputTokens?: number;
+    outputTokens?: number;
     claudeCost?: number;
+    modelCost?: number;
     toolCost?: number;
     totalApiCost?: number;
     // Blog generation-specific
