@@ -318,7 +318,8 @@ function summarizeExistingEvidence(toolCalls: DeepResearchToolCall[]): string {
   if (toolCalls.length === 0) return 'No evidence has been collected yet.';
   return toolCalls.slice(-30).map((call) => {
     const result = call.result?.slice(0, 1400) || '';
-    return `- ${call.name} (${call.success ? 'success' : 'failed'}) input=${JSON.stringify(call.input).slice(0, 500)} result=${result}`;
+    const input = JSON.stringify(call.input ?? {});
+    return `- ${call.name} (${call.success ? 'success' : 'failed'}) input=${input.slice(0, 500)} result=${result}`;
   }).join('\n');
 }
 
