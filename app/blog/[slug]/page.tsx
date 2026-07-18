@@ -1,7 +1,8 @@
 import { generateBlogPostSchema } from "@/utils/schema";
 import SimpleBlogPostClient from "./SimpleBlogPostClient";
+import { getBlogPostRedirectTarget } from "@/lib/blog-post-redirects";
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 interface BlogPostParams {
   params: {
@@ -97,6 +98,20 @@ async function getRelatedPosts(currentSlug: string): Promise<BlogPostData[]> {
 export async function generateMetadata({
   params,
 }: BlogPostParams): Promise<Metadata> {
+  const redirectTarget = await getBlogPostRedirectTarget(params.slug);
+
+  if (redirectTarget) {
+    return {
+      alternates: {
+        canonical: `https://vibeblogger.io/blog/${redirectTarget}`,
+      },
+      robots: {
+        index: false,
+        follow: true,
+      },
+    };
+  }
+
   const post = await getPost(params.slug);
 
   if (!post) {
@@ -129,6 +144,12 @@ export async function generateMetadata({
 }
 
 export default async function BlogPostPage({ params }: BlogPostParams) {
+  const redirectTarget = await getBlogPostRedirectTarget(params.slug);
+
+  if (redirectTarget) {
+    permanentRedirect(`/blog/${redirectTarget}`);
+  }
+
   const post = await getPost(params.slug);
 
   if (!post) {
