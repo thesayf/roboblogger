@@ -10,7 +10,8 @@
     "backfill:embeddings": "tsx scripts/backfill-embeddings.ts",
     "test:strategy": "tsx --env-file=.env.local scripts/test-content-strategy.ts",
     "test:evaluation": "tsx scripts/test-blog-evaluation.ts",
-    "test:agent-research": "tsx scripts/test-agent-research.ts"
+    "test:agent-research": "tsx scripts/test-agent-research.ts",
+    "test:deep-research": "tsx scripts/test-deep-research.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.5",

@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ChatImageAttachment } from '@/lib/chat/attachments';
+import type { DeepResearchRunSnapshot } from '@/lib/deep-research/types';
+
+export type ChatSendMode = 'chat' | 'deep-research';
 
 export interface ChatMessageUI {
   id: string;
@@ -13,6 +16,7 @@ export interface ChatMessageUI {
     input: Record<string, any>;
     status: 'running' | 'complete' | 'error';
   }>;
+  deepResearchRun?: DeepResearchRunSnapshot;
   createdAt: string;
 }
 
@@ -30,12 +34,53 @@ interface UseChatReturn {
   error: string | null;
   conversationId: string | null;
   conversations: ConversationInfo[];
-  sendMessage: (message: string, attachments?: ChatImageAttachment[]) => Promise<void>;
+  sendMessage: (message: string, attachments?: ChatImageAttachment[], mode?: ChatSendMode) => Promise<void>;
   loadConversation: (id: string) => Promise<void>;
   loadConversations: () => Promise<void>;
   loadTodayConversation: () => Promise<void>;
   dataChanged: string[];
   clearDataChanged: () => void;
+}
+
+function friendlyToolName(toolName: string): string {
+  const map: Record<string, string> = {
+    create_topic: 'Creating topic...',
+    create_topics_bulk: 'Creating topics...',
+    update_topic: 'Updating topic...',
+    get_existing_posts: 'Searching posts...',
+    get_blog_stats: 'Loading blog stats...',
+    get_brand_settings: 'Loading brand settings...',
+    get_topics_queue: 'Loading topics queue...',
+    get_post: 'Reading post...',
+    get_internal_link_map: 'Mapping internal links...',
+    get_media_images: 'Loading images...',
+    view_image: 'Viewing image...',
+    edit_post: 'Editing post...',
+    edit_post_component: 'Editing post content...',
+    update_post_status: 'Updating post status...',
+    update_brand_settings: 'Updating brand settings...',
+    search_keyword_data: 'Researching keywords...',
+    search_related_keywords: 'Finding related keywords...',
+    search_trending_topics: 'Searching trends...',
+    search_competitor_content: 'Analysing competitors...',
+    search_content_gaps: 'Finding content gaps...',
+    search_chat_history: 'Searching chat history...',
+    audit_content: 'Auditing content...',
+    check_keyword_cannibalization: 'Checking keyword overlap...',
+    check_post_rankings: 'Checking rankings...',
+    web_search: 'Searching the web...',
+    list_documents: 'Loading documents...',
+    read_document: 'Reading document...',
+    create_document: 'Creating document...',
+    write_document: 'Writing document...',
+    delete_document: 'Deleting document...',
+    list_routines: 'Loading routines...',
+    create_routine: 'Creating routine...',
+    update_routine: 'Updating routine...',
+    update_topics_bulk: 'Updating topics...',
+    edit_posts_bulk: 'Editing posts...',
+  };
+  return map[toolName] || `Running ${toolName}...`;
 }
 
 export function useChat(): UseChatReturn {
@@ -75,6 +120,7 @@ export function useChat(): UseChatReturn {
             ...tc,
             status: 'complete' as const,
           })),
+          deepResearchRun: m.deepResearchRun,
           createdAt: m.createdAt,
         }))
       );
@@ -108,8 +154,73 @@ export function useChat(): UseChatReturn {
     }
   }, [loadConversation]);
 
+  const handleSSEEvent = useCallback((event: string, data: any, assistantId: string) => {
+    switch (event) {
+      case 'text_delta':
+        setStreamingStatus('Writing response...');
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantId
+              ? { ...message, content: message.content + data.text }
+              : message
+          )
+        );
+        break;
+
+      case 'tool_start':
+        setStreamingStatus(friendlyToolName(data.toolName));
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantId
+              ? {
+                  ...message,
+                  toolCalls: [
+                    ...(message.toolCalls || []),
+                    {
+                      name: data.toolName,
+                      input: data.toolInput,
+                      status: 'running' as const,
+                    },
+                  ],
+                }
+              : message
+          )
+        );
+        break;
+
+      case 'tool_end':
+        setStreamingStatus('Thinking...');
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantId
+              ? {
+                  ...message,
+                  toolCalls: message.toolCalls?.map((toolCall) =>
+                    toolCall.name === data.toolName && toolCall.status === 'running'
+                      ? { ...toolCall, status: data.success ? 'complete' as const : 'error' as const }
+                      : toolCall
+                  ),
+                }
+              : message
+          )
+        );
+        break;
+
+      case 'done':
+        if (data.conversationId) setConversationId(data.conversationId);
+        if (data.dataChanged?.length > 0) {
+          setDataChanged((prev) => Array.from(new Set([...prev, ...data.dataChanged])));
+        }
+        break;
+
+      case 'error':
+        setError(data.message);
+        break;
+    }
+  }, []);
+
   const sendMessage = useCallback(
-    async (message: string, attachments: ChatImageAttachment[] = []) => {
+    async (message: string, attachments: ChatImageAttachment[] = [], mode: ChatSendMode = 'chat') => {
       if (isStreaming) return;
 
       setError(null);
@@ -138,6 +249,35 @@ export function useChat(): UseChatReturn {
       setMessages((prev) => [...prev, assistantMsg]);
 
       try {
+        if (mode === 'deep-research') {
+          setStreamingStatus('Starting deep research...');
+          const res = await fetch('/api/deep-research', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ objective: message, conversationId }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            if (data.code === 'INSUFFICIENT_CREDITS' || res.status === 402) {
+              throw new Error(data.error || 'You need more credits to start deep research.');
+            }
+            throw new Error(data.error || `HTTP ${res.status}`);
+          }
+
+          setConversationId(data.conversationId);
+          setMessages((prev) => prev.map((item) => {
+            if (item.id === assistantId) {
+              return {
+                ...item,
+                id: data.assistantMessageId,
+                deepResearchRun: data.run,
+              };
+            }
+            return item;
+          }));
+          return;
+        }
+
         abortRef.current = new AbortController();
 
         const res = await fetch('/api/chat', {
@@ -209,116 +349,52 @@ export function useChat(): UseChatReturn {
         abortRef.current = null;
       }
     },
-    [isStreaming, conversationId]
+    [isStreaming, conversationId, handleSSEEvent]
   );
 
-  function friendlyToolName(toolName: string): string {
-    const map: Record<string, string> = {
-      create_topic: 'Creating topic...',
-      create_topics_bulk: 'Creating topics...',
-      update_topic: 'Updating topic...',
-      get_existing_posts: 'Searching posts...',
-      get_blog_stats: 'Loading blog stats...',
-      get_brand_settings: 'Loading brand settings...',
-      get_topics_queue: 'Loading topics queue...',
-      get_post: 'Reading post...',
-      get_internal_link_map: 'Mapping internal links...',
-      get_media_images: 'Loading images...',
-      view_image: 'Viewing image...',
-      edit_post: 'Editing post...',
-      edit_post_component: 'Editing post content...',
-      update_post_status: 'Updating post status...',
-      update_brand_settings: 'Updating brand settings...',
-      search_keyword_data: 'Researching keywords...',
-      search_related_keywords: 'Finding related keywords...',
-      search_trending_topics: 'Searching trends...',
-      search_competitor_content: 'Analysing competitors...',
-      search_content_gaps: 'Finding content gaps...',
-      search_chat_history: 'Searching chat history...',
-      audit_content: 'Auditing content...',
-      check_keyword_cannibalization: 'Checking keyword overlap...',
-      check_post_rankings: 'Checking rankings...',
-      web_search: 'Searching the web...',
-      list_documents: 'Loading documents...',
-      read_document: 'Reading document...',
-      create_document: 'Creating document...',
-      write_document: 'Writing document...',
-      delete_document: 'Deleting document...',
-      list_routines: 'Loading routines...',
-      create_routine: 'Creating routine...',
-      update_routine: 'Updating routine...',
-      update_topics_bulk: 'Updating topics...',
-      edit_posts_bulk: 'Editing posts...',
+  const activeResearchRunIds = messages
+    .filter((message) => message.deepResearchRun && ['queued', 'running'].includes(message.deepResearchRun.status))
+    .map((message) => message.deepResearchRun!.id)
+    .sort()
+    .join(',');
+
+  useEffect(() => {
+    if (!activeResearchRunIds) return;
+    let cancelled = false;
+    const ids = activeResearchRunIds.split(',').filter(Boolean);
+
+    const refresh = async () => {
+      const results = await Promise.all(ids.map(async (id) => {
+        try {
+          const response = await fetch(`/api/deep-research/${id}`, { cache: 'no-store' });
+          if (!response.ok) return null;
+          const data = await response.json();
+          return data.run as DeepResearchRunSnapshot;
+        } catch {
+          return null;
+        }
+      }));
+      if (cancelled) return;
+      const byId = new Map(results.filter(Boolean).map((run) => [run!.id, run!]));
+      setMessages((current) => current.map((message) => {
+        const runId = message.deepResearchRun?.id;
+        if (!runId || !byId.has(runId)) return message;
+        const run = byId.get(runId)!;
+        return {
+          ...message,
+          content: run.report || message.content,
+          deepResearchRun: run,
+        };
+      }));
     };
-    return map[toolName] || `Running ${toolName}...`;
-  }
 
-  function handleSSEEvent(event: string, data: any, assistantId: string) {
-    switch (event) {
-      case 'text_delta':
-        setStreamingStatus('Writing response...');
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? { ...m, content: m.content + data.text }
-              : m
-          )
-        );
-        break;
-
-      case 'tool_start':
-        setStreamingStatus(friendlyToolName(data.toolName));
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? {
-                  ...m,
-                  toolCalls: [
-                    ...(m.toolCalls || []),
-                    {
-                      name: data.toolName,
-                      input: data.toolInput,
-                      status: 'running' as const,
-                    },
-                  ],
-                }
-              : m
-          )
-        );
-        break;
-
-      case 'tool_end':
-        setStreamingStatus('Thinking...');
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? {
-                  ...m,
-                  toolCalls: m.toolCalls?.map((tc) =>
-                    tc.name === data.toolName && tc.status === 'running'
-                      ? { ...tc, status: data.success ? 'complete' as const : 'error' as const }
-                      : tc
-                  ),
-                }
-              : m
-          )
-        );
-        break;
-
-      case 'done':
-        if (data.conversationId) {
-          setConversationId(data.conversationId);
-        }
-        if (data.dataChanged?.length > 0) {
-          setDataChanged((prev) => Array.from(new Set([...prev, ...data.dataChanged])));
-        }
-        break;
-
-      case 'error':
-        setError(data.message);
-        break;
-    }
-  }
+    void refresh();
+    const interval = window.setInterval(refresh, 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [activeResearchRunIds]);
 
   const clearDataChanged = useCallback(() => {
     setDataChanged([]);

@@ -2,15 +2,16 @@
 
 import Image from 'next/image';
 import React, { useState, useRef, useEffect } from 'react';
-import { Loader2, Paperclip, Send, X } from 'lucide-react';
+import { Loader2, MessageSquareText, Paperclip, Search, Send, X } from 'lucide-react';
 import {
   CHAT_IMAGE_MAX_COUNT,
   type ChatImageAttachment,
   validateChatImageFile,
 } from '@/lib/chat/attachments';
+import type { ChatSendMode } from '@/hooks/useChat';
 
 interface ChatInputProps {
-  onSend: (message: string, attachments: ChatImageAttachment[]) => Promise<void>;
+  onSend: (message: string, attachments: ChatImageAttachment[], mode: ChatSendMode) => Promise<void>;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -27,6 +28,7 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [mode, setMode] = useState<ChatSendMode>('chat');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef(new Set<string>());
@@ -49,7 +51,7 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
   }, []);
 
   const addFiles = (files: File[]) => {
-    if (disabled || isUploading || files.length === 0) return;
+    if (disabled || isUploading || mode === 'deep-research' || files.length === 0) return;
 
     const existingKeys = new Set(
       pendingImages.map(({ file }) => `${file.name}:${file.size}:${file.lastModified}`)
@@ -127,12 +129,12 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
     setIsUploading(true);
 
     try {
-      const attachments = await uploadImages();
-      await onSend(trimmed, attachments);
+      const attachments = mode === 'chat' ? await uploadImages() : [];
+      await onSend(trimmed, attachments, mode);
       setValue('');
       clearImages();
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : 'Unable to send images.');
+      setUploadError(error instanceof Error ? error.message : 'Unable to send message.');
     } finally {
       setIsUploading(false);
     }
@@ -169,7 +171,7 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
   };
 
   const inputDisabled = disabled || isUploading;
-  const canSend = Boolean(value.trim() || pendingImages.length > 0);
+  const canSend = mode === 'deep-research' ? Boolean(value.trim()) : Boolean(value.trim() || pendingImages.length > 0);
 
   return (
     <div
@@ -222,11 +224,43 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
 
       {uploadError && <p className="mb-2 text-xs text-red-600">{uploadError}</p>}
 
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="inline-flex rounded-md border border-[#D8D5CE] bg-[#F5F4F0] p-0.5" role="group" aria-label="Assistant mode">
+          <button
+            type="button"
+            onClick={() => setMode('chat')}
+            disabled={inputDisabled}
+            aria-pressed={mode === 'chat'}
+            className={`flex h-7 items-center gap-1.5 rounded px-2 text-xs transition-colors ${
+              mode === 'chat' ? 'bg-white font-medium text-[#111111] shadow-sm' : 'text-[#777777] hover:text-[#111111]'
+            }`}
+          >
+            <MessageSquareText className="h-3.5 w-3.5" />
+            Chat
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode('deep-research');
+              clearImages();
+            }}
+            disabled={inputDisabled}
+            aria-pressed={mode === 'deep-research'}
+            className={`flex h-7 items-center gap-1.5 rounded px-2 text-xs transition-colors ${
+              mode === 'deep-research' ? 'bg-white font-medium text-[#111111] shadow-sm' : 'text-[#777777] hover:text-[#111111]'
+            }`}
+          >
+            <Search className="h-3.5 w-3.5" />
+            Deep research
+          </button>
+        </div>
+      </div>
+
       <div className="flex items-end gap-2">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={inputDisabled || pendingImages.length >= CHAT_IMAGE_MAX_COUNT}
+          disabled={inputDisabled || mode === 'deep-research' || pendingImages.length >= CHAT_IMAGE_MAX_COUNT}
           aria-label="Attach images"
           title="Attach images"
           className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-[#666666] transition-colors hover:bg-[#F5F4F0] hover:text-[#111111] disabled:cursor-not-allowed disabled:opacity-30"
@@ -238,7 +272,9 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder || 'Ask about blog strategy, keywords, content ideas...'}
+          placeholder={placeholder || (mode === 'deep-research'
+            ? 'Describe the market, competitors, or strategy to research...'
+            : 'Ask about blog strategy, keywords, content ideas...')}
           disabled={inputDisabled}
           rows={1}
           className="flex-1 resize-none rounded-lg border border-[#E0DED8] bg-[#FAFAF8] px-3 py-2 text-sm text-[#111111] placeholder:text-[#999999] focus:border-[#111111] focus:outline-none focus:ring-1 focus:ring-[#111111] disabled:opacity-50"

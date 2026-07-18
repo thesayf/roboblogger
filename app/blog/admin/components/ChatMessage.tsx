@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { User, Bot } from 'lucide-react';
 import ToolCallIndicator from './ToolCallIndicator';
+import DeepResearchProgress from './DeepResearchProgress';
 import type { ChatMessageUI } from '@/hooks/useChat';
 
 interface ChatMessageProps {
@@ -32,6 +33,10 @@ export default function ChatMessageComponent({ message }: ChatMessageProps) {
 
       {/* Content */}
       <div className={`flex-1 min-w-0 ${isUser ? 'text-right' : ''}`}>
+        {!isUser && message.deepResearchRun ? (
+          <DeepResearchProgress run={message.deepResearchRun} />
+        ) : (
+          <>
         {/* Tool calls */}
         {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
           <div className="flex flex-col gap-1 mb-2">
@@ -89,6 +94,8 @@ export default function ChatMessageComponent({ message }: ChatMessageProps) {
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
     </div>
   );

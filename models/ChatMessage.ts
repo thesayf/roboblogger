@@ -13,6 +13,7 @@ export interface IChatMessage extends Document {
     input: Record<string, any>;
     result?: string;
   }>;
+  deepResearchRunId?: mongoose.Types.ObjectId;
   embedding?: number[];
   createdAt: Date;
 }
@@ -59,6 +60,10 @@ const ChatMessageSchema = new Schema<IChatMessage>(
       input: Schema.Types.Mixed,
       result: String,
     }],
+    deepResearchRunId: {
+      type: Schema.Types.ObjectId,
+      ref: 'DeepResearchRun',
+    },
     embedding: {
       type: [Number],
       default: undefined,
@@ -70,6 +75,7 @@ const ChatMessageSchema = new Schema<IChatMessage>(
 
 ChatMessageSchema.index({ owner: 1, date: 1 });
 ChatMessageSchema.index({ conversationId: 1, createdAt: 1 });
+ChatMessageSchema.index({ deepResearchRunId: 1 });
 ChatMessageSchema.index({ content: 'text' });
 
 export default mongoose.models.ChatMessage || mongoose.model<IChatMessage>('ChatMessage', ChatMessageSchema);

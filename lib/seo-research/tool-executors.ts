@@ -320,7 +320,7 @@ export async function executeSearchTrendingTopics(input: {
     'this-week': 'in the past week',
     'this-month': 'in the past month',
     'this-quarter': 'in the past 3 months',
-    'this-year': 'in 2025',
+    'this-year': `in ${new Date().getUTCFullYear()}`,
   }[timeframe];
 
   const focusText = {
@@ -391,7 +391,7 @@ Focus on topics that would make good blog post subjects. Be specific with exampl
     return { trends: trends.slice(0, 10) }; // Limit to 10 trends
   } catch (error) {
     console.error('[Perplexity] Error searching trending topics:', error);
-    return { trends: [] };
+    throw error;
   }
 }
 
@@ -457,10 +457,11 @@ Be specific with actual blog post titles or topics where possible.`;
       analysis,
       // Include raw response for Claude to interpret
       rawAnalysis: response.content,
+      sources: response.citations?.map((citation) => citation.url) || [],
     } as any;
   } catch (error) {
     console.error('[Perplexity] Error analyzing competitors:', error);
-    return { analysis: [] };
+    throw error;
   }
 }
 
@@ -793,10 +794,14 @@ Be specific and provide evidence for why these are actual gaps.`;
     }
 
     console.log(`[Perplexity] Found ${gaps.length} content gaps`);
-    return { gaps };
+    return {
+      gaps,
+      rawAnalysis: response.content,
+      sources: response.citations?.map((citation) => citation.url) || [],
+    } as any;
   } catch (error) {
     console.error('[Perplexity] Error finding content gaps:', error);
-    return { gaps: [] };
+    throw error;
   }
 }
 

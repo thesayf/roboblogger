@@ -3,6 +3,8 @@ import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import dbConnect from '@/lib/mongo';
 import Conversation from '@/models/Conversation';
 import ChatMessage from '@/models/ChatMessage';
+import DeepResearchRun from '@/models/DeepResearchRun';
+import { serializeDeepResearchRun } from '@/lib/deep-research/serialize';
 import ImageKit from 'imagekit';
 
 // GET /api/chat/conversations/[id] - Load conversation with messages
@@ -29,8 +31,21 @@ export async function GET(
 
     const messages = await ChatMessage.find({ conversationId: conv._id })
       .sort({ createdAt: 1 })
-      .select('role content attachments toolCalls createdAt')
+      .select('role content attachments toolCalls deepResearchRunId createdAt')
       .lean() as any[];
+
+    const deepResearchRunIds = messages
+      .map((message) => message.deepResearchRunId?.toString())
+      .filter(Boolean);
+    const deepResearchRuns = deepResearchRunIds.length > 0
+      ? await DeepResearchRun.find({
+          _id: { $in: deepResearchRunIds },
+          owner: user.mongoId,
+        }).lean()
+      : [];
+    const deepResearchById = new Map(
+      deepResearchRuns.map((run: any) => [run._id.toString(), serializeDeepResearchRun(run)])
+    );
 
     return NextResponse.json({
       id: conv._id.toString(),
@@ -43,6 +58,9 @@ export async function GET(
         content: m.content,
         attachments: m.attachments || [],
         toolCalls: m.toolCalls,
+        deepResearchRun: m.deepResearchRunId
+          ? deepResearchById.get(m.deepResearchRunId.toString())
+          : undefined,
         createdAt: m.createdAt?.toISOString(),
       })),
     });
@@ -84,6 +102,7 @@ export async function DELETE(
 
     // Delete all messages in the conversation
     await ChatMessage.deleteMany({ conversationId: params.id });
+    await DeepResearchRun.deleteMany({ conversationId: params.id, owner: user.mongoId });
 
     if (attachmentFileIds.length > 0) {
       const imagekit = new ImageKit({
