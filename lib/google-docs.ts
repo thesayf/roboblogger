@@ -168,7 +168,8 @@ export async function writeGoogleDoc(
 
 export async function createGoogleSheet(
   refreshToken: string,
-  title: string
+  title: string,
+  sheetNames: string[] = []
 ): Promise<{ sheetId: string; sheetUrl: string }> {
   const auth = getAuthenticatedClient(refreshToken);
   const drive = google.drive({ version: 'v3', auth });
@@ -184,6 +185,34 @@ export async function createGoogleSheet(
 
   const sheetId = file.data.id!;
   const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
+
+  const normalizedSheetNames = Array.from(new Set(sheetNames.map((name) => name.trim()).filter(Boolean)));
+  if (normalizedSheetNames.length > 0) {
+    const sheets = google.sheets({ version: 'v4', auth });
+    const metadata = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+    const defaultSheet = metadata.data.sheets?.[0]?.properties;
+    const requests: any[] = [];
+
+    if (defaultSheet?.sheetId !== undefined && defaultSheet.title !== normalizedSheetNames[0]) {
+      requests.push({
+        updateSheetProperties: {
+          properties: { sheetId: defaultSheet.sheetId, title: normalizedSheetNames[0] },
+          fields: 'title',
+        },
+      });
+    }
+
+    for (const name of normalizedSheetNames.slice(1)) {
+      requests.push({ addSheet: { properties: { title: name } } });
+    }
+
+    if (requests.length > 0) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: sheetId,
+        requestBody: { requests },
+      });
+    }
+  }
 
   return { sheetId, sheetUrl };
 }

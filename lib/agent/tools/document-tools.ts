@@ -80,6 +80,15 @@ export function buildDocumentTools(ctx: ToolContext) {
         name: z.string().describe('Document title'),
         type: z.enum(['google_doc', 'google_sheet']).describe('Document type'),
         content: z.string().optional().describe('Initial content (for Google Docs only)'),
+        sheetNames: z.array(
+          z.string()
+            .min(1)
+            .max(100)
+            .refine(
+              (name) => !['[', ']', ':', '*', '?', '/', '\\'].some((character) => name.includes(character)),
+              'Sheet names cannot contain [ ] : * ? / or \\'
+            )
+        ).max(10).optional().describe('For Google Sheets only: up to 10 named tabs to create in order.'),
       }),
       run: wrapTool(ctx, 'create_document', async (input) => {
         await dbConnect();
@@ -89,7 +98,7 @@ export function buildDocumentTools(ctx: ToolContext) {
         let googleUrl: string;
 
         if (input.type === 'google_sheet') {
-          const result = await createGoogleSheet(integration.refreshToken, input.name);
+          const result = await createGoogleSheet(integration.refreshToken, input.name, input.sheetNames);
           googleId = result.sheetId;
           googleUrl = result.sheetUrl;
         } else {
