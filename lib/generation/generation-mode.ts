@@ -12,13 +12,13 @@ export const GENERATION_MODE_OPTIONS: Array<{
   {
     value: 'efficient',
     label: 'Efficient',
-    description: 'DeepSeek V4 Pro with Claude fallback',
+    description: 'DeepSeek V4 Pro',
     provider: 'deepseek',
   },
   {
     value: 'premium',
     label: 'Premium',
-    description: 'Claude Opus 4.6',
+    description: 'Claude Opus 4.6 (Anthropic credits required)',
     provider: 'anthropic',
   },
 ];

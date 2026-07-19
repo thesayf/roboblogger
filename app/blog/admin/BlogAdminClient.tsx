@@ -83,6 +83,7 @@ import {
   GENERATION_MODE_OPTIONS,
   type GenerationProvider,
 } from "@/lib/generation/generation-mode";
+import { getGenerationFailureDisplay } from "@/lib/generation/generation-failure-display";
 
 export default function BlogAdminClient() {
   const router = useRouter();
@@ -2603,7 +2604,7 @@ export default function BlogAdminClient() {
                                   className="text-[12px] text-red-600 mt-1 truncate"
                                   title={topic.errorMessage || topic.failureReason}
                                 >
-                                  {topic.errorMessage || topic.failureReason}
+                                  {getGenerationFailureDisplay(topic).summary}
                                 </p>
                               )}
                             </div>

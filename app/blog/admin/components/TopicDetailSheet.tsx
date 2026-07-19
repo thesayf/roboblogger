@@ -42,6 +42,7 @@ import {
   GENERATION_MODE_OPTIONS,
   type GenerationProvider,
 } from "@/lib/generation/generation-mode";
+import { getGenerationFailureDisplay } from "@/lib/generation/generation-failure-display";
 
 interface TopicDetailSheetProps {
   topic: any | null;
@@ -446,9 +447,14 @@ export function TopicDetailSheet({
           {topic.status === "failed" && (topic.errorMessage || topic.failureReason) && (
             <div className="flex items-start gap-2 py-1.5">
               <span className="text-[12px] uppercase tracking-wider text-[#888888] w-32 shrink-0 pt-0.5">Error</span>
-              <span className="text-[14px] text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 break-words min-w-0">
-                {topic.errorMessage || topic.failureReason}
-              </span>
+              <div className="text-[14px] text-red-700 bg-red-50 px-3 py-2 rounded-lg border border-red-200 break-words min-w-0">
+                <p>{getGenerationFailureDisplay(topic).summary}</p>
+                {getGenerationFailureDisplay(topic).providerChanged && (
+                  <p className="mt-1 text-[12px] text-red-600">
+                    {getGenerationFailureDisplay(topic).detail}
+                  </p>
+                )}
+              </div>
             </div>
           )}
           <Field label="Phase" value={topic.generationPhase} />
@@ -1035,7 +1041,7 @@ export function TopicDetailSheet({
           {topic.status === "failed" && topic.error && (
             <div className="flex items-start gap-2 py-1.5">
               <span className="text-[12px] uppercase tracking-wider text-[#888888] w-32 shrink-0 pt-0.5">Error</span>
-              <span className="text-[14px] text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">{topic.error}</span>
+              <span className="text-[14px] text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">{getGenerationFailureDisplay(topic).summary}</span>
             </div>
           )}
           <Field label="Phase" value={topic.generationPhase} />

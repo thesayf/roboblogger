@@ -32,6 +32,17 @@ export async function POST(
       );
     }
 
+    if (topic.status === 'generating') {
+      return NextResponse.json({
+        message: 'Generation is already in progress',
+        topic: {
+          id: topic._id,
+          status: topic.status,
+          generationPhase: topic.generationPhase,
+        },
+      });
+    }
+
     // Deduct credits before starting generation
     const ownerId = topic.owner?.toString();
     let creditsDeducted = false;
@@ -74,16 +85,22 @@ export async function POST(
       }
     };
 
-    // Mark as generating if not already
-    if (topic.status !== 'generating') {
-      topic.status = 'generating';
-      topic.processingStartedAt = new Date();
-      topic.generationPhase = 'initializing';
-      await topic.save();
+    // A manual retry is a fresh attempt. Clear the previous provider's error and
+    // retry backoff so changing from Premium to Efficient does not leave stale
+    // Claude state attached to the new DeepSeek run.
+    if (topic.status === 'failed') {
+      topic.retryCount = 0;
     }
+    topic.status = 'generating';
+    topic.processingStartedAt = new Date();
+    topic.generationPhase = 'initializing';
+    topic.errorMessage = undefined;
+    topic.failureReason = undefined;
+    topic.retryAfter = undefined;
+    await topic.save();
 
     // Fire and forget — the agent runs in the background on Railway (no serverless timeout)
-    console.log(`[Generate] Starting unified agent for topic ${topic._id}: "${topic.topic}"`);
+    console.log(`[Generate] Starting unified agent for topic ${topic._id} with provider ${topic.generationProvider}: "${topic.topic}"`);
 
     executeGenerationAgent({
       topicId: topic._id.toString(),

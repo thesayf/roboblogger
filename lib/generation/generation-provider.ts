@@ -69,7 +69,10 @@ export function getGenerationProviderAttempts(
   requestedProvider: GenerationProvider,
 ): GenerationProviderConfig[] {
   const primary = getGenerationProviderConfig(requestedProvider);
-  const fallbackEnabled = process.env.DEEPSEEK_FALLBACK_TO_CLAUDE !== 'false';
+  // Efficient mode must remain independent from Anthropic by default. A fallback
+  // can spend premium credits and can turn a DeepSeek failure into a misleading
+  // Claude billing error, so it is deliberately opt-in.
+  const fallbackEnabled = process.env.DEEPSEEK_FALLBACK_TO_CLAUDE === 'true';
 
   if (requestedProvider !== 'deepseek' || !fallbackEnabled) {
     return [primary];
