@@ -16,6 +16,8 @@ interface BlogPostData {
   data: {
     title: string;
     description: string;
+    seo_title?: string;
+    seo_description?: string;
     featured_image?: {
       url: string;
       alt?: string;
@@ -41,6 +43,8 @@ function mapApiPost(post: any): BlogPostData {
     data: {
       title: post.title,
       description: post.description,
+      seo_title: post.seoTitle,
+      seo_description: post.seoDescription,
       featured_image: post.featuredImage
         ? { url: post.featuredImage, alt: post.title }
         : undefined,
@@ -77,18 +81,30 @@ async function getRelatedPosts(currentSlug: string): Promise<BlogPostData[]> {
   if (!API_KEY) return [];
 
   try {
-    const res = await fetch(`${API_BASE}/api/v1/posts?limit=4`, {
-      headers: { Authorization: `Bearer ${API_KEY}` },
-      next: { revalidate: 60 },
-    });
+    const posts: any[] = [];
+    let page = 1;
 
-    if (!res.ok) return [];
+    while (page <= 50) {
+      const res = await fetch(`${API_BASE}/api/v1/posts?page=${page}&limit=100`, {
+        headers: { Authorization: `Bearer ${API_KEY}` },
+        next: { revalidate: 60 },
+      });
 
-    const { posts } = await res.json();
-    return posts
-      .filter((p: any) => p.slug !== currentSlug)
-      .slice(0, 3)
-      .map(mapApiPost);
+      if (!res.ok) return [];
+
+      const data = await res.json();
+      posts.push(...(data.posts || []));
+
+      if (!data.pagination?.hasMore) break;
+      page += 1;
+    }
+
+    const currentIndex = posts.findIndex((post: any) => post.slug === currentSlug);
+    const orderedPosts = currentIndex >= 0
+      ? [...posts.slice(currentIndex + 1), ...posts.slice(0, currentIndex)]
+      : posts.filter((post: any) => post.slug !== currentSlug);
+
+    return orderedPosts.slice(0, 3).map(mapApiPost);
   } catch (error) {
     console.error("Error fetching related posts:", error);
     return [];
@@ -121,12 +137,15 @@ export async function generateMetadata({
     };
   }
 
+  const title = post.data.seo_title || post.data.title;
+  const description = post.data.seo_description || post.data.description;
+
   return {
-    title: post.data.title,
-    description: post.data.description,
+    title,
+    description,
     openGraph: {
-      title: post.data.title,
-      description: post.data.description,
+      title,
+      description,
       images: post.data.featured_image?.url
         ? [post.data.featured_image.url]
         : [],

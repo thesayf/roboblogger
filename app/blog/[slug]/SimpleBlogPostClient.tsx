@@ -12,6 +12,8 @@ interface BlogPost {
   data: {
     title: string;
     description: string;
+    seo_title?: string;
+    seo_description?: string;
     featured_image?: {
       url: string;
       alt?: string;

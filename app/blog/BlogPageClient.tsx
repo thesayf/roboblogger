@@ -41,7 +41,8 @@ export default function BlogPageClient({
   };
 
   const featuredPost = posts.length > 0 ? posts[0] : null;
-  const otherPosts = posts.slice(1);
+  const latestPosts = posts.slice(1, 13);
+  const archivePosts = posts.slice(13);
 
   return (
     <div className="min-h-screen bg-[#FAFAF8] text-[#111111]">
@@ -140,7 +141,7 @@ export default function BlogPageClient({
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {otherPosts.map((post) => (
+          {latestPosts.map((post) => (
             <Link
               key={post.id}
               href={`/blog/${post.uid}`}
@@ -175,6 +176,30 @@ export default function BlogPageClient({
             </Link>
           ))}
         </div>
+
+        {archivePosts.length > 0 && (
+          <div className="mt-16 pt-12 border-t border-[#E0DED8]">
+            <h2 className="text-sm font-medium text-[#888888] uppercase tracking-[0.15em] mb-8">
+              Article archive
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-5">
+              {archivePosts.map((post) => (
+                <Link
+                  key={post.id}
+                  href={`/blog/${post.uid}`}
+                  className="group border-b border-[#E0DED8] pb-5"
+                >
+                  <time dateTime={post.data.date} className="text-xs text-[#AAAAAA]">
+                    {formatDate(post.data.date)}
+                  </time>
+                  <h3 className="font-lora text-[17px] leading-[1.35] mt-1 group-hover:text-[#666666] transition-colors">
+                    {post.data.title}
+                  </h3>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       <div className="mx-8 border-b border-[#E0DED8]" />

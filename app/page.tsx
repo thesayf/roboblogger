@@ -5,6 +5,13 @@ import { redirect } from 'next/navigation'
 import { generateHomePageSchema } from '@/utils/schema'
 import { Check, ArrowRight, Zap, Search, PenTool, Image, Calendar, Code2, BarChart3, MessageSquare, TrendingUp, Shield, Users } from 'lucide-react'
 import LiveProofBar from '@/components/LiveProofBar'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: 'https://vibeblogger.io/',
+  },
+}
 
 export default async function HomePage() {
   const { userId } = await auth()

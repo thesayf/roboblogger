@@ -30,21 +30,30 @@ async function getBlogPosts(): Promise<CleanBlogPost[]> {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/v1/posts?limit=50`, {
-      headers: {
-        Authorization: `Bearer ${API_KEY}`,
-      },
-      next: { revalidate: 60 },
-    });
+    const publishedPosts: any[] = [];
+    let page = 1;
 
-    if (!res.ok) {
-      console.error("Failed to fetch posts:", res.status, await res.text());
-      return [];
+    while (page <= 50) {
+      const res = await fetch(`${API_BASE}/api/v1/posts?page=${page}&limit=100`, {
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+        },
+        next: { revalidate: 60 },
+      });
+
+      if (!res.ok) {
+        console.error("Failed to fetch posts:", res.status, await res.text());
+        return [];
+      }
+
+      const data = await res.json();
+      publishedPosts.push(...(data.posts || []));
+
+      if (!data.pagination?.hasMore) break;
+      page += 1;
     }
 
-    const { posts } = await res.json();
-
-    return posts.map((post: any) => ({
+    return publishedPosts.map((post: any) => ({
       id: post._id,
       uid: post.slug,
       data: {
