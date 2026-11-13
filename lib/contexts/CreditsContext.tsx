@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 interface CreditsState {
+  complimentaryAccess?: boolean;
   credits: number;
   subscriptionStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid';
   subscriptionCurrentPeriodEnd?: string;
@@ -52,6 +53,7 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
       setState(prev => ({
         ...prev,
+        complimentaryAccess: data.complimentaryAccess === true,
         credits: data.credits,
         subscriptionStatus: data.subscriptionStatus,
         subscriptionCurrentPeriodEnd: data.subscriptionCurrentPeriodEnd,
@@ -92,6 +94,7 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
       setState(prev => ({
         ...prev,
+        complimentaryAccess: data.complimentaryAccess === true,
         credits: data.credits,
         lifetimeCreditsUsed: prev.lifetimeCreditsUsed + amount,
       }));

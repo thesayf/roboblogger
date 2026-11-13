@@ -256,6 +256,13 @@ const { posts } = await response.json();`}
 
         <div className="border-b border-[#E0DED8] mb-16" />
 
+        <section id="full-page" className="mb-12 rounded-xl border border-[#E0DED8] p-6">
+          <h2 className="text-2xl mb-4">Full-page rendering and private previews</h2>
+          <p>Single-post responses include <code>renderMode</code>: <code>components</code> or <code>full_page</code>. Full-page posts include <code>fullPageDocument</code> with schemaVersion, html, css and a managed assets array.</p>
+          <p className="mt-3">The document designs the hero and one H1. Destinations server-render sanitised HTML and scoped CSS inside their own navigation, footer and SEO shell. JavaScript, CSS imports and arbitrary embeds are not supported. Images remain managed by VibeBlogger and ImageKit.</p>
+          <p className="mt-3">Save private full-page draft in the manual editor to preserve the published article. Preview desktop and mobile before explicitly activating a design.</p>
+          <p className="mt-3"><code>GET /api/v1/posts/&#123;slug&#125;/preview</code> returns a saved private draft only when the API key has posts:read and an explicit previewPostIds grant for that owner-matching post. Ordinary read keys cannot access drafts. Responses are private/no-store and noindex; destination preview pages must also require authentication.</p>
+        </section>
         {/* API Reference */}
         <section className="mb-16" id="api-reference">
           <h2 className="font-lora text-[28px] font-normal mb-8">API Reference</h2>

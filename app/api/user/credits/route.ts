@@ -15,6 +15,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      complimentaryAccess: user.complimentaryAccess === true,
       credits: user.credits,
       subscriptionStatus: user.subscriptionStatus,
       subscriptionCurrentPeriodEnd: user.subscriptionCurrentPeriodEnd,
@@ -54,7 +55,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Insufficient credits',
-          credits: user.credits,
+          complimentaryAccess: user.complimentaryAccess === true,
+      credits: user.credits,
           required: amount,
         },
         { status: 402 } // Payment Required
@@ -70,6 +72,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      complimentaryAccess: user.complimentaryAccess === true,
       credits: user.credits,
       deducted: amount,
     });
