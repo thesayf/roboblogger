@@ -67,3 +67,13 @@ export function validateFullPage(input: unknown, assetBase: string): FullPageDoc
   });
   return { schemaVersion: d.schemaVersion, html, css: css.toString(), assets: d.assets, ...(interactions.length ? { interactions } : {}) };
 }
+
+// Persist sanitised parent HTML without rendered fallbacks, so destinations can
+// validate it again without duplicating fallback text or scoping CSS twice.
+export function publicationDocument(source: FullPageDocument, rendered: FullPageDocument): FullPageDocument {
+  let html = rendered.html;
+  for (const i of rendered.interactions || []) {
+    html = html.replace(`<div data-vb-interactive="${i.id}"><div class="vb-interactive-fallback">${i.fallbackHtml}</div></div>`, () => `<div data-vb-interactive="${i.id}"></div>`);
+  }
+  return {schemaVersion:source.schemaVersion,html,css:source.css,assets:rendered.assets,...(rendered.interactions?.length ? {interactions:rendered.interactions} : {})};
+}
