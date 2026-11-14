@@ -4,6 +4,7 @@ import dbConnect from '@/lib/mongo';
 import BlogPost from '@/models/BlogPost';
 import FullPage from '@/models/FullPage';
 import { validateFullPage } from '@/lib/blog/full-page';
+import { buildArticlePreview } from '@/lib/blog/interactions';
 export const dynamic = 'force-dynamic';
 type Context = { params: { id: string } };
 async function owner(id: string) {
@@ -26,16 +27,23 @@ export async function POST(request: NextRequest, { params }: Context) {
       await FullPage.updateOne({ post: params.id }, { $set: { enabled: false } });
       return NextResponse.json({ ok: true });
     }
+    if (action === 'restore') {
+      const prior = await FullPage.findOne({ post: params.id });
+      if (!prior?.previousPublished) throw new Error('No previous published design to restore');
+      validateFullPage(prior.previousPublished, process.env.IMAGEKIT_URL_ENDPOINT || '');
+      await FullPage.updateOne({ _id: prior._id }, { $set: { published: prior.previousPublished, previousPublished: prior.published, enabled: true }, $inc: { revision: 1 } });
+      return NextResponse.json({ ok: true });
+    }
     if (!['preview','save','publish'].includes(action)) throw new Error('Unknown action');
     const document = body.document;
     const rendered = validateFullPage(document, process.env.IMAGEKIT_URL_ENDPOINT || '');
     if (action === 'publish') {
       // Only an explicit request here can replace the public full-page snapshot.
       const prior = await FullPage.findOne({ post: params.id });
-      await FullPage.findOneAndUpdate({ post: params.id }, { $set: { draft: document, published: { ...document, html: rendered.html }, previousPublished: prior?.published, enabled: true } }, { upsert: true });
+      await FullPage.findOneAndUpdate({ post: params.id }, { $set: { draft: document, published: document, previousPublished: prior?.published, enabled: true }, $inc: { revision: 1 } }, { upsert: true });
     } else if (action === 'save') {
-      await FullPage.findOneAndUpdate({ post: params.id }, { $set: { draft: document } }, { upsert: true });
+      await FullPage.findOneAndUpdate({ post: params.id }, { $set: { draft: document }, $inc: { revision: 1 } }, { upsert: true });
     }
-    return NextResponse.json({ rendered }, { headers: { 'Cache-Control': 'private, no-store' } });
+    return NextResponse.json({ rendered, articleMode: rendered.interactions?.length ? 'interactive' : 'standard', previewHtml: buildArticlePreview(rendered.html, rendered.css, rendered.interactions || [], process.env.IMAGEKIT_URL_ENDPOINT || '') }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'Invalid document' }, { status: 400 }); }
 }

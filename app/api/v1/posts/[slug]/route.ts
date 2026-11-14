@@ -80,7 +80,7 @@ export async function GET(
     }
 
     const design = await FullPage.findOne({ post: (post as any)._id, enabled: true }).lean() as any;
-    const response = NextResponse.json({ post: { ...post, renderMode: design?.published ? 'full_page' : 'components', ...(design?.published ? { fullPageDocument: design.published } : {}) } });
+    const response = NextResponse.json({ post: { ...post, renderMode: design?.published ? 'full_page' : 'components', articleMode: design?.published?.interactions?.length ? 'interactive' : 'standard', ...(design?.published ? { fullPageDocument: design.published } : {}) } });
 
     // Add rate limit headers
     response.headers.set('X-RateLimit-Limit', validation.apiKey!.rateLimit.toString());
