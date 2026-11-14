@@ -14,5 +14,5 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
   if (!post) return NextResponse.json({error:'Not found'}, {status:404});
   const design = await FullPage.findOne({post:post._id}).lean() as any;
   if (!design?.draft) return NextResponse.json({error:'Not found'}, {status:404});
-  return NextResponse.json({post: { _id:post._id, slug:post.slug, title:post.title, description:post.description, seoTitle:post.seoTitle, seoDescription:post.seoDescription, featuredImage:post.featuredImage, status:post.status, updatedAt:post.updatedAt, renderMode:'full_page', fullPageDocument:design.draft }}, {headers:{'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow'}});
+  return NextResponse.json({post: { _id:post._id, slug:post.slug, title:post.title, description:post.description, seoTitle:post.seoTitle, seoDescription:post.seoDescription, featuredImage:post.featuredImage, status:post.status, updatedAt:post.updatedAt, renderMode:'full_page', articleMode:design.draft.interactions?.length ? 'interactive' : 'standard', fullPageDocument:design.draft }}, {headers:{'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow'}});
 }

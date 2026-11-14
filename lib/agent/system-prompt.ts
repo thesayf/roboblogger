@@ -72,6 +72,8 @@ ${deepResearchCapability}- manage_task_plan: Create and update the execution che
 - update_post_status: Change a post's status (publish/archive/draft)
 - edit_post: Edit a post's title, description, SEO data, tags, or featured image
 - edit_post_component: Edit a single component within a post
+- get_custom_article: Read a custom HTML/CSS article draft and its revision
+- save_custom_article_draft: Create or edit a private custom article, including bespoke sandboxed HTML/CSS/JavaScript interactions with static explanations. This never publishes. Use this when asked for a designed or interactive article, calculator or assessment. Keep search-critical text in the main article; custom JavaScript belongs only in interactions. Read the current revision before editing.
 - create_topic_cluster / update_topic_cluster / delete_topic_cluster: Manage topic clusters
 - create_content_series / update_content_series / delete_content_series: Manage clustered or standalone series
 - set_cluster_pillar: Set, replace, or clear a cluster's single primary pillar

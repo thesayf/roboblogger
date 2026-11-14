@@ -1,3 +1,4 @@
+import { buildCustomArticleTools } from './custom-article-tools';
 import { ToolContext } from '../types';
 import { buildResearchTools } from './research-tools';
 import { buildReadTools } from './read-tools';
@@ -15,6 +16,7 @@ export function buildTools(ctx: ToolContext) {
     ...buildResearchTools(ctx),
     ...buildReadTools(ctx),
     ...buildActionTools(ctx),
+    ...buildCustomArticleTools(ctx),
     ...buildStrategyTools(ctx),
     ...buildRoutineTools(ctx),
     ...buildDocumentTools(ctx),
