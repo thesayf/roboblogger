@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import dbConnect from '@/lib/mongo';
 import BlogPost from '@/models/BlogPost';
 import FullPage from '@/models/FullPage';
-import { validateFullPage } from '@/lib/blog/full-page';
+import { validateFullPage, publicationDocument } from '@/lib/blog/full-page';
 import { buildArticlePreview } from '@/lib/blog/interactions';
 export const dynamic = 'force-dynamic';
 type Context = { params: { id: string } };
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest, { params }: Context) {
     if (action === 'publish') {
       // Only an explicit request here can replace the public full-page snapshot.
       const prior = await FullPage.findOne({ post: params.id });
-      await FullPage.findOneAndUpdate({ post: params.id }, { $set: { draft: document, published: document, previousPublished: prior?.published, enabled: true }, $inc: { revision: 1 } }, { upsert: true });
+      await FullPage.findOneAndUpdate({ post: params.id }, { $set: { draft: document, published: publicationDocument(document, rendered), previousPublished: prior?.published, enabled: true }, $inc: { revision: 1 } }, { upsert: true });
     } else if (action === 'save') {
       await FullPage.findOneAndUpdate({ post: params.id }, { $set: { draft: document }, $inc: { revision: 1 } }, { upsert: true });
     }
