@@ -5,6 +5,7 @@ export const API_PERMISSIONS = [
   'read',
   'write',
   'posts:read',
+  'full-page:write',
   'brand:read',
   'topics:read',
   'topics:write',

@@ -5,6 +5,7 @@ import { Key, Plus, Copy, Trash2, Check, AlertCircle, Clock, Activity, ChevronLe
 import Link from 'next/link';
 
 const PERMISSION_OPTIONS = [
+  { value: 'full-page:write', label: 'Private full-page drafts', description: 'Validate, read, create and update private layouts; browse and upload owned images. Cannot publish.' },
   { value: 'posts:read', label: 'Read posts', description: 'Fetch published blog posts for headless rendering.' },
   { value: 'brand:read', label: 'Read brand', description: 'Read brand settings and blog context.' },
   { value: 'topics:read', label: 'Read topics', description: 'List and inspect the topic queue.' },
