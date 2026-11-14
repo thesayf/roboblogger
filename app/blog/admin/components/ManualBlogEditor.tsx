@@ -1,5 +1,6 @@
 "use client";
 
+import FullPageEditor from "@/components/editor/FullPageEditor";
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -2511,6 +2512,8 @@ export default function ManualBlogEditor({ onBack }: ManualBlogEditorProps) {
           </div>
         </div>
 
+        {currentPostId && <FullPageEditor postId={currentPostId} />}
+        {!currentPostId && <p>Save a new post as a draft first to enable full-page design.</p>}
         {/* Post Meta */}
         <div className="bg-white rounded-xl border border-[#E0DED8] p-6 mb-6">
           <h2 className="text-[18px] font-semibold text-[#111111] mb-5">Post Details</h2>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongo';
 import BlogPost from '@/models/BlogPost';
+import FullPage from '@/models/FullPage';
 import '@/models/User'; // Required for populate('author')
 import '@/models/BlogComponent'; // Required for populate('components')
 import { validateApiKey, apiKeyError, checkRateLimit, requireApiPermission } from '@/lib/auth/validateApiKey';
@@ -78,7 +79,8 @@ export async function GET(
       );
     }
 
-    const response = NextResponse.json({ post });
+    const design = await FullPage.findOne({ post: (post as any)._id, enabled: true }).lean() as any;
+    const response = NextResponse.json({ post: { ...post, renderMode: design?.published ? 'full_page' : 'components', ...(design?.published ? { fullPageDocument: design.published } : {}) } });
 
     // Add rate limit headers
     response.headers.set('X-RateLimit-Limit', validation.apiKey!.rateLimit.toString());

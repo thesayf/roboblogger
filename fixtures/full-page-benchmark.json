@@ -1,0 +1,24 @@
+{
+  "renderMode": "full_page",
+  "fullPageDocument": {
+    "schemaVersion": 1,
+    "html": "<header class=\"hero\"><p>PRIVATE DESIGN TEST</p><h1>Turn process evidence into a clear decision.</h1><p>A private preview of the full-page editorial workflow.</p></header><section class=\"grid\"><div><h2>Map what happens</h2><p>Capture evidence before proposing change.</p></div><div><h2>Choose what changes</h2><p>Compare decisions against the evidence.</p></div></section><figure><img src=\"https://ik.imagekit.io/fo50ynfdm/blog-images/6a085b2cd156b5d9b9415db7/1794416598924-current-state-map-evidence__78KPfiJKA?updatedAt=1794416600048\"></figure><section><h2>Supporting visual evidence</h2><figure><img src=\"https://ik.imagekit.io/fo50ynfdm/blog-images/6a085b2cd156b5d9b9415db7/1794416597739-future-state-options-roadmap_LQ7XrTWiL?updatedAt=1794416598760\"></figure></section>",
+    "css": ".hero { background-color: #eee9df; padding: 64px 32px; } h1 { font-size: 48px; max-width: 760px; line-height: 1.1; } p { line-height: 1.6; } .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 32px; } @media (max-width: 600px) { h1 {font-size: 32px;} .grid {grid-template-columns: 1fr;} }",
+    "assets": [
+      {
+        "assetId": "6af49fd7ead997d09a5bd48e",
+        "url": "https://ik.imagekit.io/fo50ynfdm/blog-images/6a085b2cd156b5d9b9415db7/1794416598924-current-state-map-evidence__78KPfiJKA?updatedAt=1794416600048",
+        "width": 1536,
+        "height": 1024,
+        "alt": "Current-state process map showing handoffs and supporting evidence"
+      },
+      {
+        "assetId": "6af49fd5ead997d09a5bd0f8",
+        "url": "https://ik.imagekit.io/fo50ynfdm/blog-images/6a085b2cd156b5d9b9415db7/1794416597739-future-state-options-roadmap_LQ7XrTWiL?updatedAt=1794416598760",
+        "width": 1536,
+        "height": 1024,
+        "alt": "Process-mapping editorial visual from the VibeBlogger media library"
+      }
+    ]
+  }
+}

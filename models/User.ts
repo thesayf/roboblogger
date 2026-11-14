@@ -12,6 +12,7 @@ export interface IUser extends Document {
   commuteTime?: string;
   sleepSchedule?: string;
   idealSchedule?: string;
+  complimentaryAccess?: boolean;
   // Stripe & Billing
   stripeCustomerId?: string;
   subscriptionStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid';
@@ -39,6 +40,7 @@ const UserSchema: Schema = new Schema(
     commuteTime: { type: String },
     sleepSchedule: { type: String },
     idealSchedule: { type: String },
+    complimentaryAccess: { type: Boolean, default: false },
     // Stripe & Billing
     stripeCustomerId: { type: String },
     subscriptionStatus: {

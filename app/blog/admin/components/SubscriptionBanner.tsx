@@ -7,7 +7,7 @@ import { Sparkles, Loader2, X, AlertCircle, Clock } from "lucide-react";
 import { SubscriptionPrompt } from "./SubscriptionPrompt";
 
 export function SubscriptionBanner() {
-  const { subscriptionStatus, credits, trialEndsAt, isLoading } = useCredits();
+  const { complimentaryAccess, subscriptionStatus, credits, trialEndsAt, isLoading } = useCredits();
   const [isDismissed, setIsDismissed] = useState(false);
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -33,7 +33,7 @@ export function SubscriptionBanner() {
     }
   };
 
-  if (isLoading || isDismissed) {
+  if (complimentaryAccess || isLoading || isDismissed) {
     return null;
   }
 

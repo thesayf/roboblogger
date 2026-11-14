@@ -30,7 +30,7 @@ interface SubscriptionGateProps {
 }
 
 export function SubscriptionGate({ children }: SubscriptionGateProps) {
-  const { subscriptionStatus, isLoading, refreshCredits } = useCredits();
+  const { subscriptionStatus, complimentaryAccess, isLoading, refreshCredits } = useCredits();
   const { signOut } = useClerk();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
@@ -49,7 +49,7 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
 
   // Proactively sync subscription status from Stripe if gate would show paywall
   useEffect(() => {
-    if (!isLoading && !hasSynced.current && subscriptionStatus !== 'active' && subscriptionStatus !== 'trialing') {
+    if (!complimentaryAccess && !isLoading && !hasSynced.current && subscriptionStatus !== 'active' && subscriptionStatus !== 'trialing') {
       hasSynced.current = true;
       setIsSyncing(true);
       fetch('/api/user/sync-subscription', { method: 'POST' })
@@ -62,7 +62,7 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
         .catch(() => {})
         .finally(() => setIsSyncing(false));
     }
-  }, [isLoading, subscriptionStatus, refreshCredits]);
+  }, [isLoading, subscriptionStatus, complimentaryAccess, refreshCredits]);
 
   const handleOpenBillingPortal = async () => {
     try {
@@ -141,7 +141,7 @@ export function SubscriptionGate({ children }: SubscriptionGateProps) {
   }
 
   // Allow access if user has active subscription or is trialing
-  if (subscriptionStatus === "active" || subscriptionStatus === "trialing") {
+  if (complimentaryAccess || subscriptionStatus === "active" || subscriptionStatus === "trialing") {
     return <>{children}</>;
   }
 

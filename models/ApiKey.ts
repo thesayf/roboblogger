@@ -28,6 +28,7 @@ export interface IApiKey extends Document {
 
   // Permissions & limits
   permissions: ApiPermission[];
+  previewPostIds?: string[];
   rateLimit: number; // Requests per hour
 
   // Usage tracking
@@ -70,6 +71,7 @@ const ApiKeySchema = new Schema<IApiKey>({
     enum: API_PERMISSIONS,
     default: ['posts:read']
   }],
+  previewPostIds: { type: [String], default: [] },
   rateLimit: {
     type: Number,
     default: 1000, // 1000 requests per hour
