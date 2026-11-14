@@ -18,8 +18,9 @@ export async function POST(request: NextRequest) {
   const auth = await authorize(request); if ('error' in auth) return auth.error;
   try {
     const input = uploadInput.parse(await readJson(request, 12000000));
-    if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(input.fileBase64)) throw new DraftApiError(400, 'Provide raw base64 image bytes, not a URL');
+    if (input.fileBase64.length % 4 !== 0 || /[^A-Za-z0-9+/=]/.test(input.fileBase64)) throw new DraftApiError(400, 'Provide raw base64 image bytes, not a URL');
     const bytes = Buffer.from(input.fileBase64, 'base64');
+    if (bytes.toString('base64') !== input.fileBase64) throw new DraftApiError(400, 'Invalid base64 encoding');
     if (!bytes.length || bytes.length > 8000000) throw new DraftApiError(413, 'Image must be at most 8 MB');
     const png = bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
     const jpg = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;

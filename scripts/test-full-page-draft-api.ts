@@ -69,6 +69,7 @@ async function main() {
   assert(!helpers.isOwnerAsset({filePath:'/blog-images/other/test.png',fileType:'image'},ownerId));
   assert.equal((await assets.POST(request({fileName:'test.png',fileBase64:'https://internal.test',alt:'Test'})))?.status,400);
   assert.equal((await assets.POST(request({fileName:'test.png',fileBase64:Buffer.from('<script>bad</script>').toString('base64'),alt:'Test'})))?.status,415);
+  assert.equal((await assets.POST(request({fileName:'large.png',fileBase64:Buffer.alloc(8000000).toString('base64'),alt:'Test'})))?.status,415);
   await assert.rejects(()=>helpers.readJson(request({long:'a'.repeat(200)}),100),{status:413});
   console.log('PASS: exact permission, auth, validation, strict publication-field rejection, owner isolation, published-post refusal, revision conflict, private-only updates, upload rejection and bounded body.');
 }
