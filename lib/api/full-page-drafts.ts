@@ -60,8 +60,14 @@ export function imagekit() {
 export function isOwnerAsset(file: any, ownerId: string) {
   return typeof file?.filePath === 'string' && file.filePath.startsWith(`/blog-images/${ownerId}/`) && file.fileType === 'image';
 }
+export function canonicalAssetUrl(url: string) {
+  const value = new URL(url);
+  // ImageKit adds this cache timestamp to list/detail URLs but not upload URLs.
+  value.searchParams.delete('updatedAt');
+  return value.href;
+}
 export function assetResponse(file: any) {
-  return { assetId: file.fileId, url: file.url, width: file.width, height: file.height, name: file.name, alt: '', size: file.size };
+  return { assetId: file.fileId, url: canonicalAssetUrl(file.url), width: file.width, height: file.height, name: file.name, alt: '', size: file.size };
 }
 export async function prepareDocument(input: unknown, ownerId: string) {
   let rendered: FullPageDocument;
@@ -74,7 +80,7 @@ export async function prepareDocument(input: unknown, ownerId: string) {
       let file: any;
       try { file = await kit.getFileDetails(asset.assetId); }
       catch { throw new DraftApiError(422, 'Managed asset unavailable'); }
-      if (!isOwnerAsset(file, ownerId) || file.url !== asset.url || file.width !== asset.width || file.height !== asset.height)
+      if (!isOwnerAsset(file, ownerId) || canonicalAssetUrl(file.url) !== canonicalAssetUrl(asset.url) || file.width !== asset.width || file.height !== asset.height)
         throw new DraftApiError(422, 'Managed asset must belong to this API key owner and use its original URL and dimensions');
     }
   }
