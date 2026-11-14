@@ -64,6 +64,8 @@ async function main() {
   assert.equal((await draft.PATCH(request({document:source,expectedRevision:3},'PATCH'),{params:{id}}))?.status,404);
   post.owner=ownerId;post.status='published';
   assert.equal((await draft.PATCH(request({document:source,expectedRevision:3},'PATCH'),{params:{id}}))?.status,404);
+  assert.equal(helpers.canonicalAssetUrl('https://ik.imagekit.io/test/image.png?updatedAt=123'), 'https://ik.imagekit.io/test/image.png');
+  assert.notEqual(helpers.canonicalAssetUrl('https://ik.imagekit.io/test/image.png?tr=w-1'), 'https://ik.imagekit.io/test/image.png');
   assert(helpers.isOwnerAsset({filePath:`/blog-images/${ownerId}/test.png`,fileType:'image'},ownerId));
   assert(!helpers.isOwnerAsset({filePath:`/blog-images/${ownerId}other/test.png`,fileType:'image'},ownerId));
   assert(!helpers.isOwnerAsset({filePath:'/blog-images/other/test.png',fileType:'image'},ownerId));
