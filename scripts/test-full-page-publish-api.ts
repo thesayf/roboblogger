@@ -1,0 +1,46 @@
+import assert from 'node:assert/strict';
+import mongoose from 'mongoose';
+import { NextRequest } from 'next/server';
+async function main() {
+  process.env.MONGODB_URI='mongodb://unused.invalid/test'; process.env.IMAGEKIT_URL_ENDPOINT='https://ik.imagekit.io/test';
+  (global as any).mongoose={conn:mongoose,promise:null};
+  const ApiKey=(await import('../models/ApiKey')).default, BlogPost=(await import('../models/BlogPost')).default, FullPage=(await import('../models/FullPage')).default;
+  const User=(await import('../models/User')).default, Brand=(await import('../models/BrandSettings')).default;
+  const {POST,articleUrl}=await import('../app/api/v1/full-page/posts/[id]/publish/route');
+  const id='222222222222222222222222', owner='111111111111111111111111';
+  let permissions=['full-page:write'];
+  (ApiKey as any).findOne=async()=>({_id:id,owner,isActive:true,permissions,rateLimit:1000});
+  (ApiKey as any).updateOne=()=>({exec:async()=>({})});
+  (User as any).findById=()=>({lean:async()=>({clerkId:'test'})});
+  (Brand as any).findOne=()=>({lean:async()=>({blogUrl:'https://practice.cx/blog'})});
+  const source={schemaVersion:1,html:'<h1>Test</h1><p>Saved content</p>',css:'',assets:[]};
+  const old={...source,html:'<h1>Old content</h1>'};
+  let post:any,design:any, failPost=false;
+  const reset=()=>{post={_id:id,owner,status:'draft',title:'Test',description:'Test article',slug:'private-test'};design={_id:id,post:id,draft:source,published:old,revision:3,enabled:false};};reset();
+  const matches=(f:any)=>post && f.owner===post.owner && f.status.$in.includes(post.status);
+  (BlogPost as any).findOne=(f:any)=>({session:()=>({lean:async()=>matches(f)?structuredClone(post):null})});
+  (FullPage as any).findOne=()=>({session:()=>({lean:async()=>structuredClone(design)})});
+  (FullPage as any).findOneAndUpdate=async(f:any,u:any)=>{if(f.revision!==design.revision)return null;Object.assign(design,u.$set);design.revision++;return design;};
+  (BlogPost as any).findOneAndUpdate=async(f:any,u:any)=>{if(failPost)throw Error('Simulated write failure');if(!matches(f))return null;Object.assign(post,u.$set);return post;};
+  (mongoose as any).startSession=async()=>({withTransaction:async(fn:any)=>{const p=structuredClone(post),d=structuredClone(design);try{await fn();}catch(e){post=p;design=d;throw e;}},endSession:async()=>{}});
+  const call=(body:any,key=true)=>POST(new NextRequest('https://test.local',{method:'POST',headers:{'Content-Type':'application/json',...(key?{Authorization:'Bearer rb_live_test'}:{})},body:JSON.stringify(body)}),{params:{id}});
+  const body={action:'publish',expectedRevision:3};
+  assert.equal((await call(body,false))?.status,401);
+  for(const p of [['full-page:write'],['write'],['posts:read'],['read','write']]){permissions=p;assert.equal((await call(body))?.status,403);}
+  permissions=['full-page:publish'];
+  for(const b of [{expectedRevision:3},{...body,document:source},{...body,owner:'other'},{action:'publish'}])assert.equal((await call(b))?.status,400);
+  post.owner='foreign';assert.equal((await call(body))?.status,404);reset();
+  post.status='archived';assert.equal((await call(body))?.status,404);reset();
+  assert.equal((await call({...body,expectedRevision:2}))?.status,409);assert.equal(post.status,'draft');
+  design.draft={...source,html:'<p>No H1</p>'};assert.equal((await call(body))?.status,422);reset();
+  failPost=true;assert.equal((await call(body))?.status,500);assert.equal(design.enabled,false);assert.equal(design.revision,3);failPost=false;
+  const response=await call(body);assert.equal(response?.status,200);const result=await response!.json();
+  assert.equal(result.liveUrl,'https://practice.cx/blog/private-test');assert.equal(result.revision,4);assert.equal(post.status,'published');assert.equal(design.enabled,true);assert.deepEqual(design.previousPublished,old);assert.deepEqual(design.draft,source);assert.equal(design.published.html,source.html);
+  assert.match(response!.headers.get('cache-control')!,/no-store/);
+  assert.equal((await call(body))?.status,409);
+  const firstPublished=post.publishedAt;design.draft={...source,html:'<h1>New edition</h1>'};
+  assert.equal((await call({...body,expectedRevision:4}))?.status,200);assert.equal(design.previousPublished.html,source.html);assert.deepEqual(post.publishedAt,firstPublished);
+  assert.equal(articleUrl('javascript:alert(1)','test'),null);assert.equal(articleUrl(undefined,'test'),null);
+  console.log('PASS: exact publish scope, explicit action, owner isolation, stale revision, stored validation, transaction rollback, snapshot preservation, atomic activation/publication, republish and live URL.');
+}
+main().catch(e=>{console.error(e);process.exitCode=1});
