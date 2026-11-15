@@ -96,5 +96,5 @@ export function draftResponse(post: any, design: any) {
     articleMode: design?.draft?.interactions?.length ? 'interactive' : 'standard',
     editorUrl: `https://vibeblogger.io/blog/admin/manual?edit=${post._id}`,
     previewApiUrl: `https://vibeblogger.io/api/v1/full-page/drafts/${post._id}`,
-    message: 'Private draft only. Publication requires a separate explicit action with full-page:publish or the authenticated editor.' };
+    message: 'Draft revision only; the current live snapshot is unchanged. Publication requires a separate explicit action with full-page:publish or the authenticated editor.' };
 }
