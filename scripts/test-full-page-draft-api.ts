@@ -41,10 +41,10 @@ async function main() {
   }
   let post:any={_id:id,owner:ownerId,status:'draft',slug:'test',title:'Test'};
   let design:any={post:id,revision:2,draft:source,enabled:false};
-  const match=(f:any)=>post && String(f._id)===id && f.owner===post.owner && f.status===post.status;
+  const match=(f:any)=>post && String(f._id)===id && f.owner===post.owner && f.status.$in.includes(post.status);
   (BlogPost as any).findOne=(f:any)=>({lean:async()=>match(f)?post:null});
   (BlogPost as any).exists=async(f:any)=>match(f)?{_id:id}:null;
-  (BlogPost as any).findOneAndUpdate=async(f:any)=>match(f)?post:null;
+  (BlogPost as any).findOneAndUpdate=async(f:any,u:any)=>{assert.deepEqual(Object.keys(u.$set),['updatedAt']);return match(f)?post:null;};
   (FullPage as any).findOne=()=>({lean:async()=>design});
   (FullPage as any).exists=()=>({session:async()=>design?{_id:id}:null});
   (FullPage as any).findOneAndUpdate=async(f:any,u:any)=>{
@@ -62,8 +62,18 @@ async function main() {
   post.owner='333333333333333333333333';
   assert.equal((await draft.GET(request(null,'GET'),{params:{id}}))?.status,404);
   assert.equal((await draft.PATCH(request({document:source,expectedRevision:3},'PATCH'),{params:{id}}))?.status,404);
-  post.owner=ownerId;post.status='published';
-  assert.equal((await draft.PATCH(request({document:source,expectedRevision:3},'PATCH'),{params:{id}}))?.status,404);
+  post.owner=ownerId;post.status='published';post.publishedAt=new Date('2026-01-01');
+  design.enabled=true;design.published={...source,html:'<h1>Live snapshot</h1>'};design.previousPublished={...source,html:'<h1>Previous snapshot</h1>'};
+  const liveBefore=structuredClone({published:design.published,previousPublished:design.previousPublished,enabled:design.enabled,status:post.status,publishedAt:post.publishedAt});
+  assert.equal((await draft.GET(request(null,'GET'),{params:{id}}))?.status,200);
+  assert.equal((await draft.PATCH(request({document:source,expectedRevision:3},'PATCH'),{params:{id}}))?.status,200);
+  assert.equal(design.revision,4);
+  assert.deepEqual({published:design.published,previousPublished:design.previousPublished,enabled:design.enabled,status:post.status,publishedAt:post.publishedAt},liveBefore);
+  assert.equal((await draft.PATCH(request({document:source,expectedRevision:3},'PATCH'),{params:{id}}))?.status,409);
+  assert.equal((await draft.PATCH(request({document:source,expectedRevision:4,enabled:false},'PATCH'),{params:{id}}))?.status,400);
+  post.status='archived';
+  assert.equal((await draft.GET(request(null,'GET'),{params:{id}}))?.status,404);
+  assert.equal((await draft.PATCH(request({document:source,expectedRevision:4},'PATCH'),{params:{id}}))?.status,404);
   assert.equal(helpers.canonicalAssetUrl('https://ik.imagekit.io/test/image.png?updatedAt=123'), 'https://ik.imagekit.io/test/image.png');
   assert.notEqual(helpers.canonicalAssetUrl('https://ik.imagekit.io/test/image.png?tr=w-1'), 'https://ik.imagekit.io/test/image.png');
   assert(helpers.isOwnerAsset({filePath:`/blog-images/${ownerId}/test.png`,fileType:'image'},ownerId));
@@ -73,6 +83,6 @@ async function main() {
   assert.equal((await assets.POST(request({fileName:'test.png',fileBase64:Buffer.from('<script>bad</script>').toString('base64'),alt:'Test'})))?.status,415);
   assert.equal((await assets.POST(request({fileName:'large.png',fileBase64:Buffer.alloc(8000000).toString('base64'),alt:'Test'})))?.status,415);
   await assert.rejects(()=>helpers.readJson(request({long:'a'.repeat(200)}),100),{status:413});
-  console.log('PASS: exact permission, auth, validation, strict publication-field rejection, owner isolation, published-post refusal, revision conflict, private-only updates, upload rejection and bounded body.');
+  console.log('PASS: exact permission, auth, validation, strict publication-field rejection, owner isolation, published draft save without changing live snapshot, archived-post refusal, revision conflict, private-only updates, upload rejection and bounded body.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});

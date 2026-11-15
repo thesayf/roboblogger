@@ -9,7 +9,7 @@ export const OPTIONS = optionsResponse;
 type Context = { params: { id: string } };
 function postFilter(id: string, ownerId: string) {
   if (!/^[a-f0-9]{24}$/i.test(id)) throw new DraftApiError(404, 'Draft not found');
-  return { _id: id, owner: ownerId, status: 'draft' };
+  return { _id: id, owner: ownerId, status: { $in: ['draft', 'published'] } };
 }
 export async function GET(request: NextRequest, { params }: Context) {
   const auth = await authorize(request); if ('error' in auth) return auth.error;
@@ -28,7 +28,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
     const { document } = await prepareDocument(input.document, auth.ownerId);
     const session = await mongoose.startSession(); let result: any;
     try { await session.withTransaction(async () => {
-      // Write-lock the private post, so concurrent publication cannot race this save.
+      // Write-lock the post, so concurrent publication cannot race this save.
       const post = await BlogPost.findOneAndUpdate(filter, { $set: { updatedAt: new Date() } }, { session, new: true });
       if (!post) throw new DraftApiError(404, 'Draft not found');
       const exists = await FullPage.exists({ post: params.id }).session(session);

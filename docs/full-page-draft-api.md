@@ -12,7 +12,7 @@ Every draft and asset endpoint below requires the **exact `full-page:write` perm
 4. `POST /full-page/drafts` with `{title,description,slug,document}`. Optional `authorName,category,tags,seoTitle,seoDescription`. Creates a draft and full-page document together transactionally. Returns HTTP 201 with `postId,slug,title,description,status,revision,document,articleMode,editorUrl,previewApiUrl`. Slugs are globally unique: on 409, look up the existing draft; do not blindly recreate.
 5. `GET /full-page/drafts?limit=20&skip=0` lists private owner posts (including component drafts). `GET /full-page/drafts/{postId}` returns the current custom document and revision (0/null if no custom document yet).
 6. `PATCH /full-page/drafts/{postId}` with `{expectedRevision:1,document:{...}}` saves another private revision. Only these two fields are accepted. Read first, reconcile edits, and supply the actual last-read revision. A stale revision returns 409 and writes nothing. Revision 0 initializes a component-only private draft. Metadata edits are not part of PATCH; create the metadata correctly or edit it in the authenticated editor.
-7. Ask the owner to review `editorUrl`. Nothing here publishes or activates a public snapshot. Published/archived posts cannot be updated by the draft-writing routes. To experiment with an existing public article, create a separate private draft.
+7. Ask the owner to review `editorUrl`. Nothing here publishes or activates a public snapshot. Published posts can receive draft revisions through GET/PATCH by ID. These saves leave status, publishedAt, enabled, published and previousPublished unchanged. Archived posts are excluded. Publish the saved revision separately to activate it.
 
 All responses use `Cache-Control: private, no-store` and `X-Robots-Tag: noindex, nofollow`. Never expose the writer key in browser code. Existing API rate limits apply (per running instance). JSON input is stream-limited to 1.6 MB (12 MB for base64 uploads); document-specific limits still apply, including 400,000 serialized characters and at most 100 assets.
 
@@ -51,7 +51,7 @@ The writer can read its owner's private drafts with `/full-page/drafts/{id}`. Th
 - 400: malformed JSON, unknown fields (including status/owner/publish/action), invalid metadata or pagination, missing expectedRevision.
 - 401: missing, invalid or revoked key.
 - 403: missing exact `full-page:write` permission.
-- 404: missing, foreign-owner or non-draft post.
+- 404: missing, foreign-owner or archived post.
 - 409: duplicate slug or stale revision; reread before retrying.
 - 413: oversized request or image.
 - 415: unsupported content type or image format.
@@ -74,3 +74,12 @@ The endpoint reads and revalidates that stored draft, verifies managed asset own
 The response includes `postId`, `slug`, `status`, `renderMode`, `articleMode`, `revision`, `publishedAt`, `publicApiUrl` and `liveUrl`. `liveUrl` is derived from the owner's **Brand → Blog URL** (for Practice, `https://practice.cx/blog`); it is null if that URL is absent or invalid. Publication does not verify or invalidate a consumer website's cache. Verify the public API and consumer page after publishing. The previous layout remains available for restoration through the existing authenticated editor; no API rollback or unpublish endpoint is added.
 
 Only call this endpoint when publication is intended. Giving an agent this scope authorizes it to perform an explicit publication request without browser login. The scope does not itself grant draft-writing or asset access.
+
+
+## Correcting an already published article
+
+1. `GET /full-page/drafts/{postId}` with `full-page:write` to retrieve the latest saved document and revision. The response `status` is the post's publication status, so it remains `published` while you edit a private revision. The list endpoint still lists unpublished posts only; use the known post ID for an existing live article.
+2. `PATCH /full-page/drafts/{postId}` with `{expectedRevision:N,document:{...}}`. This saves the new draft and returns the incremented revision. It does **not** change the live snapshot, publication status/date, active-layout flag or rollback snapshot. The post's updatedAt timestamp advances. A stale save returns 409 without changes.
+3. When ready, call `POST /full-page/posts/{postId}/publish` with `{action:"publish",expectedRevision:N+1}` using `full-page:publish`. Use the actual revision returned by the save. This activates the correction and preserves the previous live layout for rollback.
+
+Reading and saving require the same owner as the post. A write-only key can prepare a correction but cannot activate it. Neither endpoint accepts caller-supplied publication fields during a draft save.
