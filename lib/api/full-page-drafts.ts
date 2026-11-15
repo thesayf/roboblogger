@@ -12,8 +12,8 @@ export function reply(body: unknown, status = 200) {
     'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow',
   } }));
 }
-export async function authorize(request: NextRequest) {
-  const auth = await authenticateApiRequest(request, 'full-page:write');
+export async function authorize(request: NextRequest, permission: 'full-page:write' | 'full-page:publish' = 'full-page:write') {
+  const auth = await authenticateApiRequest(request, permission);
   if ('error' in auth) {
     auth.error!.headers.set('Cache-Control', 'private, no-store');
     return { error: withCors(auth.error!) };
@@ -96,5 +96,5 @@ export function draftResponse(post: any, design: any) {
     articleMode: design?.draft?.interactions?.length ? 'interactive' : 'standard',
     editorUrl: `https://vibeblogger.io/blog/admin/manual?edit=${post._id}`,
     previewApiUrl: `https://vibeblogger.io/api/v1/full-page/drafts/${post._id}`,
-    message: 'Private draft only. Publication requires a separate authenticated editor action.' };
+    message: 'Private draft only. Publication requires a separate explicit action with full-page:publish or the authenticated editor.' };
 }

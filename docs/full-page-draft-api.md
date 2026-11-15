@@ -2,7 +2,7 @@
 
 Base URL: `https://vibeblogger.io/api/v1`. Send `Authorization: Bearer $VIBEBLOGGER_API_KEY` (or `X-API-Key`). Keep keys server-side.
 
-Every endpoint below requires the **exact `full-page:write` permission**. Legacy `read`/`write`, `posts:read` and topic permissions do not imply it. The owner comes from the key, never from input. There is no publish permission or publish route in this API. Existing authenticated editor publication remains a separate explicit human action. Do not grant an agent publication authority implicitly.
+Every draft and asset endpoint below requires the **exact `full-page:write` permission**. Legacy `read`/`write`, `posts:read` and topic permissions do not imply it. The owner comes from the key, never from input. Publication requires the separate exact `full-page:publish` permission and an explicit request to the endpoint documented below. Draft writing never implies publication authority.
 
 ## Daily authoring workflow
 
@@ -12,7 +12,7 @@ Every endpoint below requires the **exact `full-page:write` permission**. Legacy
 4. `POST /full-page/drafts` with `{title,description,slug,document}`. Optional `authorName,category,tags,seoTitle,seoDescription`. Creates a draft and full-page document together transactionally. Returns HTTP 201 with `postId,slug,title,description,status,revision,document,articleMode,editorUrl,previewApiUrl`. Slugs are globally unique: on 409, look up the existing draft; do not blindly recreate.
 5. `GET /full-page/drafts?limit=20&skip=0` lists private owner posts (including component drafts). `GET /full-page/drafts/{postId}` returns the current custom document and revision (0/null if no custom document yet).
 6. `PATCH /full-page/drafts/{postId}` with `{expectedRevision:1,document:{...}}` saves another private revision. Only these two fields are accepted. Read first, reconcile edits, and supply the actual last-read revision. A stale revision returns 409 and writes nothing. Revision 0 initializes a component-only private draft. Metadata edits are not part of PATCH; create the metadata correctly or edit it in the authenticated editor.
-7. Ask the owner to review `editorUrl`. Nothing here publishes or activates a public snapshot. Published/archived posts cannot be updated by these routes. To experiment with an existing public article, create a separate private draft.
+7. Ask the owner to review `editorUrl`. Nothing here publishes or activates a public snapshot. Published/archived posts cannot be updated by the draft-writing routes. To experiment with an existing public article, create a separate private draft.
 
 All responses use `Cache-Control: private, no-store` and `X-Robots-Tag: noindex, nofollow`. Never expose the writer key in browser code. Existing API rate limits apply (per running instance). JSON input is stream-limited to 1.6 MB (12 MB for base64 uploads); document-specific limits still apply, including 400,000 serialized characters and at most 100 assets.
 
@@ -58,4 +58,19 @@ The writer can read its owner's private drafts with `/full-page/drafts/{id}`. Th
 - 422: document validation or owned-asset verification failed.
 - 429: key rate limit exceeded.
 
-There is intentionally no DELETE or publication operation. No automatic image generation or external network execution is added by this feature.
+There is intentionally no DELETE operation. No automatic image generation or external network execution is added by this feature.
+
+
+## Explicit publication API
+
+`POST /full-page/posts/{postId}/publish` requires **`full-page:publish`** (independent of `full-page:write`). Send exactly:
+
+```json
+{"action":"publish","expectedRevision":2}
+```
+
+The endpoint reads and revalidates that stored draft, verifies managed asset ownership, preserves the previous published layout in `previousPublished`, activates the validated snapshot, sets the post status to `published`, and increments the revision in one database transaction. It preserves an existing publication date on subsequent publication. It never accepts replacement HTML or a caller-supplied owner or URL. Missing/foreign/archived posts return 404; invalid documents or missing required metadata return 422; stale revisions return 409 with no changes. A retry after a successful publish returns 409: read the current state rather than blindly retrying.
+
+The response includes `postId`, `slug`, `status`, `renderMode`, `articleMode`, `revision`, `publishedAt`, `publicApiUrl` and `liveUrl`. `liveUrl` is derived from the owner's **Brand → Blog URL** (for Practice, `https://practice.cx/blog`); it is null if that URL is absent or invalid. Publication does not verify or invalidate a consumer website's cache. Verify the public API and consumer page after publishing. The previous layout remains available for restoration through the existing authenticated editor; no API rollback or unpublish endpoint is added.
+
+Only call this endpoint when publication is intended. Giving an agent this scope authorizes it to perform an explicit publication request without browser login. The scope does not itself grant draft-writing or asset access.
